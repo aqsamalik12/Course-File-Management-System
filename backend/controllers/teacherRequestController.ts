@@ -350,12 +350,30 @@ export const approveTeacherRequest = async (req: Request, res: Response) => {
     if (Array.isArray(request.selectedCourses)) {
       for (const c of request.selectedCourses) {
         if (c.courseId) {
-          await CourseService.update(c.courseId, {
-            assignedTeacherId: request.teacherId,
-            assignedTeacherName: request.teacherName,
-            assignedTeacherRole: request.teacherType,
-            status: 'Active'
-          });
+          const existingCourse = await CourseService.getById(c.courseId);
+          if (existingCourse) {
+            await CourseService.update(c.courseId, {
+              assignedTeacherId: request.teacherId,
+              assignedTeacherName: request.teacherName,
+              assignedTeacherRole: request.teacherType,
+              status: 'Active'
+            });
+          } else {
+            await CourseService.create({
+              id: c.courseId,
+              code: c.courseCode || 'CS-101',
+              title: c.courseName || c.courseTitle || 'Specialized Course',
+              credits: Number(c.credits || c.creditHours || 3),
+              departmentId: request.departmentId,
+              departmentName: request.departmentName,
+              assignedTeacherId: request.teacherId,
+              assignedTeacherName: request.teacherName,
+              assignedTeacherRole: request.teacherType,
+              status: 'Active',
+              semester: 'Semester 1',
+              academicSession: request.profileData?.academicSession || 'Spring 2026'
+            });
+          }
         }
       }
     }

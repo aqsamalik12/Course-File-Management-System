@@ -77,6 +77,24 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourseItem[]>([]);
 
+  // Dynamic Academic Session: Term (Spring / Fall / Summer) and custom Year input by user
+  const [sessionSeason, setSessionSeason] = useState<'Spring' | 'Fall' | 'Summer'>('Spring');
+  const [sessionYear, setSessionYear] = useState<string>(new Date().getFullYear().toString());
+
+  // Multiple Specialized Courses added by the teacher
+  const [specializedCourses, setSpecializedCourses] = useState<Array<{
+    id: string;
+    code: string;
+    title: string;
+    credits?: number;
+    isCustom?: boolean;
+  }>>([
+    { id: 'spec-ds', code: 'CS-DS', title: 'Data Structures & Algorithms', credits: 4, isCustom: true }
+  ]);
+  const [newSubjectTitle, setNewSubjectTitle] = useState('');
+  const [newSubjectCode, setNewSubjectCode] = useState('');
+  const [inlineSubjectInput, setInlineSubjectInput] = useState('');
+
   const [form, setForm] = useState<Partial<TeacherProfileFormData>>({
     cnic: '',
     dob: '',
@@ -84,17 +102,42 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
     phone: '',
     bloodGroup: 'B+',
     highestQualification: 'MS / M.Phil',
-    specialization: 'Computer Science & Software',
+    specialization: 'Data Structures & Algorithms',
     joiningDate: new Date().toISOString().split('T')[0],
     academicSession: 'Spring 2026',
     batch: '2023-2027',
     employmentType: 'Regular'
   });
 
+  // Keep academicSession updated with season + year
+  useEffect(() => {
+    const combinedSession = `${sessionSeason} ${sessionYear.trim()}`;
+    setForm((prev) => ({ ...prev, academicSession: combinedSession }));
+  }, [sessionSeason, sessionYear]);
+
+  // Keep form.specialization updated with specialized courses
+  useEffect(() => {
+    if (specializedCourses.length > 0) {
+      setForm((prev) => ({
+        ...prev,
+        specialization: specializedCourses.map((c) => c.title).join(', ')
+      }));
+    }
+  }, [specializedCourses]);
+
   // Prefill existing user data if re-applying after rejection or updating
   useEffect(() => {
     if (currentUser?.profileFormData) {
       setForm((prev) => ({ ...prev, ...currentUser.profileFormData }));
+      if (currentUser.profileFormData.academicSession) {
+        const parts = currentUser.profileFormData.academicSession.split(' ');
+        if (parts[0] === 'Spring' || parts[0] === 'Fall' || parts[0] === 'Summer') {
+          setSessionSeason(parts[0] as any);
+        }
+        if (parts[1] && /^\d{4}$/.test(parts[1])) {
+          setSessionYear(parts[1]);
+        }
+      }
     }
     if (currentUser?.role === 'VISITING_TEACHER') {
       setTeacherType('VISITING_TEACHER');
@@ -106,6 +149,48 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
 
   const setField = (field: keyof TeacherProfileFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const generateCourseCode = (title: string, deptPrefix: string = 'CS') => {
+    const words = title.trim().split(/\s+/).filter(Boolean);
+    let codePart = '';
+    if (words.length === 1) {
+      codePart = words[0].slice(0, 4).toUpperCase();
+    } else {
+      codePart = words.map((w) => w[0].toUpperCase()).join('').slice(0, 5);
+    }
+    return `${deptPrefix}-${codePart}`;
+  };
+
+  const handleAddSpecializedCourse = (titleInput?: string, codeInput?: string) => {
+    const title = (titleInput ?? newSubjectTitle).trim();
+    if (!title) return;
+
+    if (specializedCourses.some((c) => c.title.toLowerCase() === title.toLowerCase())) {
+      setNewSubjectTitle('');
+      setNewSubjectCode('');
+      return;
+    }
+
+    const deptPrefix = selectedDept?.code || 'CS';
+    const code = (codeInput ?? newSubjectCode).trim().toUpperCase() || generateCourseCode(title, deptPrefix);
+
+    const newItem = {
+      id: `spec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      code,
+      title,
+      credits: 3,
+      isCustom: true
+    };
+
+    setSpecializedCourses((prev) => [...prev, newItem]);
+    setNewSubjectTitle('');
+    setNewSubjectCode('');
+  };
+
+  const handleRemoveSpecializedCourse = (id: string) => {
+    setSpecializedCourses((prev) => prev.filter((c) => c.id !== id));
+    setSelectedCourses((prev) => prev.filter((c) => c.courseId !== id));
   };
 
   // ─── Credit Limits ─────────────────────────────────────────────────────────
@@ -141,6 +226,17 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
         c.title.toLowerCase().includes(q)
     );
   }, [availableCourses, courseSearch]);
+
+  // Filtered specialized courses by search query
+  const filteredSpecializedCourses = useMemo(() => {
+    const q = courseSearch.trim().toLowerCase();
+    if (!q) return specializedCourses;
+    return specializedCourses.filter(
+      (c) =>
+        c.code.toLowerCase().includes(q) ||
+        c.title.toLowerCase().includes(q)
+    );
+  }, [specializedCourses, courseSearch]);
 
   // Map to hold custom selected credits per course card: courseId -> 2 | 3 | 4
   const [courseCreditsMap, setCourseCreditsMap] = useState<Record<string, number>>({});
@@ -227,7 +323,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
       if (!form.dob?.trim()) errs.dob = 'Date of birth is required';
       if (!form.phone?.trim()) errs.phone = 'Phone number is required';
       if (!form.highestQualification?.trim()) errs.highestQualification = 'Highest qualification is required';
-      if (!form.specialization?.trim()) errs.specialization = 'Specialization field is required';
+      if (specializedCourses.length === 0 && !form.specialization?.trim()) {
+        errs.specialization = 'Please add at least one specialized course or subject';
+      }
+      if (!sessionYear?.trim() || !/^\d{4}$/.test(sessionYear.trim())) {
+        errs.academicSession = 'Please enter a valid 4-digit academic year (e.g. 2026)';
+      }
     }
 
     // Step 1: Teacher Type & Department
@@ -574,28 +675,192 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                 {errors.highestQualification && <p className="text-rose-500 text-[11px] font-semibold">{errors.highestQualification}</p>}
               </Field>
 
-              <Field label="Subject Specialization" required>
-                <input
-                  type="text"
-                  placeholder="e.g. Artificial Intelligence / Cloud Computing"
-                  value={form.specialization || ''}
-                  onChange={(e) => setField('specialization', e.target.value)}
-                  className={inputCls}
-                />
-                {errors.specialization && <p className="text-rose-500 text-[11px] font-semibold">{errors.specialization}</p>}
-              </Field>
+              {/* ─── Subject Specialization (Multi-Course Custom Input) ─── */}
+              <div className="sm:col-span-2 space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-emerald-600" />
+                      Subject Specialization & Teaching Courses <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-2xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      {specializedCourses.length} Subjects Added
+                    </span>
+                  </div>
+                  <p className="text-2xs text-slate-500 mt-0.5">
+                    Apne specialized courses khud add karein (e.g. Data Structures). Agle step mein inhi courses ke Credit Hours (2, 3, 4 Cr) aur Sections select karne ki option hogi.
+                  </p>
+                </div>
 
-              <Field label="Academic Session" required>
-                <select
-                  value={form.academicSession || 'Spring 2026'}
-                  onChange={(e) => setField('academicSession', e.target.value)}
-                  className={selectCls}
-                >
-                  {SESSIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </Field>
+                {/* Input box to add custom course/subject */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Enter Course / Subject Name (e.g. Data Structures, Database Systems)..."
+                      value={newSubjectTitle}
+                      onChange={(e) => setNewSubjectTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddSpecializedCourse();
+                        }
+                      }}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <input
+                      type="text"
+                      placeholder="Code (e.g. CS-201)"
+                      value={newSubjectCode}
+                      onChange={(e) => setNewSubjectCode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddSpecializedCourse();
+                        }
+                      }}
+                      className={inputCls}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSpecializedCourse()}
+                    disabled={!newSubjectTitle.trim()}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    + Add Course
+                  </button>
+                </div>
+
+                {/* Quick Suggestion Chips */}
+                <div className="space-y-1">
+                  <span className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">
+                    Popular Subjects (Click to add):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Data Structures & Algorithms',
+                      'Database Management Systems',
+                      'Introduction to Programming',
+                      'Operating Systems',
+                      'Computer Networks & Security',
+                      'Artificial Intelligence & Machine Learning',
+                      'Software Engineering',
+                      'Web Technologies'
+                    ].map((sug) => {
+                      const alreadyAdded = specializedCourses.some(
+                        (c) => c.title.toLowerCase() === sug.toLowerCase()
+                      );
+                      return (
+                        <button
+                          key={sug}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => handleAddSpecializedCourse(sug)}
+                          className={`text-2xs font-semibold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                            alreadyAdded
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50'
+                          }`}
+                        >
+                          {alreadyAdded ? `✓ ${sug}` : `+ ${sug}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Added Subjects Chips */}
+                {specializedCourses.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-3xs font-bold text-slate-500 uppercase tracking-wider block">
+                      Added Subjects ({specializedCourses.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {specializedCourses.map((c) => (
+                        <div
+                          key={c.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-emerald-300 rounded-xl shadow-2xs text-xs font-bold text-slate-800"
+                        >
+                          <span className="text-emerald-700 font-mono text-2xs bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            {c.code}
+                          </span>
+                          <span className="text-slate-800">{c.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSpecializedCourse(c.id)}
+                            className="text-slate-400 hover:text-rose-600 transition-colors ml-1 p-0.5 cursor-pointer"
+                            title="Remove this course"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {errors.specialization && (
+                  <p className="text-rose-500 text-[11px] font-semibold">{errors.specialization}</p>
+                )}
+              </div>
+
+              {/* ─── Academic Session (Season Dropdown + Year Text Input) ─── */}
+              <div className="sm:col-span-2 space-y-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    Academic Session <span className="text-rose-500">*</span>
+                  </span>
+                  <span className="text-2xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Selected: {sessionSeason} {sessionYear || 'YYYY'}
+                  </span>
+                </label>
+                <p className="text-2xs text-slate-500">
+                  Select Semester Session (Spring / Fall / Summer) and type your academic year manually.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Season Dropdown */}
+                  <div>
+                    <label className="text-2xs font-bold text-slate-600 mb-1 block">
+                      Session Term / Semester:
+                    </label>
+                    <select
+                      value={sessionSeason}
+                      onChange={(e) => setSessionSeason(e.target.value as any)}
+                      className={selectCls}
+                    >
+                      <option value="Spring">🌸 Spring Semester</option>
+                      <option value="Fall">🍂 Fall Semester</option>
+                      <option value="Summer">☀️ Summer Term</option>
+                    </select>
+                  </div>
+
+                  {/* Year Text Input */}
+                  <div>
+                    <label className="text-2xs font-bold text-slate-600 mb-1 block">
+                      Academic Year (Khud enter karein):
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2026, 2025"
+                      min="2020"
+                      max="2035"
+                      value={sessionYear}
+                      onChange={(e) => setSessionYear(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+
+                {errors.academicSession && (
+                  <p className="text-rose-500 text-[11px] font-semibold">{errors.academicSession}</p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -877,10 +1142,187 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               </div>
             )}
 
-            <div className="space-y-2">
+            {/* ══════════════════════════════════════════════════════════════════
+                SECTION 1: Courses Added from Specialization (Teacher Custom Courses)
+               ══════════════════════════════════════════════════════════════════ */}
+            <div className="p-4 bg-gradient-to-r from-emerald-50/90 to-teal-50/80 border-2 border-emerald-400 rounded-2xl space-y-3.5 shadow-xs animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-emerald-200">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-emerald-950 uppercase tracking-wide flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
+                      Courses from Your Specialization ({specializedCourses.length})
+                    </span>
+                    <span className="text-2xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                      Teacher Added
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-900 font-bold mt-0.5">
+                    Ye course abhi aap ne add kiya hai — ab iske Credit Hours (2, 3, 4 Cr) aur Sections select karein:
+                  </p>
+                </div>
+
+                {/* Quick Add Another Subject on the fly */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="+ Add another course..."
+                    value={inlineSubjectInput}
+                    onChange={(e) => setInlineSubjectInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (inlineSubjectInput.trim()) {
+                          handleAddSpecializedCourse(inlineSubjectInput.trim());
+                          setInlineSubjectInput('');
+                        }
+                      }
+                    }}
+                    className="px-2.5 py-1 text-xs bg-white border border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 w-44 shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inlineSubjectInput.trim()) {
+                        handleAddSpecializedCourse(inlineSubjectInput.trim());
+                        setInlineSubjectInput('');
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {specializedCourses.length === 0 ? (
+                <div className="p-4 bg-white/90 rounded-xl border border-dashed border-emerald-300 text-center text-xs text-slate-600 space-y-1">
+                  <p className="font-bold text-slate-700">Aap ne Step 1 mein koi specialized course add nahi kiya.</p>
+                  <p className="text-2xs text-slate-500">Upar diye gaye box mein course name likh kar فوراً add karein!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {filteredSpecializedCourses.map((c) => {
+                    const assignedSections = selectedCourses.filter((sc) => sc.courseId === c.id);
+                    const count = assignedSections.length;
+                    const isSelected = count > 0;
+                    const currentCredits = getCourseCredits(c);
+
+                    return (
+                      <div
+                        key={c.id}
+                        className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-3 ${
+                          isSelected
+                            ? 'border-emerald-600 bg-white shadow-xs'
+                            : 'border-emerald-200 hover:border-emerald-400 bg-white'
+                        }`}
+                      >
+                        {/* Top: Code, Specialization Badge, and 2, 3, 4 Cr Selector */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200">
+                                {c.code}
+                              </span>
+                              <span className="text-2xs font-extrabold uppercase text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                ★ Your Subject
+                              </span>
+                            </div>
+
+                            {/* 2, 3, 4 Credit Hours Selector Pills */}
+                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200" title="Select Credit Hours (2, 3, or 4 Cr)">
+                              {[2, 3, 4].map((crVal) => {
+                                const isActive = currentCredits === crVal;
+                                return (
+                                  <button
+                                    key={crVal}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleChangeCourseCredits(c, crVal);
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-2xs font-black transition-all cursor-pointer ${
+                                      isActive
+                                        ? 'bg-emerald-600 text-white shadow-2xs'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    {crVal} Cr
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                            {c.title}
+                          </h4>
+
+                          {/* Active Sections Display if selected */}
+                          {isSelected && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {assignedSections.map((sec, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="inline-flex items-center gap-1 text-2xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md shadow-2xs"
+                                >
+                                  <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                  {sec.section} ({sec.credits ?? sec.creditHours ?? currentCredits} Cr)
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bottom Actions: Select Course / Add Section (Press Again) / Remove */}
+                        <div className="pt-2 border-t border-slate-100">
+                          {!isSelected ? (
+                            <button
+                              type="button"
+                              onClick={() => handleAddCourseSection(c)}
+                              className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Select This Course ({currentCredits} Credits)
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAddCourseSection(c)}
+                                className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                                title="Add another section of this course (Press again)"
+                              >
+                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>+ Add Section (Press Again)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLastCourseSection(c.id)}
+                                className="py-1.5 px-2.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                                title="Remove last section"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════════════
+                SECTION 2: Department Syllabus Courses
+               ══════════════════════════════════════════════════════════════════ */}
+            <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 block">
-                  Available Courses in {selectedDept?.name} ({availableCourses.length} Total):
+                  Department Syllabus Courses in {selectedDept?.name} ({availableCourses.length} Total):
                 </label>
                 <span className="text-2xs text-slate-500">
                   Tip: Use <strong>2 Cr / 3 Cr / 4 Cr</strong> pills or press <strong>+ Add Section</strong> to teach multiple classes

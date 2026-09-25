@@ -176,6 +176,16 @@ export const CourseService = {
     }
   },
 
+  async getById(id: string) {
+    try {
+      const { data, error } = await supabase.from('courses').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return memoryStore.courses.find((c) => c.id === id);
+      return data;
+    } catch {
+      return memoryStore.courses.find((c) => c.id === id);
+    }
+  },
+
   async create(course: any) {
     try {
       const { data, error } = await supabase.from('courses').insert([course]).select().single();
