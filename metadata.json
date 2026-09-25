@@ -1,0 +1,6 @@
+{
+  "name": "University Course File Management System",
+  "description": "Enterprise Course File Management System (CFMS) with role-based portals for Admin (23 modules), HOD (13 modules), Regular Teacher (11 modules), and Visiting Teacher (10 modules).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  /* Instantly hide placeholder text when input/textarea receives cursor focus */
+  input:focus::placeholder,
+  textarea:focus::placeholder {
+    color: transparent !important;
+    opacity: 0 !important;
+    transition: opacity 0.15s ease-out, color 0.15s ease-out;
+  }
+}
+
+/* Custom font utilities */
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Custom text size utilities (not in default Tailwind) */
+.text-2xs {
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.875rem;
+}
+
+.text-3xs {
+  font-size: 0.5625rem; /* 9px */
+  line-height: 0.75rem;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Professional GPU-Accelerated Background Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes floatParticle1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(15px, -25px, 0) scale(1.08); }
+  66% { transform: translate3d(-12px, -10px, 0) scale(0.95); }
+}
+
+@keyframes floatParticle2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  40% { transform: translate3d(-20px, 20px, 0) scale(1.12); }
+  75% { transform: translate3d(12px, -15px, 0) scale(0.92); }
+}
+
+@keyframes floatParticle3 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(25px, 15px, 0) scale(1.05); }
+}
+
+@keyframes wavePath1 {
+  0%, 100% { d: path("M-100 600 C 300 420, 700 820, 1540 280"); }
+  50% { d: path("M-100 580 C 350 480, 650 780, 1540 320"); }
+}
+
+@keyframes wavePath2 {
+  0%, 100% { d: path("M-100 650 C 400 470, 800 880, 1540 330"); }
+  50% { d: path("M-100 620 C 450 510, 750 840, 1540 370"); }
+}
+
+@keyframes watermarkBreathe {
+  0%, 100% { opacity: 0.12; transform: scale(1); }
+  50% { opacity: 0.20; transform: scale(1.03); }
+}
+
+@keyframes lightBeamShift {
+  0%, 100% { opacity: 0.4; transform: translate3d(-50%, 0, 0) scale(1); }
+  50% { opacity: 0.65; transform: translate3d(-50%, -12px, 0) scale(1.06); }
+}
+
+@keyframes bgMeshShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float-p1 {
+  animation: floatParticle1 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+.animate-float-p2 {
+  animation: floatParticle2 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+.animate-float-p3 {
+  animation: floatParticle3 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+.animate-wave-p1 {
+  animation: wavePath1 5s ease-in-out infinite;
+}
+
+.animate-wave-p2 {
+  animation: wavePath2 6.5s ease-in-out infinite;
+}
+
+.animate-watermark-breathe {
+  animation: watermarkBreathe 6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-lightbeam {
+  animation: lightBeamShift 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-bg-mesh {
+  background-size: 220% 220%;
+  animation: bgMeshShift 8s ease infinite;
+}
+
+@keyframes subtleZoom {
+  0% {
+    transform: scale(1.02) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-8px, -4px);
+  }
+  100% {
+    transform: scale(1.02) translate(0, 0);
+  }
+}
+
+.animate-subtle-zoom {
+  animation: subtleZoom 25s ease-in-out infinite;
+  will-change: transform;
+}
+
