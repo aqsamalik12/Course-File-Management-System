@@ -81,16 +81,14 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
   const [sessionSeason, setSessionSeason] = useState<'Spring' | 'Fall' | 'Summer'>('Spring');
   const [sessionYear, setSessionYear] = useState<string>(new Date().getFullYear().toString());
 
-  // Multiple Specialized Courses added by the teacher
+  // Multiple Specialized Courses added by the teacher (starts empty, teacher adds custom courses)
   const [specializedCourses, setSpecializedCourses] = useState<Array<{
     id: string;
     code: string;
     title: string;
     credits?: number;
     isCustom?: boolean;
-  }>>([
-    { id: 'spec-ds', code: 'CS-DS', title: 'Data Structures & Algorithms', credits: 4, isCustom: true }
-  ]);
+  }>>([]);
   const [newSubjectTitle, setNewSubjectTitle] = useState('');
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [inlineSubjectInput, setInlineSubjectInput] = useState('');
@@ -102,7 +100,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
     phone: '',
     bloodGroup: 'B+',
     highestQualification: 'MS / M.Phil',
-    specialization: 'Data Structures & Algorithms',
+    specialization: '',
     joiningDate: new Date().toISOString().split('T')[0],
     academicSession: 'Spring 2026',
     batch: '2023-2027',
@@ -735,43 +733,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   </button>
                 </div>
 
-                {/* Quick Suggestion Chips */}
-                <div className="space-y-1">
-                  <span className="text-3xs font-bold text-slate-400 uppercase tracking-wider block">
-                    Popular Subjects (Click to add):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      'Data Structures & Algorithms',
-                      'Database Management Systems',
-                      'Introduction to Programming',
-                      'Operating Systems',
-                      'Computer Networks & Security',
-                      'Artificial Intelligence & Machine Learning',
-                      'Software Engineering',
-                      'Web Technologies'
-                    ].map((sug) => {
-                      const alreadyAdded = specializedCourses.some(
-                        (c) => c.title.toLowerCase() === sug.toLowerCase()
-                      );
-                      return (
-                        <button
-                          key={sug}
-                          type="button"
-                          disabled={alreadyAdded}
-                          onClick={() => handleAddSpecializedCourse(sug)}
-                          className={`text-2xs font-semibold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
-                            alreadyAdded
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700 hover:bg-emerald-50'
-                          }`}
-                        >
-                          {alreadyAdded ? `✓ ${sug}` : `+ ${sug}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+
 
                 {/* Added Subjects Chips */}
                 {specializedCourses.length > 0 && (
