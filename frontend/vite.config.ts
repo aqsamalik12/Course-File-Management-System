@@ -14,7 +14,7 @@ export default defineConfig(() => {
     server: {
       port: 5173,
       watch: {
-        ignored: ['**/dist/**', '**/node_modules/**']
+        ignored: ['**/dist/**', '**/node_modules/**', '**/public/**', '**/*.mp4', '**/*.webm']
       },
       proxy: {
         '/api': {
