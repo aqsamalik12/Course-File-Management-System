@@ -1159,9 +1159,10 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               </div>
 
               {specializedCourses.length === 0 ? (
-                <div className="p-4 bg-white/90 rounded-xl border border-dashed border-emerald-300 text-center text-xs text-slate-600 space-y-1">
-                  <p className="font-bold text-slate-700">Aap ne Step 1 mein koi specialized course add nahi kiya.</p>
-                  <p className="text-2xs text-slate-500">Upar diye gaye box mein course name likh kar فوراً add karein!</p>
+                <div className="p-8 bg-white/90 rounded-2xl border-2 border-dashed border-emerald-300 text-center text-xs text-slate-600 space-y-2">
+                  <BookOpen className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <p className="font-bold text-slate-800 text-sm">Aap ne abhi tak koi course add nahi kiya.</p>
+                  <p className="text-xs text-slate-500">Upar diye gaye "+ Add another course..." box mein course ka naam likhein aur فوراً add karein!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1278,141 +1279,6 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               )}
             </div>
 
-            {/* ══════════════════════════════════════════════════════════════════
-                SECTION 2: Department Syllabus Courses
-               ══════════════════════════════════════════════════════════════════ */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 block">
-                  Department Syllabus Courses in {selectedDept?.name} ({availableCourses.length} Total):
-                </label>
-                <span className="text-2xs text-slate-500">
-                  Tip: Use <strong>2 Cr / 3 Cr / 4 Cr</strong> pills or press <strong>+ Add Section</strong> to teach multiple classes
-                </span>
-              </div>
-
-              {availableCourses.length === 0 ? (
-                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-500 text-xs space-y-2">
-                  <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
-                  <p className="font-bold">No courses mapped to this department yet.</p>
-                  <p className="text-2xs text-slate-400">Admin or Department HOD can create courses in Course Management.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
-                  {filteredCourses.map((c) => {
-                    const assignedSections = selectedCourses.filter((sc) => sc.courseId === c.id);
-                    const count = assignedSections.length;
-                    const isSelected = count > 0;
-                    const currentCredits = getCourseCredits(c);
-
-                    return (
-                      <div
-                        key={c.id}
-                        className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-3 select-none ${
-                          isSelected
-                            ? 'border-emerald-600 bg-emerald-50/40 shadow-xs'
-                            : 'border-slate-200 hover:border-slate-300 bg-white'
-                        }`}
-                      >
-                        {/* Top: Code, Type, and 2, 3, 4 Cr Selector */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
-                                {c.code}
-                              </span>
-                              {c.type && (
-                                <span className="text-2xs font-extrabold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                  {c.type}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* 2, 3, 4 Credit Hours Selector Pills */}
-                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200" title="Select Credit Hours (2, 3, or 4 Cr)">
-                              {[2, 3, 4].map((crVal) => {
-                                const isActive = currentCredits === crVal;
-                                return (
-                                  <button
-                                    key={crVal}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleChangeCourseCredits(c, crVal);
-                                    }}
-                                    className={`px-1.5 py-0.5 rounded text-2xs font-black transition-all cursor-pointer ${
-                                      isActive
-                                        ? 'bg-emerald-600 text-white shadow-2xs'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                                    }`}
-                                  >
-                                    {crVal} Cr
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <h4 className="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
-                            {c.title}
-                          </h4>
-
-                          {/* Active Sections Display if selected */}
-                          {isSelected && (
-                            <div className="flex flex-wrap gap-1 pt-1">
-                              {assignedSections.map((sec, sIdx) => (
-                                <span
-                                  key={sIdx}
-                                  className="inline-flex items-center gap-1 text-2xs font-bold bg-white text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md shadow-2xs"
-                                >
-                                  <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                                  {sec.section} ({sec.credits ?? sec.creditHours ?? currentCredits} Cr)
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Bottom Actions: Select Course / Add Section (Press Again) / Remove */}
-                        <div className="pt-2 border-t border-slate-100">
-                          {!isSelected ? (
-                            <button
-                              type="button"
-                              onClick={() => handleAddCourseSection(c)}
-                              className="w-full py-1.5 px-3 bg-white hover:bg-emerald-50 border border-slate-300 hover:border-emerald-500 text-emerald-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              Select Course ({currentCredits} Credits)
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleAddCourseSection(c)}
-                                className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                                title="Add another section of this course (Press again)"
-                              >
-                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>+ Add Section (Press Again)</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveLastCourseSection(c.id)}
-                                className="py-1.5 px-2.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
-                                title="Remove last section"
-                              >
-                                <Minus className="w-3.5 h-3.5" />
-                                <span>Remove</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
