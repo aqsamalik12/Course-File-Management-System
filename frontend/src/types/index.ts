@@ -93,6 +93,7 @@ export interface SelectedCourseItem {
   credits?: number;
   creditHours?: number;
   type?: 'Core' | 'Elective' | 'Lab';
+  section?: string;
 }
 
 export interface TeacherEnrollmentRequest {

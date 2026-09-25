@@ -7,6 +7,7 @@ export interface ISelectedCourse {
   courseName: string;
   credits: number;
   type?: 'Core' | 'Elective' | 'Lab';
+  section?: string;
 }
 
 export interface ITeacherRequest {

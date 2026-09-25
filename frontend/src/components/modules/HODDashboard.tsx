@@ -938,9 +938,9 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
-                        {req.selectedCourses.map((c) => (
-                          <span key={c.courseId} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-mono text-[10px] font-bold rounded border border-slate-200" title={c.courseTitle}>
-                            {c.courseCode} ({c.creditHours}Cr)
+                        {req.selectedCourses.map((c, i) => (
+                          <span key={`${c.courseId}-${i}`} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-mono text-[10px] font-bold rounded border border-slate-200" title={c.courseTitle || c.courseName}>
+                            {c.courseCode} {c.section ? `(${c.section})` : ''} ({c.creditHours || c.credits}Cr)
                           </span>
                         ))}
                       </div>
@@ -1108,11 +1108,18 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {viewRequestModal.selectedCourses.map((c) => (
-                      <tr key={c.courseId} className="hover:bg-slate-50">
+                    {viewRequestModal.selectedCourses.map((c, i) => (
+                      <tr key={`${c.courseId}-${i}`} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono font-bold text-emerald-700">{c.courseCode}</td>
-                        <td className="p-2.5 text-slate-800 font-medium">{c.courseTitle}</td>
-                        <td className="p-2.5 text-right font-black text-slate-900">{c.creditHours} Cr</td>
+                        <td className="p-2.5 text-slate-800 font-medium">
+                          {c.courseTitle || c.courseName}
+                          {c.section && (
+                            <span className="ml-2 text-2xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                              {c.section}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-right font-black text-slate-900">{c.creditHours || c.credits} Cr</td>
                       </tr>
                     ))}
                     <tr className="bg-emerald-50 font-bold">

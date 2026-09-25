@@ -6,7 +6,8 @@ import {
   User, Phone, BookOpen, Calendar, Building2,
   CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft,
   Send, GraduationCap, CreditCard, Search, Check,
-  Briefcase, ShieldCheck, AlertCircle, Info, Sparkles
+  Briefcase, ShieldCheck, AlertCircle, Info, Sparkles,
+  Plus, Minus, X, Layers
 } from 'lucide-react';
 
 const SESSIONS = [
@@ -110,7 +111,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
   // ─── Credit Limits ─────────────────────────────────────────────────────────
   const creditLimit = teacherType === 'REGULAR_TEACHER' ? 22 : 12;
   const totalCredits = useMemo(() => {
-    return selectedCourses.reduce((sum, c) => sum + (c.creditHours || 0), 0);
+    return selectedCourses.reduce((sum, c) => sum + (c.creditHours || c.credits || 0), 0);
   }, [selectedCourses]);
   const isCreditOverLimit = totalCredits > creditLimit;
   const remainingCredits = creditLimit - totalCredits;
@@ -141,20 +142,76 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
     );
   }, [availableCourses, courseSearch]);
 
-  // Toggle course selection
-  const handleToggleCourse = (course: any) => {
-    const exists = selectedCourses.some((c) => c.courseId === course.id);
-    if (exists) {
-      setSelectedCourses((prev) => prev.filter((c) => c.courseId !== course.id));
-    } else {
-      const newItem: SelectedCourseItem = {
-        courseId: course.id,
-        courseCode: course.code,
-        courseTitle: course.title,
-        creditHours: course.creditHours || 3
-      };
-      setSelectedCourses((prev) => [...prev, newItem]);
+  // Map to hold custom selected credits per course card: courseId -> 2 | 3 | 4
+  const [courseCreditsMap, setCourseCreditsMap] = useState<Record<string, number>>({});
+
+  const getCourseCredits = (course: any): number => {
+    if (courseCreditsMap[course.id] !== undefined) {
+      return courseCreditsMap[course.id];
     }
+    return Number(course.credits ?? course.creditHours ?? 3);
+  };
+
+  // Add a section of course (user can press again to add another section/class)
+  const handleAddCourseSection = (course: any, overrideCredits?: number) => {
+    const existing = selectedCourses.filter((c) => c.courseId === course.id);
+    const sectionIndex = existing.length;
+    const sectionLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const sectionName = `Section ${sectionLetters[sectionIndex % sectionLetters.length]}${
+      sectionIndex >= 6 ? `-${Math.floor(sectionIndex / 6) + 1}` : ''
+    }`;
+
+    const cr = overrideCredits ?? getCourseCredits(course);
+
+    const newItem: SelectedCourseItem = {
+      courseId: course.id,
+      courseCode: course.code,
+      courseTitle: course.title,
+      courseName: course.title,
+      credits: cr,
+      creditHours: cr,
+      section: sectionName,
+      type: (course.type as any) || 'Core'
+    };
+
+    setSelectedCourses((prev) => [...prev, newItem]);
+  };
+
+  // Remove the last section of a course
+  const handleRemoveLastCourseSection = (courseId: string) => {
+    setSelectedCourses((prev) => {
+      let lastIndex = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].courseId === courseId) {
+          lastIndex = i;
+          break;
+        }
+      }
+      if (lastIndex === -1) return prev;
+      return prev.filter((_, idx) => idx !== lastIndex);
+    });
+  };
+
+  // Remove specific section by array index
+  const handleRemoveSpecificSection = (index: number) => {
+    setSelectedCourses((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Change credits (2, 3, 4) for a course and update its existing sections
+  const handleChangeCourseCredits = (course: any, newCredits: number) => {
+    setCourseCreditsMap((prev) => ({ ...prev, [course.id]: newCredits }));
+    setSelectedCourses((prev) =>
+      prev.map((c) =>
+        c.courseId === course.id
+          ? { ...c, credits: newCredits, creditHours: newCredits }
+          : c
+      )
+    );
+  };
+
+  // Clear all selected courses
+  const handleClearAllCourses = () => {
+    setSelectedCourses([]);
   };
 
   // ─── Step Validation ────────────────────────────────────────────────────────
@@ -776,10 +833,59 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               <p className="text-rose-500 text-xs font-bold">{errors.courses}</p>
             )}
 
+            {/* Selected Courses Chips Tray (Shown when courses are selected) */}
+            {selectedCourses.length > 0 && (
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-emerald-700" />
+                    Selected Teaching Load ({selectedCourses.length} Offerings, {totalCredits} Credits Total)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleClearAllCourses}
+                    className="text-2xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCourses.map((item, idx) => (
+                    <div
+                      key={`${item.courseId}-${item.section || idx}-${idx}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-emerald-300 rounded-xl shadow-2xs text-xs font-bold text-slate-800 animate-fade-in"
+                    >
+                      <span className="text-emerald-700 font-mono">{item.courseCode}</span>
+                      <span className="text-slate-500 font-medium">({item.section})</span>
+                      <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-2xs font-black">
+                        {item.credits ?? item.creditHours ?? 3} Cr
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSpecificSection(idx);
+                        }}
+                        className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 p-0.5 cursor-pointer"
+                        title="Remove this offering"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">
-                Available Courses in {selectedDept?.name} ({availableCourses.length} Total):
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Available Courses in {selectedDept?.name} ({availableCourses.length} Total):
+                </label>
+                <span className="text-2xs text-slate-500">
+                  Tip: Use <strong>2 Cr / 3 Cr / 4 Cr</strong> pills or press <strong>+ Add Section</strong> to teach multiple classes
+                </span>
+              </div>
 
               {availableCourses.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-500 text-xs space-y-2">
@@ -788,38 +894,114 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   <p className="text-2xs text-slate-400">Admin or Department HOD can create courses in Course Management.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
                   {filteredCourses.map((c) => {
-                    const isSelected = selectedCourses.some((sc) => sc.courseId === c.id);
+                    const assignedSections = selectedCourses.filter((sc) => sc.courseId === c.id);
+                    const count = assignedSections.length;
+                    const isSelected = count > 0;
+                    const currentCredits = getCourseCredits(c);
+
                     return (
                       <div
                         key={c.id}
-                        onClick={() => handleToggleCourse(c)}
-                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
+                        className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-3 select-none ${
                           isSelected
-                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
+                            ? 'border-emerald-600 bg-emerald-50/40 shadow-xs'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
-                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border mt-0.5 transition-colors ${
-                          isSelected
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : 'border-slate-300 bg-white'
-                        }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-2xs font-mono font-bold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                              {c.code}
-                            </span>
-                            <span className="text-2xs font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                              {c.creditHours || 3} Credits
-                            </span>
+                        {/* Top: Code, Type, and 2, 3, 4 Cr Selector */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
+                                {c.code}
+                              </span>
+                              {c.type && (
+                                <span className="text-2xs font-extrabold uppercase text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  {c.type}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 2, 3, 4 Credit Hours Selector Pills */}
+                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200" title="Select Credit Hours (2, 3, or 4 Cr)">
+                              {[2, 3, 4].map((crVal) => {
+                                const isActive = currentCredits === crVal;
+                                return (
+                                  <button
+                                    key={crVal}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleChangeCourseCredits(c, crVal);
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-2xs font-black transition-all cursor-pointer ${
+                                      isActive
+                                        ? 'bg-emerald-600 text-white shadow-2xs'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    {crVal} Cr
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
+
                           <h4 className="text-xs font-bold text-slate-900 leading-snug line-clamp-2">
                             {c.title}
                           </h4>
+
+                          {/* Active Sections Display if selected */}
+                          {isSelected && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {assignedSections.map((sec, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="inline-flex items-center gap-1 text-2xs font-bold bg-white text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md shadow-2xs"
+                                >
+                                  <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                  {sec.section} ({sec.credits ?? sec.creditHours ?? currentCredits} Cr)
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bottom Actions: Select Course / Add Section (Press Again) / Remove */}
+                        <div className="pt-2 border-t border-slate-100">
+                          {!isSelected ? (
+                            <button
+                              type="button"
+                              onClick={() => handleAddCourseSection(c)}
+                              className="w-full py-1.5 px-3 bg-white hover:bg-emerald-50 border border-slate-300 hover:border-emerald-500 text-emerald-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Select Course ({currentCredits} Credits)
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAddCourseSection(c)}
+                                className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                                title="Add another section of this course (Press again)"
+                              >
+                                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>+ Add Section (Press Again)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLastCourseSection(c.id)}
+                                className="py-1.5 px-2.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-300 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl flex items-center gap-1 transition-all cursor-pointer"
+                                title="Remove last section"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -890,21 +1072,27 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                     <tr>
                       <th className="p-3">#</th>
                       <th className="p-3">Course Code</th>
+                      <th className="p-3">Section</th>
                       <th className="p-3">Course Title</th>
                       <th className="p-3 text-right">Credit Hours</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {selectedCourses.map((c, i) => (
-                      <tr key={c.courseId} className="hover:bg-slate-50">
+                      <tr key={`${c.courseId}-${c.section || i}-${i}`} className="hover:bg-slate-50">
                         <td className="p-3 text-slate-400 font-mono">{i + 1}</td>
                         <td className="p-3 font-mono font-bold text-emerald-700">{c.courseCode}</td>
-                        <td className="p-3 font-semibold text-slate-800">{c.courseTitle}</td>
-                        <td className="p-3 text-right font-black text-slate-900">{c.creditHours} Cr</td>
+                        <td className="p-3 font-bold text-slate-700">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-2xs border border-slate-200">
+                            {c.section || `Section ${String.fromCharCode(65 + (i % 26))}`}
+                          </span>
+                        </td>
+                        <td className="p-3 font-semibold text-slate-800">{c.courseTitle || c.courseName}</td>
+                        <td className="p-3 text-right font-black text-slate-900">{c.credits ?? c.creditHours ?? 3} Cr</td>
                       </tr>
                     ))}
                     <tr className="bg-emerald-50 font-bold">
-                      <td colSpan={3} className="p-3 text-emerald-950 font-extrabold text-right">
+                      <td colSpan={4} className="p-3 text-emerald-950 font-extrabold text-right">
                         Total Course Credits:
                       </td>
                       <td className="p-3 text-right font-black text-emerald-900 text-sm">

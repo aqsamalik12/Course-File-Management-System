@@ -169,7 +169,17 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
     }
 
     // 2. Strict Credit Hours Calculation & Validation
-    const totalCredits = selectedCourses.reduce((sum: number, c: any) => sum + (Number(c.credits) || 0), 0);
+    const normalizedCourses = selectedCourses.map((c: any, index: number) => {
+      const cr = Number(c.credits ?? c.creditHours ?? 3);
+      return {
+        ...c,
+        credits: cr,
+        creditHours: cr,
+        section: c.section || `Section ${String.fromCharCode(65 + (index % 26))}`
+      };
+    });
+
+    const totalCredits = normalizedCourses.reduce((sum: number, c: any) => sum + (Number(c.credits) || 0), 0);
     const creditLimit = teacherType === 'REGULAR_TEACHER' ? 22 : 12;
 
     if (totalCredits > creditLimit) {
@@ -218,7 +228,7 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       departmentName,
       hodId,
       hodName,
-      selectedCourses,
+      selectedCourses: normalizedCourses,
       totalCredits,
       creditLimit,
       status: 'PendingHODApproval',
