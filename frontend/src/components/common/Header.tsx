@@ -326,10 +326,12 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             <div className="hidden lg:flex flex-col text-left">
                 <span className="text-xs font-extrabold text-[#0F2D1F] leading-tight">
-                  Hello, {currentUser.name?.split(' ')[0] || 'User'}
+                  {activeRole === 'HOD' ? currentUser.name : `Hello, ${currentUser.name?.split(' ')[0] || 'User'}`}
                 </span>
                 <span className="text-[11px] font-semibold text-slate-500 leading-tight">
-                  {currentRoleConf.label}
+                  {activeRole === 'HOD'
+                    ? `${currentUser.departmentName || 'Department'} • ${currentUser.campus || currentUser.campusName || 'Attock Campus'}`
+                    : currentRoleConf.label}
                 </span>
               </div>
             </button>
@@ -351,27 +353,29 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="py-1 divide-y divide-[#E2EFE6]">
                   <div>
                     <button
-                      onClick={() => onNavigateToModule('My Profile')}
-                      className="w-full text-left px-4 py-2 text-xs text-[#0F2D1F] hover:bg-[#E6F4EC] flex items-center gap-2.5 cursor-pointer"
+                      onClick={() => onNavigateToModule(activeRole === 'HOD' ? 'HOD Profile' : 'My Profile')}
+                      className="w-full text-left px-4 py-2 text-xs text-[#0F2D1F] hover:bg-[#E6F4EC] flex items-center gap-2.5 cursor-pointer font-medium"
                     >
                       <UserIcon className="w-3.5 h-3.5 text-[#1E7B4E]" />
-                      My Profile
+                      <span>{activeRole === 'HOD' ? 'HOD Profile' : 'My Profile'}</span>
                     </button>
-                    <button
-                      onClick={() => onNavigateToModule('Settings')}
-                      className="w-full text-left px-4 py-2 text-xs text-[#0F2D1F] hover:bg-[#E6F4EC] flex items-center gap-2.5 cursor-pointer"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-[#1E7B4E]" />
-                      Settings & Security
-                    </button>
+                    {activeRole !== 'HOD' && (
+                      <button
+                        onClick={() => onNavigateToModule('Settings')}
+                        className="w-full text-left px-4 py-2 text-xs text-[#0F2D1F] hover:bg-[#E6F4EC] flex items-center gap-2.5 cursor-pointer font-medium"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-[#1E7B4E]" />
+                        <span>Settings & Security</span>
+                      </button>
+                    )}
                   </div>
                   <div className="pt-1">
                     <button
                       onClick={() => logout()}
-                      className="w-full text-left px-4 py-2 text-xs text-rose-700 hover:bg-rose-50 font-medium flex items-center gap-2.5 cursor-pointer"
+                      className="w-full text-left px-4 py-2 text-xs text-rose-700 hover:bg-rose-50 font-bold flex items-center gap-2.5 cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                      Sign Out (View Enterprise Login Page)
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>

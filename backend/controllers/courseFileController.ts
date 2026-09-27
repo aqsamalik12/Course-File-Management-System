@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { CourseFileService, ArchiveService, NotificationService } from '../services/supabaseService';
+import { CourseFileService, ArchiveService, NotificationService, UserService, TeacherRequestService } from '../services/supabaseService';
 import { logger } from '../config/logger';
 
 export const getCourseFiles = async (req: Request, res: Response) => {
@@ -38,64 +38,257 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
   try {
     const body = req.body;
     const file = req.file;
+
+    // RULE 28, 30 & 50: Verify that if uploader is a teacher, their registration request is Approved
+    const headerUserId = req.headers['x-user-id'] as string;
+    const headerUserRole = req.headers['x-user-role'] as string;
+    const teacherId = body.teacherId || (req as any).user?.id || headerUserId;
+    const teacherRole = body.teacherRole || (req as any).user?.role || headerUserRole;
+
+    if (teacherId) {
+      const teacher = await UserService.getById(teacherId);
+      const reqRecord = await TeacherRequestService.getByTeacherId(teacherId);
+      const isTeacher =
+        teacherRole === 'REGULAR_TEACHER' ||
+        teacherRole === 'VISITING_TEACHER' ||
+        teacher?.role === 'REGULAR_TEACHER' ||
+        teacher?.role === 'VISITING_TEACHER' ||
+        !!reqRecord;
+
+      if (isTeacher) {
+        const isApproved = teacher?.enrollmentStatus === 'Approved' || reqRecord?.status === 'Approved';
+        if (!isApproved) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: Course-wise workflow is locked until your registration request is approved by your HOD.'
+          });
+        }
+      }
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const fileId = body.id || `file-${Date.now()}`;
 
+    // Lookup teacher profile and request to auto-fill routing scope if omitted
+    const teacher = teacherId ? await UserService.getById(teacherId) : null;
+    const reqRecord = teacherId ? await TeacherRequestService.getByTeacherId(teacherId) : null;
+
+    const campusId = body.campusId || teacher?.campusId || reqRecord?.campusId || '';
+    const campusName = body.campusName || teacher?.campus || teacher?.campusName || reqRecord?.campusName || '';
+    const departmentId = body.departmentId || teacher?.departmentId || reqRecord?.departmentId || '';
+    const departmentName = body.departmentName || teacher?.departmentName || reqRecord?.departmentName || '';
+    const hodId = body.hodId || teacher?.hodId || reqRecord?.hodId || '';
+    const hodName = body.hodName || reqRecord?.hodName || '';
+
+    // Strict Scope Validation: Teacher cannot create or submit a course file for another department or campus
+    if (teacher && (teacherRole === 'REGULAR_TEACHER' || teacherRole === 'VISITING_TEACHER' || teacher.role === 'REGULAR_TEACHER' || teacher.role === 'VISITING_TEACHER')) {
+      const allowedDeptId = teacher.departmentId || reqRecord?.departmentId;
+      if (body.departmentId && allowedDeptId && body.departmentId !== allowedDeptId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You cannot create or submit course files outside your approved department.'
+        });
+      }
+      const allowedCampusId = teacher.campusId || reqRecord?.campusId;
+      if (body.campusId && allowedCampusId && body.campusId !== allowedCampusId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You cannot create or submit course files outside your approved campus.'
+        });
+      }
+    }
+
+    const batch = (body.batch || body.batchYear || '2024').trim();
+    const session = (body.session || body.academicSession || '2024–2025').trim();
+    const semester = (body.semester || '1st Semester').trim();
+    const requestedStatus = body.status === 'Draft' ? 'Draft' : 'Submitted';
+
+    // Duplicate Check (Requirement 41: Teacher cannot submit duplicate active course file for same Course + Batch + Session + Semester)
+    const allFiles = await CourseFileService.getAll();
+    const courseCode = (body.courseCode || 'GEN-101').trim();
+    const courseId = body.courseId || `course-${Date.now()}`;
+
+    const existingFile = allFiles.find((f: any) =>
+      !f.deleted &&
+      f.teacherId === teacherId &&
+      (f.courseId === courseId || f.courseCode === courseCode) &&
+      f.batch === batch &&
+      f.session === session &&
+      f.semester === semester
+    );
+
+    if (existingFile) {
+      if (existingFile.status === 'Draft' || existingFile.status === 'Returned') {
+        // Reuse and update the existing file without creating duplicates
+        const updated = await CourseFileService.update(existingFile.id, {
+          title: body.title || existingFile.title,
+          status: requestedStatus,
+          templateData: body.templateData || existingFile.templateData,
+          lastModified: today,
+          submittedAt: requestedStatus === 'Submitted' ? new Date().toISOString() : existingFile.submittedAt,
+          approvalStage: requestedStatus === 'Submitted' ? 'HOD Review' : existingFile.approvalStage,
+          reviewComment: requestedStatus === 'Submitted' ? null : existingFile.reviewComment
+        });
+
+        if (requestedStatus === 'Submitted' && hodId) {
+          await NotificationService.create({
+            title: 'New Course File Submitted',
+            message: `Teacher ${teacher?.name || body.teacherName} submitted course file for ${courseCode} - ${body.courseTitle || existingFile.courseTitle} (${semester}, ${session}, Batch ${batch}).`,
+            type: 'info',
+            targetRole: 'HOD',
+            targetUserId: hodId,
+            linkModule: 'Course Files'
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: requestedStatus === 'Submitted' ? 'Course file submitted to HOD successfully.' : 'Course file draft saved successfully.',
+          data: updated
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'This course file already exists for this semester.'
+      });
+    }
+
     const fileSizeStr = file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : body.fileSize || '2.5 MB';
     const fileUrl = file ? `/uploads/${file.filename}` : body.fileUrl || '#';
-    const fileOriginalName = file ? file.originalname : `${body.courseCode || 'COURSE'}_Compiled_Course_File.pdf`;
+    const fileOriginalName = file ? file.originalname : `${courseCode}_Compiled_Course_File.pdf`;
 
     const initialVersion = {
       id: `ver-${Date.now()}`,
       versionNumber: 'v1.0',
       fileName: fileOriginalName,
       fileSize: fileSizeStr,
-      uploadedBy: body.teacherName || 'Teacher',
-      uploadedByRole: body.teacherRole || 'REGULAR_TEACHER',
+      uploadedBy: body.teacherName || teacher?.name || 'Teacher',
+      uploadedByRole: body.teacherRole || teacher?.role || 'REGULAR_TEACHER',
       uploadedAt: `${today} 09:00 AM`,
-      changeLog: 'Initial Single PDF Course Dossier Upload',
+      changeLog: requestedStatus === 'Draft' ? 'Initial Draft Created' : 'Initial Course File Submission',
       fileUrl
     };
 
     const newCourseFileObj = {
       id: fileId,
-      courseId: body.courseId || `course-${Date.now()}`,
-      courseCode: body.courseCode || 'GEN-101',
+      courseId,
+      courseCode,
       courseTitle: body.courseTitle || 'Untitled Course',
-      departmentId: body.departmentId || 'dept-cs',
-      departmentName: body.departmentName || 'Computer Science',
-      teacherId: body.teacherId || 'usr-teacher-1',
-      teacherName: body.teacherName || 'Dr. Tariq Mahmood',
-      teacherRole: body.teacherRole || 'REGULAR_TEACHER',
-      title: body.title || `${body.courseCode} Complete Course File`,
-      category: body.category || 'Complete Course Dossier (Single PDF)',
+      credits: Number(body.credits || body.creditHours || 3),
+      campusId,
+      campusName,
+      departmentId,
+      departmentName,
+      hodId,
+      hodName,
+      batch,
+      session,
+      semester,
+      teacherId,
+      teacherName: body.teacherName || teacher?.name || 'Faculty Member',
+      teacherEmail: body.teacherEmail || teacher?.email || '',
+      teacherRole: body.teacherRole || teacher?.role || 'REGULAR_TEACHER',
+      title: body.title || `${courseCode} Course File (${semester}, ${session})`,
+      category: body.category || 'Complete Course Dossier',
       currentVersion: 'v1.0',
-      fileType: body.fileType || 'PDF',
+      fileType: body.fileType || (file ? (file.originalname.split('.').pop()?.toUpperCase() as any) : 'PDF'),
       fileSize: fileSizeStr,
       fileUrl,
-      status: 'Submitted',
+      status: requestedStatus,
+      submittedAt: requestedStatus === 'Submitted' ? new Date().toISOString() : null,
       uploadDate: today,
       lastModified: today,
       archived: false,
       deleted: false,
       versionHistory: [initialVersion],
-      remarks: body.remarks || ''
+      remarks: body.remarks || '',
+      templateData: body.templateData || null,
+      approvalStage: requestedStatus === 'Draft' ? 'Draft' : 'HOD Review'
     };
 
     const saved = await CourseFileService.create(newCourseFileObj);
 
-    // Send Notification to HOD
-    try {
-      await NotificationService.clearAll(); // or create a notif
-    } catch {}
+    // Send Notification to HOD only on Submit (never on Draft - Requirement 36)
+    if (requestedStatus === 'Submitted' && hodId) {
+      await NotificationService.create({
+        title: 'New Course File Submitted',
+        message: `Teacher ${newCourseFileObj.teacherName} submitted course file for ${courseCode} - ${newCourseFileObj.courseTitle} (${semester}, ${session}, Batch ${batch}).`,
+        type: 'info',
+        targetRole: 'HOD',
+        targetUserId: hodId,
+        linkModule: 'Course Files'
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Course file uploaded successfully and sent for HOD review.',
+      message: requestedStatus === 'Submitted' ? 'Course file submitted to HOD successfully.' : 'Course file draft saved successfully.',
       data: saved
     });
   } catch (error: any) {
     logger.error(`[uploadCourseFile Error] ${error.message}`);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * PUT /api/course-files/:id
+ * Allows teacher to update draft or resubmit a returned course file
+ */
+export const updateCourseFile = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const today = new Date().toISOString().split('T')[0];
+
+    const existing = await CourseFileService.getById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Course file not found' });
+    }
+
+    const isSubmitting = body.status === 'Submitted' && existing.status !== 'Approved';
+    const newStatus = isSubmitting ? 'Submitted' : (body.status || existing.status);
+
+    const updates: any = {
+      title: body.title || existing.title,
+      batch: body.batch || existing.batch,
+      session: body.session || existing.session,
+      semester: body.semester || existing.semester,
+      templateData: body.templateData ? { ...existing.templateData, ...body.templateData } : existing.templateData,
+      status: newStatus,
+      lastModified: today,
+      remarks: body.remarks || existing.remarks
+    };
+
+    if (isSubmitting) {
+      updates.submittedAt = new Date().toISOString();
+      updates.approvalStage = 'HOD Review';
+      updates.reviewedAt = null;
+      updates.reviewedBy = null;
+      updates.reviewComment = null;
+
+      // Notify HOD
+      if (existing.hodId) {
+        await NotificationService.create({
+          title: 'Course File Resubmitted',
+          message: `Teacher ${existing.teacherName} resubmitted course file for ${existing.courseCode} - ${existing.courseTitle} (${updates.semester || existing.semester}, ${updates.session || existing.session}).`,
+          type: 'info',
+          targetRole: 'HOD',
+          targetUserId: existing.hodId,
+          linkModule: 'Course Files'
+        });
+      }
+    }
+
+    const updated = await CourseFileService.update(id, updates);
+    return res.json({
+      success: true,
+      message: isSubmitting ? 'Course file submitted to HOD successfully.' : 'Course file updated successfully.',
+      data: updated
+    });
+  } catch (error: any) {
+    logger.error(`[updateCourseFile Error] ${error.message}`);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

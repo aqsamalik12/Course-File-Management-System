@@ -63,7 +63,7 @@ interface TeacherProfileFormProps {
 
 export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNavigate, onSuccess }) => {
   const { currentUser, submitTeacherEnrollment, addFormFilledLog } = useAuth();
-  const { departments, courses } = useCFMS();
+  const { departments, courses, campuses } = useCFMS();
 
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +74,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
 
   // ─── Form State ─────────────────────────────────────────────────────────────
   const [teacherType, setTeacherType] = useState<'REGULAR_TEACHER' | 'VISITING_TEACHER'>('REGULAR_TEACHER');
+  const [selectedCampus, setSelectedCampus] = useState<string>(
+    currentUser?.campus || currentUser?.profileFormData?.campus || ''
+  );
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+  const [selectedHodId, setSelectedHodId] = useState<string>('');
+  const [selectedHodName, setSelectedHodName] = useState<string>('');
   const [selectedCourses, setSelectedCourses] = useState<SelectedCourseItem[]>([]);
 
   // Dynamic Academic Session: Term (Spring / Fall / Summer) and custom Year input by user
@@ -136,6 +141,18 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
           setSessionYear(parts[1]);
         }
       }
+      if (currentUser.profileFormData.campus) {
+        setSelectedCampus(currentUser.profileFormData.campus);
+      }
+      if (currentUser.profileFormData.hodId) {
+        setSelectedHodId(currentUser.profileFormData.hodId);
+      }
+      if (currentUser.profileFormData.hodName) {
+        setSelectedHodName(currentUser.profileFormData.hodName);
+      }
+    }
+    if (currentUser?.campus) {
+      setSelectedCampus(currentUser.campus);
     }
     if (currentUser?.role === 'VISITING_TEACHER') {
       setTeacherType('VISITING_TEACHER');
@@ -147,6 +164,34 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
 
   const setField = (field: keyof TeacherProfileFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const copy = { ...prev };
+      delete copy[field];
+      return copy;
+    });
+  };
+
+  // Robust Pakistani CNIC Auto-Formatter: 12345-1234567-1
+  const handleCnicChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 13);
+    let formatted = digits;
+    if (digits.length > 5 && digits.length <= 12) {
+      formatted = `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    } else if (digits.length > 12) {
+      formatted = `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12, 13)}`;
+    }
+    setField('cnic', formatted);
+  };
+
+  // Pakistani Phone Auto-Formatter: 0300-1234567
+  const handlePhoneChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 11);
+    let formatted = digits;
+    if (digits.length > 4) {
+      formatted = `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    setField('phone', formatted);
   };
 
   const generateCourseCode = (title: string, deptPrefix: string = 'CS') => {
@@ -199,10 +244,138 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
   const isCreditOverLimit = totalCredits > creditLimit;
   const remainingCredits = creditLimit - totalCredits;
 
+  // Selected Campus Details & Scoped Departments
+  const selectedCampusObj = useMemo(() => {
+    if (!selectedCampus) return null;
+    return (
+      (campuses || []).find(
+        (c) => c.name.toLowerCase() === selectedCampus.toLowerCase() || c.id === selectedCampus
+      ) || null
+    );
+  }, [campuses, selectedCampus]);
+
+  const campusDepartments = useMemo(() => {
+    if (!selectedCampusObj && !selectedCampus) return [];
+    return (departments || []).filter((d) => {
+      const matchId = selectedCampusObj && d.campusId === selectedCampusObj.id;
+      const matchName =
+        selectedCampus && d.campusName && d.campusName.toLowerCase() === selectedCampus.toLowerCase();
+      return (matchId || matchName) && d.status !== 'Inactive';
+    });
+  }, [departments, selectedCampusObj, selectedCampus]);
+
   // Selected Department Details
   const selectedDept = useMemo(() => {
-    return departments.find((d) => d.id === selectedDeptId);
+    return (departments || []).find((d) => d.id === selectedDeptId);
   }, [departments, selectedDeptId]);
+
+  const handleCampusChange = (newCampus: string) => {
+    setSelectedCampus(newCampus);
+    setSelectedDeptId('');
+    setSelectedHodId('');
+    setSelectedHodName('');
+    setAssignedHOD(null);
+    setSelectedCourses([]);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.campus;
+      delete copy.departmentId;
+      delete copy.hodId;
+      return copy;
+    });
+  };
+
+  const handleDepartmentChange = (newDeptId: string) => {
+    setSelectedDeptId(newDeptId);
+    setSelectedHodId('');
+    setSelectedHodName('');
+    setAssignedHOD(null);
+    setSelectedCourses([]);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.departmentId;
+      delete copy.hodId;
+      return copy;
+    });
+  };
+
+  // Dynamic Admin HOD Assignment Resolution based on Campus + Department scope
+  const [assignedHOD, setAssignedHOD] = useState<{
+    id?: string;
+    hodId: string;
+    hodName: string;
+    hodEmail?: string;
+    campusName?: string;
+    departmentName?: string;
+  } | null>(null);
+  const [loadingHOD, setLoadingHOD] = useState(false);
+  const [hodLookupError, setHodLookupError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const resolveAssignedHOD = async () => {
+      if (!selectedDeptId || !selectedCampus) {
+        setAssignedHOD(null);
+        setSelectedHodId('');
+        setSelectedHodName('');
+        return;
+      }
+      setLoadingHOD(true);
+      setHodLookupError('');
+      try {
+        const campId = selectedCampusObj?.id || selectedCampus;
+
+        const res = await fetch(
+          `/api/hod-assignments/lookup?campusId=${encodeURIComponent(campId)}&departmentId=${encodeURIComponent(
+            selectedDeptId
+          )}&campusName=${encodeURIComponent(selectedCampus)}`
+        );
+        const data = await res.json();
+
+        if (isMounted) {
+          if (data.success && data.data && data.data.hodId) {
+            setAssignedHOD(data.data);
+            setSelectedHodId(data.data.hodId);
+            setSelectedHodName(data.data.hodName);
+            setHodLookupError('');
+          } else {
+            // Check if department itself has assigned HOD
+            if (selectedDept && selectedDept.hodId && selectedDept.hodId.trim() !== '' && selectedDept.hodName !== 'Unassigned') {
+              const fallback = {
+                hodId: selectedDept.hodId,
+                hodName: selectedDept.hodName,
+                campusName: selectedCampus,
+                departmentName: selectedDept.name
+              };
+              setAssignedHOD(fallback);
+              setSelectedHodId(selectedDept.hodId);
+              setSelectedHodName(selectedDept.hodName);
+              setHodLookupError('');
+            } else {
+              setAssignedHOD(null);
+              setSelectedHodId('');
+              setSelectedHodName('');
+              setHodLookupError('No HOD has been assigned to this department yet.');
+            }
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setAssignedHOD(null);
+          setSelectedHodId('');
+          setSelectedHodName('');
+          setHodLookupError('No HOD has been assigned to this department yet.');
+        }
+      } finally {
+        if (isMounted) setLoadingHOD(false);
+      }
+    };
+
+    resolveAssignedHOD();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCampus, selectedDeptId, campuses, selectedDept]);
 
   // Courses available for the selected department
   const availableCourses = useMemo(() => {
@@ -314,16 +487,34 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
 
     // Step 0: Personal Info
     if (step === 0) {
-      if (!form.cnic?.trim()) errs.cnic = 'CNIC is required';
-      else if (!/^\d{5}-\d{7}-\d$/.test(form.cnic) && !/^\d{13}$/.test(form.cnic)) {
-        errs.cnic = 'Enter valid 13-digit CNIC (e.g. 12345-1234567-1)';
+      const cnicDigits = (form.cnic || '').replace(/\D/g, '');
+      if (!cnicDigits) {
+        errs.cnic = 'CNIC is required';
+      } else if (cnicDigits.length !== 13) {
+        errs.cnic = `CNIC must be 13 digits (currently entered: ${cnicDigits.length} digits)`;
+      } else {
+        // Normalize into clean standard format: 12345-1234567-1
+        form.cnic = `${cnicDigits.slice(0, 5)}-${cnicDigits.slice(5, 12)}-${cnicDigits.slice(12, 13)}`;
       }
+
       if (!form.dob?.trim()) errs.dob = 'Date of birth is required';
-      if (!form.phone?.trim()) errs.phone = 'Phone number is required';
+
+      const phoneDigits = (form.phone || '').replace(/\D/g, '');
+      if (!phoneDigits) {
+        errs.phone = 'Phone number is required';
+      } else if (phoneDigits.length < 10) {
+        errs.phone = 'Please enter a valid phone number (at least 10 digits)';
+      }
+
       if (!form.highestQualification?.trim()) errs.highestQualification = 'Highest qualification is required';
-      if (specializedCourses.length === 0 && !form.specialization?.trim()) {
+
+      // Auto-add newSubjectTitle if user typed it into the input but didn't click "+ Add Course"
+      if (newSubjectTitle.trim() && specializedCourses.length === 0) {
+        handleAddSpecializedCourse();
+      } else if (specializedCourses.length === 0 && !form.specialization?.trim()) {
         errs.specialization = 'Please add at least one specialized course or subject';
       }
+
       if (!sessionYear?.trim() || !/^\d{4}$/.test(sessionYear.trim())) {
         errs.academicSession = 'Please enter a valid 4-digit academic year (e.g. 2026)';
       }
@@ -332,7 +523,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
     // Step 1: Teacher Type & Department
     if (step === 1) {
       if (!teacherType) errs.teacherType = 'Please select your Teacher Type';
+      if (!selectedCampus) errs.campus = 'Please select your Campus';
       if (!selectedDeptId) errs.departmentId = 'Please select your academic department from the list';
+
+      if (!assignedHOD || !selectedHodId) {
+        errs.hodId = 'Cannot proceed: No HOD has been assigned to this department yet.';
+      }
     }
 
     // Step 2: Course Selection & Credit Limit
@@ -377,7 +573,10 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
     setIsSubmitting(true);
     setSubmitError('');
 
-    const deptName = selectedDept ? selectedDept.name : 'Academic Department';
+    const deptName = selectedDept ? selectedDept.name : '';
+    const finalHodName = selectedHodName || assignedHOD?.hodName || '';
+    const finalHodId = selectedHodId || assignedHOD?.hodId || '';
+    const finalCampusId = selectedCampusObj?.id || '';
 
     const fullProfileData: TeacherProfileFormData = {
       cnic: form.cnic || '',
@@ -391,8 +590,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
       employmentType: teacherType === 'REGULAR_TEACHER' ? 'Regular' : 'Visiting',
       academicSession: form.academicSession || 'Spring 2026',
       batch: form.batch || '2023-2027',
+      campus: selectedCampus,
+      campusName: selectedCampus,
       departmentId: selectedDeptId,
       departmentName: deptName,
+      hodId: finalHodId,
+      hodName: finalHodName,
       courseName: selectedCourses.map((c) => c.courseTitle).join(', '),
       courseCode: selectedCourses.map((c) => c.courseCode).join(', '),
       creditHours: String(totalCredits),
@@ -405,7 +608,10 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
       totalCredits,
       teacherType,
       selectedDeptId,
-      deptName
+      deptName,
+      selectedCampus,
+      finalHodId,
+      finalHodName
     );
 
     setIsSubmitting(false);
@@ -437,20 +643,24 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               Application Submitted!
             </h2>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Hello <strong className="text-emerald-700">{currentUser?.name}</strong>, your teacher registration request has been successfully created and automatically routed to the Head of Department.
+              Hello <strong className="text-emerald-700">{currentUser?.name}</strong>, your teacher registration request has been successfully created and automatically routed to your Head of Department.
             </p>
           </div>
 
-          {/* Department & HOD Routing Info */}
+          {/* Department, Campus & HOD Routing Info */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left text-xs space-y-2.5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+              <span className="text-slate-500 font-medium">Selected Campus:</span>
+              <span className="font-bold text-slate-900">{selectedCampus || currentUser?.campus || 'Attock Campus'}</span>
+            </div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
               <span className="text-slate-500 font-medium">Selected Department:</span>
-              <span className="font-bold text-slate-900">{selectedDept?.name || currentUser?.departmentName || 'Selected Department'}</span>
+              <span className="font-bold text-slate-900">{selectedDept?.name || currentUser?.departmentName || 'Computer Science'}</span>
             </div>
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
               <span className="text-slate-500 font-medium">Assigned HOD:</span>
               <span className="font-bold text-emerald-700">
-                {selectedDept?.hodName ? `Prof. ${selectedDept.hodName}` : 'HOD Pending Assignment'}
+                {selectedHodName || selectedDept?.hodName || 'Dr. Muhammad Asif'}
               </span>
             </div>
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
@@ -467,10 +677,10 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
             </div>
           </div>
 
-          <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 text-left flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 text-left flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Course File dashboard access will be unlocked immediately once your department HOD reviews and approves your course selection.
+              <strong>HOD Approval Pending:</strong> Aapki request HOD <strong>{selectedHodName || 'Dr. Muhammad Asif'}</strong> ({selectedCampus}) ko bhej di gayi hai. HOD jab isko accept karenge taake aap apna course file bana sakein, tab aapka Course File Dashboard foran unlock ho jayega.
             </p>
           </div>
 
@@ -608,10 +818,24 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   type="text"
                   placeholder="e.g. 35201-1234567-1"
                   value={form.cnic || ''}
-                  onChange={(e) => setField('cnic', e.target.value)}
-                  className={inputCls}
+                  onChange={(e) => handleCnicChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleNext();
+                    }
+                  }}
+                  maxLength={15}
+                  className={`${inputCls} ${errors.cnic ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
                 />
-                {errors.cnic && <p className="text-rose-500 text-[11px] font-semibold">{errors.cnic}</p>}
+                {errors.cnic ? (
+                  <p className="text-rose-500 text-[11px] font-semibold flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{errors.cnic}</span>
+                  </p>
+                ) : (
+                  <p className="text-slate-400 text-[10px] mt-0.5">13 digits without spaces, dashes are added automatically</p>
+                )}
               </Field>
 
               <Field label="Contact Phone Number" required>
@@ -619,10 +843,17 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   type="text"
                   placeholder="e.g. 0300-1234567"
                   value={form.phone || ''}
-                  onChange={(e) => setField('phone', e.target.value)}
-                  className={inputCls}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleNext();
+                    }
+                  }}
+                  maxLength={12}
+                  className={`${inputCls} ${errors.phone ? 'border-rose-400 ring-2 ring-rose-200' : ''}`}
                 />
-                {errors.phone && <p className="text-rose-500 text-[11px] font-semibold">{errors.phone}</p>}
+                {errors.phone && <p className="text-rose-500 text-[11px] font-semibold mt-1">{errors.phone}</p>}
               </Field>
 
               <Field label="Date of Birth" required>
@@ -630,6 +861,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   type="date"
                   value={form.dob || ''}
                   onChange={(e) => setField('dob', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleNext();
+                    }
+                  }}
                   className={inputCls}
                 />
                 {errors.dob && <p className="text-rose-500 text-[11px] font-semibold">{errors.dob}</p>}
@@ -686,7 +923,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                     </span>
                   </div>
                   <p className="text-2xs text-slate-500 mt-0.5">
-                    Apne specialized courses khud add karein (e.g. Data Structures). Agle step mein inhi courses ke Credit Hours (2, 3, 4 Cr) aur Sections select karne ki option hogi.
+                    Add your specialized courses (e.g. Data Structures). In the next step, you will be able to select credit hours (2, 3, 4 Cr) and sections for each course.
                   </p>
                 </div>
 
@@ -805,7 +1042,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                   {/* Year Text Input */}
                   <div>
                     <label className="text-2xs font-bold text-slate-600 mb-1 block">
-                      Academic Year (Khud enter karein):
+                      Academic Year:
                     </label>
                     <input
                       type="number"
@@ -813,7 +1050,22 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                       min="2020"
                       max="2035"
                       value={sessionYear}
-                      onChange={(e) => setSessionYear(e.target.value)}
+                      onChange={(e) => {
+                        setSessionYear(e.target.value);
+                        if (errors.academicSession) {
+                          setErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.academicSession;
+                            return copy;
+                          });
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNext();
+                        }
+                      }}
                       className={inputCls}
                     />
                   </div>
@@ -828,17 +1080,17 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
-            STEP 1: Teacher Type & Department Selection
+            STEP 1: Teacher Type, Campus & Department Selection
            ══════════════════════════════════════════════════════════════════════ */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-emerald-600" />
-                Select Teacher Type & Department
+                Select Campus, Department & Teacher Type
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Your teacher type determines your strict semester credit hour limit. Department selection determines which HOD receives your approval request.
+                University of Education ke campus aur department ke mutabiq aapki request HOD ko bhej di jayegi.
               </p>
             </div>
 
@@ -912,56 +1164,180 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               </div>
             </div>
 
-            {/* Department Selection (Database Driven) */}
+            {/* University of Education Campus Selection */}
             <div className="space-y-2 pt-2">
-              <label className="text-xs font-bold text-slate-700 block">
+              <label className="text-xs font-bold text-slate-700 block flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                University of Education Campus <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="select-campus"
+                value={selectedCampus}
+                onChange={(e) => handleCampusChange(e.target.value)}
+                className={`${selectCls} text-sm font-semibold`}
+              >
+                <option value="">-- Select Campus --</option>
+                {campuses && campuses.filter((c) => c.status !== 'Inactive').map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.city ? `(${c.city})` : ''}
+                  </option>
+                ))}
+              </select>
+              {errors.campus && <p className="text-rose-500 text-[11px] font-semibold">{errors.campus}</p>}
+              <p className="text-2xs text-slate-500">
+                Admin dwara add kiye gaye tamam University of Education ke campuses yahan dastiyab hain.
+              </p>
+            </div>
+
+            {/* Department Selection (Database Driven & Cascading) */}
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-bold text-slate-700 block flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-emerald-600" />
                 Academic Department <span className="text-rose-500">*</span>
               </label>
               <select
                 id="select-department"
                 value={selectedDeptId}
-                onChange={(e) => {
-                  setSelectedDeptId(e.target.value);
-                  setSelectedCourses([]); // reset selected courses when changing department
-                }}
-                className={`${selectCls} text-sm font-semibold`}
+                disabled={!selectedCampus}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className={`${selectCls} text-sm font-semibold ${!selectedCampus ? 'bg-slate-100 cursor-not-allowed' : ''}`}
               >
-                <option value="">-- Choose your Department --</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.code}) {d.hodName ? `• HOD: ${d.hodName}` : '• No HOD Assigned'}
-                  </option>
-                ))}
+                {!selectedCampus ? (
+                  <option value="">-- Please select a Campus first --</option>
+                ) : campusDepartments.length === 0 ? (
+                  <option value="">No departments available for this campus.</option>
+                ) : (
+                  <>
+                    <option value="">-- Choose your Department --</option>
+                    {campusDepartments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.code})
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
               {errors.departmentId && <p className="text-rose-500 text-[11px] font-semibold">{errors.departmentId}</p>}
+            </div>
 
-              {/* Automatic HOD Routing Banner */}
-              {selectedDept && (
-                <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-xs space-y-1.5 animate-fade-in mt-3">
-                  <div className="flex items-center gap-2 font-bold text-emerald-900">
-                    <Building2 className="w-4 h-4 text-emerald-700" />
-                    Automatic HOD Routing Destination:
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 pt-1">
-                    <div>
-                      <span className="text-slate-500 font-medium">Department:</span>{' '}
-                      <span className="font-bold text-slate-900">{selectedDept.name}</span>
+            {/* HOD Selection (Database Driven & Cascading) */}
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-bold text-slate-700 block flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Designated Head of Department (HOD) <span className="text-rose-500">*</span>
+                </span>
+                <span className="text-3xs font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Admin Managed
+                </span>
+              </label>
+
+              {loadingHOD ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5 text-xs text-slate-500 animate-pulse">
+                  <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Querying database for assigned {selectedCampus} HOD...</span>
+                </div>
+              ) : (
+                <select
+                  id="select-hod"
+                  required
+                  disabled={!assignedHOD}
+                  value={selectedHodId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedHodId(val);
+                    if (assignedHOD && assignedHOD.hodId === val) {
+                      setSelectedHodName(assignedHOD.hodName);
+                    }
+                  }}
+                  className={`${selectCls} text-sm font-bold ${!assignedHOD ? 'bg-amber-50/50 border-amber-300 text-amber-900 cursor-not-allowed' : ''}`}
+                >
+                  {!selectedDeptId ? (
+                    <option value="">-- Please select a Department first --</option>
+                  ) : !assignedHOD ? (
+                    <option value="">No HOD has been assigned to this department yet.</option>
+                  ) : (
+                    <option value={assignedHOD.hodId}>
+                      {assignedHOD.hodName} — {selectedDept?.name || assignedHOD.departmentName} HOD ({selectedCampus})
+                    </option>
+                  )}
+                </select>
+              )}
+              {errors.hodId && <p className="text-rose-500 text-[11px] font-semibold">{errors.hodId}</p>}
+            </div>
+
+            {/* Empty state notice if department selected but no HOD */}
+            {!assignedHOD && selectedDeptId && !loadingHOD && (
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-xs text-amber-900 mt-3">
+                <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="font-bold text-amber-900">No HOD has been assigned to this department yet.</h5>
+                  <p className="text-amber-800 text-2xs mt-0.5">
+                    Please contact the Administrator to assign a Head of Department for {selectedDept?.name} ({selectedCampus}).
+                  </p>
+                </div>
+              </div>
+            )}
+
+              {/* Automatic Admin HOD Routing Banner / Selection */}
+              {loadingHOD ? (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 text-xs text-slate-600 animate-pulse mt-3">
+                  <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Resolving Admin-assigned HOD for {selectedCampus}...</span>
+                </div>
+              ) : assignedHOD ? (
+                <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-2xl space-y-2.5 mt-3 animate-fade-in shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-emerald-950 text-xs">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                      Assigned Approval Authority:
                     </div>
-                    <div>
-                      <span className="text-slate-500 font-medium">Assigned HOD:</span>{' '}
-                      {selectedDept.hodName ? (
-                        <span className="font-bold text-emerald-700">Prof. {selectedDept.hodName}</span>
-                      ) : (
-                        <span className="font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
-                          No HOD assigned (Admin will be notified)
-                        </span>
+                    <span className="text-2xs font-extrabold bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                      <span>🔒</span> Scope Locked to {selectedCampus}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-black text-sm shrink-0">
+                      {(assignedHOD.hodName || 'HOD').split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-black text-slate-900 truncate">
+                        {assignedHOD.hodName}
+                      </p>
+                      <p className="text-2xs text-slate-500 truncate">
+                        Head of Department • {selectedDept?.name || assignedHOD.departmentName} ({selectedCampus})
+                      </p>
+                      {assignedHOD.hodEmail && (
+                        <p className="text-2xs text-emerald-700 font-medium truncate">
+                          ✉️ {assignedHOD.hodEmail}
+                        </p>
                       )}
                     </div>
+                    <div className="shrink-0">
+                      <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Verified Authority
+                      </span>
+                    </div>
                   </div>
+
+                  <p className="text-2xs text-emerald-800 leading-relaxed">
+                    ℹ️ Your registration request will be routed directly and exclusively to <strong>{assignedHOD.hodName}</strong> ({selectedDept?.name} HOD, {selectedCampus}). Once approved, you will be registered in the permanent university database.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl space-y-2 mt-3 text-xs text-amber-900">
+                  <div className="flex items-center gap-2 font-bold text-amber-950">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    No HOD Assigned for this Scope
+                  </div>
+                  <p className="text-2xs text-amber-800 leading-relaxed">
+                    {hodLookupError || `Admin has not assigned an active HOD for ${selectedDept?.name || 'this department'} at ${selectedCampus}. Please choose a valid campus and department or contact the Administrator.`}
+                  </p>
                 </div>
               )}
             </div>
-          </div>
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
@@ -1120,7 +1496,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                     </span>
                   </div>
                   <p className="text-xs text-emerald-900 font-bold mt-0.5">
-                    Ye course abhi aap ne add kiya hai — ab iske Credit Hours (2, 3, 4 Cr) aur Sections select karein:
+                    Courses added by you — select Credit Hours (2, 3, 4 Cr) and Sections below:
                   </p>
                 </div>
 
@@ -1161,8 +1537,8 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
               {specializedCourses.length === 0 ? (
                 <div className="p-8 bg-white/90 rounded-2xl border-2 border-dashed border-emerald-300 text-center text-xs text-slate-600 space-y-2">
                   <BookOpen className="w-8 h-8 text-emerald-400 mx-auto" />
-                  <p className="font-bold text-slate-800 text-sm">Aap ne abhi tak koi course add nahi kiya.</p>
-                  <p className="text-xs text-slate-500">Upar diye gaye "+ Add another course..." box mein course ka naam likhein aur فوراً add karein!</p>
+                  <p className="font-bold text-slate-800 text-sm">No specialized courses added yet.</p>
+                  <p className="text-xs text-slate-500">Enter a course title in the "+ Add another course..." box above to add it immediately!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1308,14 +1684,22 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                 <p className="font-bold text-slate-900">{currentUser?.email}</p>
               </div>
               <div>
+                <span className="text-slate-400 font-medium">Campus:</span>
+                <p className="font-bold text-emerald-800">{selectedCampus}</p>
+              </div>
+              <div>
+                <span className="text-slate-400 font-medium">Department:</span>
+                <p className="font-bold text-slate-900">{selectedDept?.name || 'Department of Computer Science'}</p>
+              </div>
+              <div>
+                <span className="text-slate-400 font-medium">Assigned HOD:</span>
+                <p className="font-bold text-emerald-700">{selectedHodName || 'Dr. Muhammad Asif'}</p>
+              </div>
+              <div>
                 <span className="text-slate-400 font-medium">Teacher Type:</span>
                 <p className="font-bold text-emerald-700">
                   {teacherType === 'REGULAR_TEACHER' ? 'Regular Faculty' : 'Visiting Faculty'} (Max {creditLimit} Cr)
                 </p>
-              </div>
-              <div>
-                <span className="text-slate-400 font-medium">Department:</span>
-                <p className="font-bold text-slate-900">{selectedDept?.name}</p>
               </div>
               <div>
                 <span className="text-slate-400 font-medium">CNIC:</span>
@@ -1410,11 +1794,12 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
                 By submitting this form, your teaching registration will be created and routed directly to:
               </p>
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-left space-y-1.5 mt-2">
-                <p><strong>Department:</strong> {selectedDept?.name}</p>
+                <p><strong>Campus:</strong> {selectedCampus}</p>
+                <p><strong>Department:</strong> {selectedDept?.name || 'Department of Computer Science'}</p>
                 <p>
-                  <strong>HOD In-Charge:</strong>{' '}
+                  <strong>Target HOD In-Charge:</strong>{' '}
                   <span className="text-emerald-700 font-bold">
-                    {selectedDept?.hodName ? `Prof. ${selectedDept.hodName}` : 'HOD Pending Assignment'}
+                    {selectedHodName || 'Dr. Muhammad Asif'}
                   </span>
                 </p>
                 <p><strong>Selected Courses:</strong> {selectedCourses.length} ({totalCredits} Credits)</p>
@@ -1424,7 +1809,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({ onNaviga
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 text-left max-w-md mx-auto flex items-start gap-2">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <span>
-                Once submitted, your account status will transition to <strong>Pending HOD Approval</strong>. You will not have access to the Course File Dashboard until your HOD approves the request.
+                Once submitted, request seedhi HOD <strong>{selectedHodName || 'Dr. Muhammad Asif'}</strong> ({selectedCampus}) ke paas jayegi. HOD ke accept karne ke baad aapka Course File dashboard unlock hoga taake aap apni course files bana sakein.
               </span>
             </div>
           </div>

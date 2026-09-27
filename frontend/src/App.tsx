@@ -10,8 +10,11 @@ import { AdminDashboard } from './components/modules/AdminDashboard';
 import { UserManagement } from './components/modules/UserManagement';
 import { RoleManagement } from './components/modules/RoleManagement';
 import { DepartmentManagement } from './components/modules/DepartmentManagement';
+import { HODManagement } from './components/modules/HODManagement';
+import { HODManagementModule } from './components/modules/HODManagementModule';
+import { HODAccessPermissions } from './components/modules/HODAccessPermissions';
 import { CourseManagement } from './components/modules/CourseManagement';
-import { AcademicSessions } from './components/modules/AcademicSessions';
+import { CampusManagement } from './components/modules/CampusManagement';
 import { CourseFileManagement } from './components/modules/CourseFileManagement';
 import { ApprovalManagement } from './components/modules/ApprovalManagement';
 import { FileCategories } from './components/modules/FileCategories';
@@ -30,9 +33,21 @@ import { SystemSettingsModule } from './components/modules/SystemSettingsModule'
 import { MyProfileModule } from './components/modules/MyProfileModule';
 import { HelpSupportModule } from './components/modules/HelpSupportModule';
 import { TeacherRegistrationsModule } from './components/modules/TeacherRegistrationsModule';
+import { TeacherRegistrationRequests } from './components/modules/TeacherRegistrationRequests';
+import { TeacherRegistration } from './components/modules/TeacherRegistration';
+import { TeacherManagement } from './components/modules/TeacherManagement';
 
-// HOD & Teacher Specific Modules
-import { HODDashboard } from './components/modules/HODDashboard';
+// HOD Specific Modules
+import { HODDashboard } from './components/modules/hod/HODDashboard';
+import { HODCourseFiles } from './components/modules/hod/HODCourseFiles';
+import { HODPendingCourseFiles } from './components/modules/hod/HODPendingCourseFiles';
+import { HODApprovedCourseFiles } from './components/modules/hod/HODApprovedCourseFiles';
+import { HODTeacherRequests } from './components/modules/hod/HODTeacherRequests';
+import { HODApprovedTeachers } from './components/modules/hod/HODApprovedTeachers';
+import { HODTeacherProfiles } from './components/modules/hod/HODTeacherProfiles';
+import { HODCourseProgress } from './components/modules/hod/HODCourseProgress';
+import { HODNotifications } from './components/modules/hod/HODNotifications';
+import { HODProfile } from './components/modules/hod/HODProfile';
 import { HODTeachers } from './components/modules/HODTeachers';
 import { TeacherDashboard } from './components/modules/TeacherDashboard';
 import { TeacherCourses } from './components/modules/TeacherCourses';
@@ -89,9 +104,19 @@ const MainAppContent: React.FC = () => {
 
   // For teachers: check status
   const isTeacher = activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER';
-  const enrollmentStatus = currentUser?.enrollmentStatus || (currentUser?.profileFormSubmitted ? 'Approved' : 'ProfileIncomplete');
+  const enrollmentStatus = currentUser?.enrollmentStatus || (currentUser?.profileFormSubmitted ? 'PendingHODApproval' : 'ProfileIncomplete');
   const isApproved = enrollmentStatus === 'Approved';
   const formSubmitted = isApproved || (currentUser?.profileFormSubmitted ?? false);
+
+  // Automatic live unlock polling: When teacher is waiting on pending HOD approval, poll status automatically every 3.5 seconds
+  useEffect(() => {
+    if (isTeacher && enrollmentStatus === 'PendingHODApproval') {
+      const timer = setInterval(() => {
+        refreshMyRequest();
+      }, 3500);
+      return () => clearInterval(timer);
+    }
+  }, [isTeacher, enrollmentStatus, refreshMyRequest]);
 
   const handleRefreshStatus = async () => {
     setIsRefreshing(true);
@@ -319,31 +344,139 @@ const MainAppContent: React.FC = () => {
   }
 
   const renderModule = () => {
+    // ─── HOD Dedicated Modules (Centered on Course File Management - Requirements 3 & 51) ───
+    if (activeRole === 'HOD') {
+      switch (activeModule) {
+        case 'Dashboard':
+        case 'HOD Dashboard':
+          return <HODDashboard onNavigate={(m) => setActiveModule(m)} />;
+        case 'Course Files':
+        case 'Academic / Course Files':
+        case 'All Course Files':
+          return <HODCourseFiles />;
+        case 'Pending Course Files':
+        case 'Pending Files':
+          return <HODPendingCourseFiles />;
+        case 'Approved Course Files':
+        case 'Approved Files':
+          return <HODApprovedCourseFiles />;
+        case 'Teacher Requests':
+        case 'Teacher Registration Requests':
+        case 'Pending Requests':
+        case 'Teachers':
+          return <HODTeacherRequests />;
+        case 'Approved Teachers':
+          return <HODApprovedTeachers />;
+        case 'Teacher Profiles':
+        case 'Department Teachers':
+          return <HODTeacherProfiles />;
+        case 'Course / File Progress':
+        case 'Progress':
+          return <HODCourseProgress />;
+        case 'Notifications':
+        case 'All Notifications':
+          return <HODNotifications />;
+        case 'HOD Profile':
+        case 'My Profile':
+        case 'Profile':
+          return <HODProfile />;
+        default:
+          return <HODDashboard onNavigate={(m) => setActiveModule(m)} />;
+      }
+    }
+
     switch (activeModule) {
-      // Dashboard Router
+      // 1. Dashboard
       case 'Dashboard':
         if (activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER') {
           return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
         }
-        if (activeRole === 'HOD') {
-          return <HODDashboard onNavigate={(m) => setActiveModule(m)} />;
-        }
         return <AdminDashboard onNavigate={(m) => setActiveModule(m)} />;
 
-      case 'User Management':
-      case 'All Users':
-      case 'Admins':
-      case 'HODs':
-      case 'Regular Teachers':
-      case 'Visiting Teachers':
-      case 'Active Users':
-      case 'Inactive Users':
-      case 'Create User':
+      // 2. Campus Management
+      case 'Campus Management':
+      case 'All Campus':
+      case 'All Campuses':
+      case 'Campuses':
+        return <CampusManagement activeSubModule="All Campus" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Add Campus':
+        return <CampusManagement activeSubModule="Add Campus" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 3. Department Management
+      case 'Department Management':
+      case 'All Department':
+      case 'All Departments':
+        return <DepartmentManagement activeSubModule="All Department" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Add Department':
+      case 'Create Department':
+        return <DepartmentManagement activeSubModule="Add Department" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 4. HOD Management
+      case 'HOD Management':
+      case 'HOD Assignments':
+        return <HODManagement activeSubModule="HOD Assignments" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Assign HOD':
+        return <HODManagement activeSubModule="Assign HOD" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Reassign HOD':
+        return <HODManagement activeSubModule="Reassign HOD" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 5. HOD Access & Permissions
+      case 'HOD Access & Permissions':
+      case 'HOD Access Control':
+        return <HODAccessPermissions activeSubModule="HOD Access Control" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Reset HOD Password':
+        return <HODAccessPermissions activeSubModule="Reset HOD Password" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 6. Teacher Registration Requests
+      case 'Teacher Registration Requests':
+      case 'Pending Requests':
+        return <TeacherRegistrationRequests activeSubModule="Pending Requests" onNavigate={(m) => setActiveModule(m)} />;
+      case 'All Requests':
+        return <TeacherRegistrationRequests activeSubModule="All Requests" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Rejected Requests':
+        return <TeacherRegistrationRequests activeSubModule="Rejected Requests" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 7. Teacher Registration
+      case 'Teacher Registration':
+      case 'Registered Teachers':
+      case 'Teacher Registrations':
+        return <TeacherRegistration activeSubModule="Registered Teachers" onNavigate={(m) => setActiveModule(m)} />;
+      case 'Registration Records':
+        return <TeacherRegistration activeSubModule="Registration Records" onNavigate={(m) => setActiveModule(m)} />;
+
+      // 8. Teacher Management
+      case 'Teacher Management':
+      case 'All Teachers':
+      case 'Regular Faculty':
+      case 'Visiting Faculty':
+      case 'Teacher Directory':
         if (activeRole === 'HOD') {
           return <HODTeachers activeModule={activeModule} />;
         }
-        return <UserManagement activeModule={activeModule} />;
+        return (
+          <TeacherManagement
+            activeSubModule={activeModule === 'Teacher Management' ? 'All Teachers' : activeModule}
+            onNavigate={(m) => setActiveModule(m)}
+          />
+        );
 
+      // 9. Course Management
+      case 'Course Management':
+      case 'All Courses':
+      case 'Campus Wise':
+      case 'Department Wise':
+      case 'Semester Wise':
+        return <CourseManagement activeModule={activeModule} onNavigate={(m) => setActiveModule(m)} />;
+
+      // 11. Notifications
+      case 'Notifications':
+      case 'All Notifications':
+      case 'Email Notifications':
+      case 'System Notifications':
+        return <NotificationsModule activeModule={activeModule} />;
+
+      // 16. Roles & Permissions
+      case 'Roles & Permissions':
       case 'Role & Permission':
       case 'Role & Permission Matrix':
       case 'Roles':
@@ -351,62 +484,7 @@ const MainAppContent: React.FC = () => {
       case 'Assign Permissions':
         return <RoleManagement activeModule={activeModule} />;
 
-      case 'Department Management':
-      case 'All Departments':
-      case 'Create Department':
-      case 'Assign HOD':
-      case 'Department Statistics':
-        return <DepartmentManagement activeModule={activeModule} />;
-
-      case 'Course Management':
-      case 'All Courses':
-      case 'Create Course':
-      case 'Active Courses':
-      case 'Archived Courses':
-      case 'Semester Wise':
-      case 'Department Wise':
-      case 'Department Courses':
-      case 'Assigned Teachers':
-      case 'My Assigned Courses':
-        return <CourseManagement activeModule={activeModule} />;
-
-      case 'Academic Sessions':
-      case 'Current Session':
-      case 'Previous Sessions':
-      case 'Create Session':
-        return <AcademicSessions activeModule={activeModule} />;
-
-      case 'Course File Management':
-      case 'All Course Files':
-      case 'Upload Files':
-      case 'Pending Files':
-      case 'Approved Files':
-      case 'Rejected Files':
-      case 'Revision Requests':
-      case 'Archived Files':
-      case 'Version History':
-        return <CourseFileManagement activeModule={activeModule} />;
-
-      case 'Approval Management':
-      case 'Pending Approvals':
-      case 'Approved':
-      case 'Rejected':
-      case 'Approval History':
-        return <ApprovalManagement activeModule={activeModule} />;
-
-      case 'File Categories':
-      case 'All Categories':
-      case 'Create Category':
-        return <FileCategories activeModule={activeModule} />;
-
-      case 'Course File Deadlines':
-      case 'Deadlines':
-      case 'Upcoming Deadlines':
-      case 'Missed Deadlines':
-      case 'Completed Deadlines':
-      case 'Calendar View':
-        return <CourseFileDeadlines activeModule={activeModule} />;
-
+      // 17. Reports & Analytics
       case 'Reports & Analytics':
       case 'Dashboard Reports':
       case 'Department Reports':
@@ -417,60 +495,14 @@ const MainAppContent: React.FC = () => {
       case 'Department Performance':
         return <ReportsAnalytics activeModule={activeModule} />;
 
-      case 'Notifications':
-      case 'All Notifications':
-      case 'Email Notifications':
-      case 'System Notifications':
-        return <NotificationsModule activeModule={activeModule} />;
-
-      case 'Announcements':
-      case 'All Announcements':
-      case 'Create Announcement':
-      case 'Scheduled':
-      case 'Archived Announcements':
-        return <AnnouncementsModule activeModule={activeModule} />;
-
-      case 'Archive':
-      case 'Restore Files':
-        return <ArchiveModule activeModule={activeModule} />;
-
-      case 'Recycle Bin':
-      case 'Deleted Files':
-      case 'Restore':
-      case 'Permanent Delete':
-        return <RecycleBinModule activeModule={activeModule} />;
-
-      case 'Activity Logs':
-      case 'Login Logs':
-      case 'User Logs':
-      case 'Approval Logs':
-      case 'File Logs':
-      case 'Department Logs':
-        return <ActivityLogsModule activeModule={activeModule} />;
-
-      case 'Feedback':
-      case 'Suggestions':
-      case 'Bug Reports':
-        return <FeedbackModule activeModule={activeModule} />;
-
-      case 'Calendar':
-      case 'Academic Calendar':
-      case 'Meetings':
-      case 'Department Calendar':
-        return <CalendarModule activeModule={activeModule} />;
-
-      case 'Security Center':
-      case 'Login Attempts':
-      case 'Active Sessions':
-      case 'Password Policy':
-        return <SecurityCenterModule activeModule={activeModule} />;
-
+      // 18. Audit Logs
       case 'Audit Logs':
       case 'User Audit':
       case 'File Audit':
       case 'Approval Audit':
         return <AuditLogsModule activeModule={activeModule} />;
 
+      // 20. System Settings
       case 'System Settings':
       case 'Settings':
       case 'General Settings':
@@ -481,6 +513,8 @@ const MainAppContent: React.FC = () => {
       case 'Preferences':
         return <SystemSettingsModule activeModule={activeModule} />;
 
+      // 21. Admin Profile
+      case 'Admin Profile':
       case 'My Profile':
       case 'Profile':
       case 'Profile Overview':
@@ -497,6 +531,8 @@ const MainAppContent: React.FC = () => {
       case 'Settings & Security':
         return <MyProfileModule activeModule={activeModule} />;
 
+      // 22. Help / Support
+      case 'Help / Support':
       case 'Help & Support':
       case 'Documentation':
       case 'FAQs':
@@ -506,9 +542,7 @@ const MainAppContent: React.FC = () => {
       // HOD Views
       case 'HOD Dashboard':
         return <HODDashboard onNavigate={(m) => setActiveModule(m)} />;
-      case 'Teacher Management':
       case 'Department Teachers':
-      case 'All Teachers':
         return <HODTeachers activeModule={activeModule} />;
 
       // Teacher Views
@@ -543,10 +577,6 @@ const MainAppContent: React.FC = () => {
       case 'Draft Files':
         if (isTeacher && !formSubmitted) return <ProfileFormGate onGoToForm={() => setActiveModule('My Profile Form')} />;
         return <SubmissionHistoryModule />;
-
-      // Admin: Teacher Registrations
-      case 'Teacher Registrations':
-        return <TeacherRegistrationsModule />;
 
       default:
         return <AdminDashboard onNavigate={(m) => setActiveModule(m)} />;

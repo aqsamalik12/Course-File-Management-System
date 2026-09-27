@@ -32,7 +32,14 @@ import {
   ChevronDown,
   GraduationCap,
   LogOut,
-  ClipboardList
+  ClipboardList,
+  Landmark,
+  UserCheck,
+  Key,
+  BookMarked,
+  Layers,
+  Search,
+  BarChart2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -67,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed
 }) => {
   const { activeRole, logout, users: allUsers, currentUser } = useAuth();
-  const { courseFiles, notifications } = useCFMS();
+  const { courseFiles, notifications, teacherRequests = [] } = useCFMS();
 
   // Dynamic Badges
   const pendingApprovalsCount = courseFiles.filter(
@@ -81,40 +88,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
     (u) => (u.role === 'REGULAR_TEACHER' || u.role === 'VISITING_TEACHER') && !u.profileFormSubmitted && u.registeredAt
   ).length;
 
-  // 1. Admin Nav Accordions
+  // 1. Admin Nav Accordions - Exact 22 Modules in Order (Section 4)
   const adminNav: NavParent[] = [
     {
       name: 'Dashboard',
       icon: LayoutDashboard
     },
     {
-      name: 'Teacher Registrations',
-      icon: ClipboardList,
-      badge: pendingFormsCount > 0 ? pendingFormsCount : undefined,
-      badgeColor: 'bg-amber-500 text-white'
-    },
-    {
-      name: 'User Management',
-      icon: Users,
+      name: 'Campus Management',
+      icon: Landmark,
       children: [
-        { name: 'All Users' },
-        { name: 'Admins' },
-        { name: 'HODs' },
-        { name: 'Regular Teachers' },
-        { name: 'Visiting Teachers' },
-        { name: 'Active Users' },
-        { name: 'Inactive Users' },
-        { name: 'Create User' }
+        { name: 'All Campus' },
+        { name: 'Add Campus' }
       ]
     },
     {
       name: 'Department Management',
       icon: Building2,
       children: [
-        { name: 'All Departments' },
-        { name: 'Create Department' },
+        { name: 'All Department' },
+        { name: 'Add Department' }
+      ]
+    },
+    {
+      name: 'HOD Management',
+      icon: UserCheck,
+      children: [
         { name: 'Assign HOD' },
-        { name: 'Department Statistics' }
+        { name: 'HOD Assignments' },
+        { name: 'Reassign HOD' }
+      ]
+    },
+    {
+      name: 'HOD Access & Permissions',
+      icon: Key,
+      children: [
+        { name: 'HOD Access Control' },
+        { name: 'Reset HOD Password' }
+      ]
+    },
+    {
+      name: 'Teacher Registration Requests',
+      icon: ClipboardList,
+      badge: pendingFormsCount > 0 ? pendingFormsCount : undefined,
+      badgeColor: 'bg-amber-500 text-white',
+      children: [
+        { name: 'Pending Requests', badge: pendingFormsCount > 0 ? pendingFormsCount : undefined, badgeColor: 'bg-amber-500 text-white' },
+        { name: 'All Requests' },
+        { name: 'Rejected Requests' }
+      ]
+    },
+    {
+      name: 'Teacher Registration',
+      icon: CheckCircle,
+      children: [
+        { name: 'Registered Teachers' },
+        { name: 'Registration Records' }
+      ]
+    },
+    {
+      name: 'Teacher Management',
+      icon: GraduationCap,
+      children: [
+        { name: 'All Teachers' },
+        { name: 'Regular Faculty' },
+        { name: 'Visiting Faculty' },
+        { name: 'Teacher Directory' }
       ]
     },
     {
@@ -122,78 +161,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BookOpen,
       children: [
         { name: 'All Courses' },
-        { name: 'Create Course' },
-        { name: 'Active Courses' },
-        { name: 'Archived Courses' },
-        { name: 'Semester Wise' },
-        { name: 'Department Wise' }
-      ]
-    },
-    {
-      name: 'Course File Management',
-      icon: FileCheck2,
-      children: [
-        { name: 'All Course Files' },
-        { name: 'Pending Files' },
-        { name: 'Approved Files' },
-        { name: 'Rejected Files' },
-        { name: 'Revision Requests' },
-        { name: 'Archived Files' },
-        { name: 'Version History' }
-      ]
-    },
-    {
-      name: 'Templates & Guidelines',
-      icon: FileText,
-      children: [
-        { name: 'All Templates' },
-        { name: 'Upload Official Template' },
-        { name: 'Submission Guidelines' },
-        { name: 'Mandatory Checklist' }
-      ]
-    },
-    {
-      name: 'Approval Management',
-      icon: CheckCircle,
-      badge: pendingApprovalsCount,
-      badgeColor: 'bg-amber-500 text-white',
-      children: [
-        { name: 'Pending Approvals', badge: pendingApprovalsCount, badgeColor: 'bg-amber-500 text-white' },
-        { name: 'Approved' },
-        { name: 'Rejected' },
-        { name: 'Revision Requests' },
-        { name: 'Approval History' }
-      ]
-    },
-    {
-      name: 'Academic Sessions',
-      icon: CalendarDays,
-      children: [
-        { name: 'Current Session' },
-        { name: 'Previous Sessions' },
-        { name: 'Create Session' }
-      ]
-    },
-    {
-      name: 'Course File Deadlines',
-      icon: Clock,
-      children: [
-        { name: 'Upcoming Deadlines' },
-        { name: 'Missed Deadlines' },
-        { name: 'Completed Deadlines' },
-        { name: 'Calendar View' }
-      ]
-    },
-    {
-      name: 'Reports & Analytics',
-      icon: BarChart3,
-      children: [
-        { name: 'Dashboard Reports' },
-        { name: 'Department Reports' },
-        { name: 'Teacher Reports' },
-        { name: 'Course Reports' },
-        { name: 'Approval Reports' },
-        { name: 'Storage Reports' }
+        { name: 'Campus Wise' },
+        { name: 'Department Wise' },
+        { name: 'Semester Wise' }
       ]
     },
     {
@@ -203,97 +173,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-emerald-600 text-white',
       children: [
         { name: 'All Notifications', badge: unreadNotifsCount, badgeColor: 'bg-emerald-600 text-white' },
-        { name: 'Email Notifications' },
         { name: 'System Notifications' }
       ]
     },
     {
-      name: 'Announcements',
-      icon: Megaphone,
-      children: [
-        { name: 'All Announcements' },
-        { name: 'Create Announcement' },
-        { name: 'Scheduled' },
-        { name: 'Archived Announcements' }
-      ]
-    },
-    {
-      name: 'File Categories',
-      icon: FolderTree,
-      children: [
-        { name: 'All Categories' },
-        { name: 'Create Category' }
-      ]
-    },
-    {
-      name: 'Archive',
-      icon: Archive,
-      children: [
-        { name: 'Archived Files' },
-        { name: 'Restore Files' }
-      ]
-    },
-    {
-      name: 'Recycle Bin',
-      icon: Trash2,
-      children: [
-        { name: 'Deleted Files' },
-        { name: 'Restore' },
-        { name: 'Permanent Delete' }
-      ]
-    },
-    {
-      name: 'Activity Logs',
-      icon: History,
-      children: [
-        { name: 'Login Logs' },
-        { name: 'User Logs' },
-        { name: 'Approval Logs' },
-        { name: 'File Logs' }
-      ]
-    },
-    {
-      name: 'Feedback',
-      icon: MessageSquare,
-      children: [
-        { name: 'Suggestions' },
-        { name: 'Bug Reports' }
-      ]
-    },
-    {
-      name: 'Calendar',
-      icon: CalendarIcon,
-      children: [
-        { name: 'Academic Calendar' },
-        { name: 'Meetings' },
-        { name: 'Deadlines' }
-      ]
-    },
-    {
-      name: 'Security Center',
-      icon: Lock,
-      children: [
-        { name: 'Login Attempts' },
-        { name: 'Active Sessions' },
-        { name: 'Password Policy' }
-      ]
-    },
-    {
-      name: 'Audit Logs',
-      icon: FileText,
-      children: [
-        { name: 'User Audit' },
-        { name: 'File Audit' },
-        { name: 'Approval Audit' }
-      ]
-    },
-    {
-      name: 'Role & Permission',
+      name: 'Roles & Permissions',
       icon: ShieldCheck,
       children: [
         { name: 'Roles' },
         { name: 'Permissions' },
         { name: 'Assign Permissions' }
+      ]
+    },
+    {
+      name: 'Reports & Analytics',
+      icon: BarChart3,
+      children: [
+        { name: 'Dashboard Reports' },
+        { name: 'Department Reports' },
+        { name: 'Teacher Reports' },
+        { name: 'Course Reports' }
+      ]
+    },
+    {
+      name: 'Audit Logs',
+      icon: History,
+      children: [
+        { name: 'User Audit' },
+        { name: 'File Audit' },
+        { name: 'Approval Audit' }
       ]
     },
     {
@@ -307,19 +215,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]
     },
     {
-      name: 'My Profile',
+      name: 'Admin Profile',
       icon: User,
       children: [
-        { name: 'Overview' },
         { name: 'Personal Information' },
-        { name: 'Contact & Address' },
-        { name: 'Professional & Academic' },
         { name: 'Security' },
         { name: 'Login History' }
       ]
     },
     {
-      name: 'Help & Support',
+      name: 'Help / Support',
       icon: HelpCircle,
       children: [
         { name: 'Documentation' },
@@ -329,120 +234,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  // 2. HOD Nav Accordions (Includes Teaching Courses, Admin Templates & Session Folders)
+  // 2. Final HOD Nav Modules in exact required sequence (Requirements 3 & 51):
+  // Dashboard -> Academic / Course Files (Course Files, Pending Course Files, Approved Course Files) -> Teachers (Teacher Requests, Approved Teachers, Teacher Profiles) -> Progress (Course / File Progress) -> Notifications -> HOD Profile
   const hodNav: NavParent[] = [
-    { name: 'HOD Dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', icon: LayoutDashboard },
     {
-      name: 'Course File Management',
-      icon: FileCheck2,
+      name: 'Academic / Course Files',
+      icon: FolderTree,
       children: [
-        { name: 'All Course Files' },
-        { name: 'Session Folders' },
-        { name: 'Pending Files' },
-        { name: 'Approved Files' },
-        { name: 'Rejected Files' }
+        { name: 'Course Files' },
+        { name: 'Pending Course Files' },
+        { name: 'Approved Course Files' }
       ]
     },
     {
-      name: 'Approval Management',
-      icon: CheckCircle,
-      badge: pendingApprovalsCount,
-      badgeColor: 'bg-amber-500 text-white',
-      children: [
-        { name: 'Pending Approvals', badge: pendingApprovalsCount, badgeColor: 'bg-amber-500 text-white' },
-        { name: 'Approval History' },
-        { name: 'Session Wise Approvals' }
-      ]
-    },
-    {
-      name: 'My Teaching & Submissions',
-      icon: Upload,
-      children: [
-        { name: 'My Assigned Courses' },
-        { name: 'Course File Submission' },
-        { name: 'Submission History' }
-      ]
-    },
-    {
-      name: 'Templates & Guidelines',
-      icon: FileText,
-      children: [
-        { name: 'All Templates' },
-        { name: 'Submission Guidelines' },
-        { name: 'Mandatory Checklist' }
-      ]
-    },
-    {
-      name: 'Department Teachers',
+      name: 'Teachers',
       icon: Users,
       children: [
-        { name: 'All Teachers' },
-        { name: 'Regular Teachers' },
-        { name: 'Visiting Teachers' }
+        {
+          name: 'Teacher Requests',
+          badge: teacherRequests.filter((r) => r.status === 'PendingHODApproval').length > 0
+            ? teacherRequests.filter((r) => r.status === 'PendingHODApproval').length
+            : undefined,
+          badgeColor: 'bg-amber-500 text-white'
+        },
+        { name: 'Approved Teachers' },
+        { name: 'Teacher Profiles' }
       ]
     },
     {
-      name: 'Course Management',
-      icon: BookOpen,
+      name: 'Progress',
+      icon: BarChart2,
       children: [
-        { name: 'Department Courses' },
-        { name: 'Assigned Teachers' }
-      ]
-    },
-    {
-      name: 'Course File Deadlines',
-      icon: Clock,
-      children: [
-        { name: 'Upcoming Deadlines' },
-        { name: 'Calendar View' }
-      ]
-    },
-    {
-      name: 'Reports & Analytics',
-      icon: BarChart3,
-      children: [
-        { name: 'Department Performance' },
-        { name: 'Teacher Reports' }
+        { name: 'Course / File Progress' }
       ]
     },
     {
       name: 'Notifications',
       icon: Bell,
-      badge: unreadNotifsCount,
-      badgeColor: 'bg-emerald-600 text-white',
-      children: [{ name: 'All Notifications' }]
+      badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
+      badgeColor: 'bg-emerald-600 text-white'
     },
-    {
-      name: 'Announcements',
-      icon: Megaphone,
-      children: [{ name: 'All Announcements' }]
-    },
-    {
-      name: 'Calendar',
-      icon: CalendarIcon,
-      children: [{ name: 'Department Calendar' }]
-    },
-    {
-      name: 'Activity Logs',
-      icon: History,
-      children: [{ name: 'Department Logs' }]
-    },
-    {
-      name: 'My Profile',
-      icon: User,
-      children: [
-        { name: 'Overview' },
-        { name: 'Personal Information' },
-        { name: 'Contact & Address' },
-        { name: 'Professional & Academic' },
-        { name: 'Security' }
-      ]
-    },
-    {
-      name: 'Settings',
-      icon: Sliders,
-      children: [{ name: 'Department Settings' }]
-    }
+    { name: 'HOD Profile', icon: User }
   ];
 
   // 3. Teacher Nav Items (Clean, Minimal Sidebar)
@@ -486,7 +319,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = getNavItems();
 
   // Accordion State: Stores the currently expanded parent module name
-  const [expandedMenu, setExpandedMenu] = useState<string>('User Management');
+  const [expandedMenu, setExpandedMenu] = useState<string>('');
 
   // Sync expanded menu when activeModule changes externally
   useEffect(() => {
@@ -560,17 +393,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Role Scope Indicator */}
-            <div className="px-4 py-2 bg-[#12482c]/80 border-b border-emerald-800/50 flex items-center justify-between text-2xs shrink-0">
-              <span className="text-emerald-200/80 font-medium uppercase tracking-wider">
-                Role
-              </span>
-              <span className="font-bold text-white bg-[#1E7B4E] px-2 py-0.5 rounded border border-emerald-600/40">
-                {activeRole === 'ADMIN' ? 'Admin'
-                  : activeRole === 'HOD' ? 'HOD'
-                  : activeRole === 'REGULAR_TEACHER' ? 'Teacher'
-                  : 'Visiting Faculty'}
-              </span>
-            </div>
+            {activeRole === 'HOD' ? (
+              <div className="px-4 py-2.5 bg-[#103e26] border-b border-emerald-800/60 text-xs shrink-0 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-white text-xs truncate">{currentUser?.name}</span>
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-900/80 px-1.5 py-0.5 rounded border border-emerald-700/60">HOD</span>
+                </div>
+                <div className="text-[11px] text-emerald-200 font-semibold truncate flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>{currentUser?.departmentName || 'Department'}</span>
+                </div>
+                <div className="text-[10px] text-emerald-300/80 font-medium truncate flex items-center gap-1">
+                  <Landmark className="w-3 h-3 text-emerald-400/80 shrink-0" />
+                  <span>{currentUser?.campus || currentUser?.campusName || 'Attock Campus'}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-2 bg-[#12482c]/80 border-b border-emerald-800/50 flex items-center justify-between text-2xs shrink-0">
+                <span className="text-emerald-200/80 font-medium uppercase tracking-wider">Role</span>
+                <span className="font-bold text-white bg-[#1E7B4E] px-2 py-0.5 rounded border border-emerald-600/40">
+                  {activeRole === 'ADMIN' ? 'Admin'
+                    : activeRole === 'REGULAR_TEACHER' ? 'Teacher'
+                    : 'Visiting Faculty'}
+                </span>
+              </div>
+            )}
 
             {/* Nav Items */}
             <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1 custom-scrollbar">
@@ -663,17 +510,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Role Scope Indicator */}
         {!collapsed && (
-          <div className="px-4 py-2 bg-[#12482c]/80 border-b border-emerald-800/50 flex items-center justify-between text-2xs shrink-0">
-            <span className="text-emerald-200/80 font-medium uppercase tracking-wider">
-              Role
-            </span>
-            <span className="font-bold text-white bg-[#1E7B4E] px-2 py-0.5 rounded border border-emerald-600/40 capitalize">
-              {activeRole === 'ADMIN' ? 'Admin'
-                : activeRole === 'HOD' ? 'HOD'
-                : activeRole === 'REGULAR_TEACHER' ? 'Teacher'
-                : 'Visiting Faculty'}
-            </span>
-          </div>
+          activeRole === 'HOD' ? (
+            <div className="px-3.5 py-2.5 bg-[#103e26] border-b border-emerald-800/60 text-xs shrink-0 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-white text-xs truncate">{currentUser?.name}</span>
+                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-900/80 px-1.5 py-0.5 rounded border border-emerald-700/60">HOD</span>
+              </div>
+              <div className="text-[11px] text-emerald-200 font-semibold truncate flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span>{currentUser?.departmentName || 'Department'}</span>
+              </div>
+              <div className="text-[10px] text-emerald-300/80 font-medium truncate flex items-center gap-1">
+                <Landmark className="w-3 h-3 text-emerald-400/80 shrink-0" />
+                <span>{currentUser?.campus || currentUser?.campusName || 'Attock Campus'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="px-4 py-2 bg-[#12482c]/80 border-b border-emerald-800/50 flex items-center justify-between text-2xs shrink-0">
+              <span className="text-emerald-200/80 font-medium uppercase tracking-wider">Role</span>
+              <span className="font-bold text-white bg-[#1E7B4E] px-2 py-0.5 rounded border border-emerald-600/40 capitalize">
+                {activeRole === 'ADMIN' ? 'Admin'
+                  : activeRole === 'REGULAR_TEACHER' ? 'Teacher'
+                  : 'Visiting Faculty'}
+              </span>
+            </div>
+          )
         )}
 
         {/* Navigation List */}

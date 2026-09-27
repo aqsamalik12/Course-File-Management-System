@@ -1,19 +1,41 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { UserService, AuditService } from '../services/supabaseService';
+import { UserService, AuditService, HODAssignmentService } from '../services/supabaseService';
 import { logger } from '../config/logger';
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const { role, status, departmentId, search } = req.query;
+    const { role, status, departmentId, campusId, search } = req.query;
     let users = await UserService.getAll();
 
     // Filter non-deleted
     users = users.filter((u: any) => !u.deleted);
 
+    // Strict Scope Authorization for HOD:
+    const headerUserId = req.headers['x-user-id'] as string;
+    const headerRole = req.headers['x-user-role'] as string;
+    const user = (req as any).user;
+    const callerId = user?.id || headerUserId;
+    const callerRole = user?.role || headerRole;
+
+    if (callerRole === 'HOD' && callerId) {
+      const assignment = await HODAssignmentService.getActiveByHodId(callerId);
+      const hodUser = await UserService.getById(callerId);
+      const deptId = assignment?.departmentId || hodUser?.departmentId;
+      const campusName = assignment?.campusName || hodUser?.campus;
+
+      if (deptId) {
+        users = users.filter((u: any) => {
+          const matchDept = u.departmentId === deptId;
+          const matchCampus = !campusName || !u.campus || u.campus.toLowerCase() === campusName.toLowerCase();
+          return matchDept && matchCampus;
+        });
+      }
+    }
+
     if (role) users = users.filter((u: any) => u.role === role);
     if (status) users = users.filter((u: any) => u.status === status);
-    if (departmentId) users = users.filter((u: any) => u.departmentId === departmentId);
+    if (departmentId && callerRole !== 'HOD') users = users.filter((u: any) => u.departmentId === departmentId);
     if (search) {
       const s = String(search).toLowerCase();
       users = users.filter(
@@ -22,7 +44,8 @@ export const getUsers = async (req: Request, res: Response) => {
           (u.email && u.email.toLowerCase().includes(s)) ||
           (u.employeeId && u.employeeId.toLowerCase().includes(s)) ||
           (u.designation && u.designation.toLowerCase().includes(s)) ||
-          (u.departmentName && u.departmentName.toLowerCase().includes(s))
+          (u.departmentName && u.departmentName.toLowerCase().includes(s)) ||
+          (u.campus && u.campus.toLowerCase().includes(s))
       );
     }
 

@@ -27,11 +27,11 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   const { courseFiles, courses, submissionWindow, uploadCourseFile } = useCFMS();
   const { currentUser } = useAuth();
 
-  const teacherName = currentUser?.name || 'Dr. Tariq Mahmood';
+  const teacherName = currentUser?.name || 'Faculty Member';
   const myCourses = courses.filter(
-    (c) => c.assignedTeacherId === currentUser?.id || c.assignedTeacherName === teacherName
+    (c) => c.assignedTeacherId === currentUser?.id || (currentUser?.email && c.assignedTeacherId === currentUser?.email) || c.assignedTeacherName === teacherName
   );
-  const displayCourses = myCourses.length > 0 ? myCourses : courses.slice(0, 3);
+  const displayCourses = myCourses;
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>(displayCourses[0]?.id || '');
   const selectedCourse = displayCourses.find((c) => c.id === selectedCourseId) || displayCourses[0];
@@ -44,6 +44,9 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
 
   // Upload Form State
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [submissionBatch, setSubmissionBatch] = useState('2024');
+  const [submissionSession, setSubmissionSession] = useState('2024–2025');
+  const [submissionSemester, setSubmissionSemester] = useState('1st Semester');
   const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
   const [uploadNotes, setUploadNotes] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -52,7 +55,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   const isPastDeadline =
     submissionWindow.status === 'Submission Closed' || new Date() > new Date(submissionWindow.endDate);
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = (e: React.FormEvent, targetStatus: 'Draft' | 'Submitted' = 'Submitted') => {
     e.preventDefault();
     if (!selectedCourse) return;
 
@@ -60,30 +63,42 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       ? `v${(parseFloat(currentCourseFile.currentVersion.replace('v', '')) + 1.0).toFixed(1)}`
       : 'v1.0';
 
-    const initialStatus = isPastDeadline ? 'Late Submission' : 'Submitted';
+    const statusToSave = targetStatus;
 
     uploadCourseFile({
       courseId: selectedCourse.id,
       courseCode: selectedCourse.code,
       courseTitle: selectedCourse.title,
+      credits: selectedCourse.credits || 3,
       departmentId: currentUser?.departmentId || 'dept-1',
       departmentName: selectedCourse.departmentName || currentUser?.departmentName || 'Department of Computer Science',
+      campusId: currentUser?.campusId,
+      campusName: currentUser?.campus || currentUser?.campusName,
+      hodId: currentUser?.hodId,
+      hodName: currentUser?.hodName,
+      batch: submissionBatch,
+      session: submissionSession,
+      semester: submissionSemester,
       teacherId: currentUser?.id || 'user-teacher',
       teacherName: teacherName,
       teacherRole: currentUser?.role || 'REGULAR_TEACHER',
-      title: `${selectedCourse.code} Complete Course File (${submissionWindow.sessionName})`,
+      title: `${selectedCourse.code} Complete Course File (${submissionSession} - ${submissionSemester})`,
       category: 'Syllabus & Course Outline',
       currentVersion: versionNumber,
-      fileType: selectedFileObj ? (selectedFileObj.name.split('.').pop()?.toUpperCase() as any || 'ZIP') : 'ZIP',
+      fileType: selectedFileObj ? (selectedFileObj.name.split('.').pop()?.toUpperCase() as any || 'PDF') : 'PDF',
       fileSize: selectedFileObj ? `${(selectedFileObj.size / 1024 / 1024).toFixed(1)} MB` : '18.5 MB',
       fileUrl: '#',
-      status: initialStatus,
+      status: statusToSave,
       remarks: uploadNotes
         ? `Faculty Changelog: ${uploadNotes}`
-        : `Submitted complete course file for HOD review. Status: ${initialStatus}`
+        : targetStatus === 'Draft' ? 'Draft saved by teacher.' : 'Submitted complete course file for HOD review.'
     });
 
-    setUploadSuccess(`Successfully submitted course file for ${selectedCourse.code} (${versionNumber})`);
+    setUploadSuccess(
+      targetStatus === 'Draft'
+        ? `Course file draft saved for ${selectedCourse.code}.`
+        : `Successfully submitted course file for ${selectedCourse.code} to your HOD!`
+    );
     setTimeout(() => setUploadSuccess(null), 5000);
     setUploadModalOpen(false);
   };
@@ -366,6 +381,48 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                 <strong>Mandatory Rule:</strong> Please compile all 10 required items (Syllabus, Plan, Attendance, Mid Package, Final Package, Quizzes, Assignments, CLO Matrix, Results, Samples) inside ONE single PDF document (.PDF Format Only).
               </div>
 
+              {/* Batch, Session, and 4 Semesters Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">Batch *</label>
+                  <select
+                    value={submissionBatch}
+                    onChange={(e) => {
+                      setSubmissionBatch(e.target.value);
+                      setSubmissionSession(e.target.value === '2024' ? '2024–2025' : `${e.target.value}–${parseInt(e.target.value) + 1}`);
+                    }}
+                    className="w-full p-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none"
+                  >
+                    <option value="2024">Batch 2024</option>
+                    <option value="2025">Batch 2025</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">Session *</label>
+                  <select
+                    value={submissionSession}
+                    onChange={(e) => setSubmissionSession(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:outline-none"
+                  >
+                    <option value="2024–2025">2024–2025</option>
+                    <option value="2025–2026">2025–2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">Semester *</label>
+                  <select
+                    value={submissionSemester}
+                    onChange={(e) => setSubmissionSemester(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-bold focus:outline-none"
+                  >
+                    <option value="1st Semester">1st Semester</option>
+                    <option value="2nd Semester">2nd Semester</option>
+                    <option value="3rd Semester">3rd Semester</option>
+                    <option value="4th Semester">4th Semester</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-800 mb-1">Select Course File (.PDF Format Only) *</label>
                 <input
@@ -383,12 +440,12 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   rows={3}
                   value={uploadNotes}
                   onChange={(e) => setUploadNotes(e.target.value)}
-                  placeholder="e.g. Initial complete course file submission for Spring 2026."
+                  placeholder="e.g. Initial complete course file submission for 1st Semester."
                   className="w-full p-2.5 bg-slate-50 border rounded-xl text-slate-800 focus:ring-2 focus:ring-[#1E7B4E] outline-none"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setUploadModalOpen(false)}
@@ -397,11 +454,19 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => handleUploadSubmit(e, 'Draft')}
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl cursor-pointer"
+                >
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleUploadSubmit(e, 'Submitted')}
                   className="px-5 py-2 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Confirm Upload</span>
+                  <span>Submit to HOD</span>
                 </button>
               </div>
             </form>

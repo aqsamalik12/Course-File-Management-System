@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, TeacherProfileFormData, LoginLog, TeacherEnrollmentRequest, SelectedCourseItem } from '../types';
-import { INITIAL_USERS } from '../data/mockData';
 
 // ─── localStorage keys ───────────────────────────────────────────────────────
 const LS_REGISTERED  = 'cfms_registered_users';
@@ -67,7 +66,10 @@ interface AuthContextType {
     totalCredits: number,
     teacherType: 'REGULAR_TEACHER' | 'VISITING_TEACHER',
     departmentId: string,
-    departmentName: string
+    departmentName: string,
+    campusName?: string,
+    hodId?: string,
+    hodName?: string
   ) => Promise<{ success: boolean; error?: string; message?: string }>;
   refreshMyRequest: () => Promise<void>;
   // Visiting teacher helpers
@@ -85,9 +87,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Merge backend users with self-registered users
-  const [systemUsers, setSystemUsers] = useState<User[]>(INITIAL_USERS);
+  const [systemUsers, setSystemUsers] = useState<User[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(loadRegistered);
-  const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
+  const [activeRole, setActiveRole] = useState<UserRole>(() => {
+    const current = loadCurrentUser();
+    return current?.role || 'ADMIN';
+  });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!loadCurrentUser());
   const [loggedInUser, setLoggedInUser] = useState<User | null>(loadCurrentUser);
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>(loadLoginLogs);
@@ -196,7 +201,93 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ): Promise<{ success: boolean; error?: string; code?: string }> => {
     const emailLower = email.trim().toLowerCase();
 
-    // Find user in all users (system defaults + admin-created)
+    // 1. Prioritize Real Backend Authentication
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailLower, password })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success && data.user) {
+        if (data.token) {
+          localStorage.setItem('cfms_token', data.token);
+        }
+        if (data.refreshToken) {
+          localStorage.setItem('cfms_refresh_token', data.refreshToken);
+        }
+
+        const loginTime = new Date().toLocaleString('en-PK', {
+          year: 'numeric', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+
+        const backendUser = data.user;
+        const authenticatedUser: User = {
+          id: backendUser.id || `usr-${Date.now()}`,
+          name: backendUser.name || 'User',
+          email: backendUser.email || emailLower,
+          avatar: backendUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          role: backendUser.role,
+          departmentId: backendUser.departmentId || '',
+          departmentName: backendUser.departmentName || '',
+          campus: backendUser.campus || backendUser.campusName || '',
+          campusId: backendUser.campusId || '',
+          campusName: backendUser.campusName || backendUser.campus || '',
+          designation: backendUser.designation || (backendUser.role === 'HOD' ? `Head of Department (${backendUser.departmentName || ''})` : 'Faculty Member'),
+          phone: backendUser.phone || '',
+          status: backendUser.status || 'Active',
+          createdAt: backendUser.createdAt || new Date().toISOString().split('T')[0],
+          lastLogin: loginTime,
+          loginCount: (backendUser.loginCount || 0) + 1,
+          enrollmentStatus: backendUser.enrollmentStatus || (backendUser.role === 'HOD' || backendUser.role === 'ADMIN' ? 'Approved' : 'ProfileIncomplete'),
+          profileFormSubmitted: backendUser.profileFormSubmitted !== undefined ? backendUser.profileFormSubmitted : (backendUser.role === 'HOD' || backendUser.role === 'ADMIN'),
+          hodAssignment: backendUser.hodAssignment
+        };
+
+        // Sync into state and localStorage
+        setLoggedInUser(authenticatedUser);
+        saveCurrentUser(authenticatedUser);
+        setActiveRole(authenticatedUser.role);
+        setIsAuthenticated(true);
+
+        // Update system/registered users list
+        setSystemUsers((prev) => {
+          const exists = prev.some((u) => u.id === authenticatedUser.id || u.email.toLowerCase() === emailLower);
+          return exists ? prev.map((u) => (u.id === authenticatedUser.id || u.email.toLowerCase() === emailLower) ? authenticatedUser : u) : [authenticatedUser, ...prev];
+        });
+
+        // Track login log for teacher roles
+        if (authenticatedUser.role === 'REGULAR_TEACHER' || authenticatedUser.role === 'VISITING_TEACHER') {
+          const newLog: LoginLog = {
+            id: `log-${Date.now()}`,
+            userId: authenticatedUser.id,
+            userName: authenticatedUser.name,
+            userEmail: authenticatedUser.email,
+            userRole: authenticatedUser.role,
+            loginAt: new Date().toISOString()
+          };
+          const updatedLogs = [newLog, ...loginLogs].slice(0, 200);
+          setLoginLogs(updatedLogs);
+          saveLoginLogs(updatedLogs);
+        }
+
+        return { success: true };
+      }
+
+      // If backend explicitly rejected due to wrong password or inactive/locked account
+      if (res.status === 403) {
+        return { success: false, error: data.message || 'Account access restricted.' };
+      }
+      if (res.status === 401 && data.message && (data.message.includes('credentials') || data.message.includes('password'))) {
+        return { success: false, error: data.message || 'Incorrect password. Please try again.' };
+      }
+    } catch (err) {
+      console.warn('Backend login error, attempting local authentication fallback:', err);
+    }
+
+    // 2. Fallback / Offline / Local Authentication
     let match = allUsers.find((u) => u.email.toLowerCase() === emailLower);
 
     if (!match) {
@@ -211,11 +302,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     }
 
-    // Check password
+    // Check password for local fallback
     const isSystemUser = systemUsers.some((u) => u.email.toLowerCase() === emailLower);
 
     if (isSystemUser) {
-      // System users: accept their set passwordHash OR default dev passwords
       const devPasswords: Record<string, string> = {
         'ADMIN': 'admin123',
         'HOD': 'hod123',
@@ -236,10 +326,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return { success: false, error: 'Incorrect password. Please try again.' };
         }
       } else if (!isAcceptedDevPass) {
-        return { success: false, error: 'Incorrect password. Please use the demo credentials provided.' };
+        return { success: false, error: 'Incorrect password. Please use the credentials provided.' };
       }
     } else {
-      // Admin-created or self-registered user — strict password check
       if (!match.passwordHash) {
         return { success: false, error: 'Account password not set. Contact administrator.' };
       }
@@ -248,7 +337,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    // ── Update lastLogin & loginCount ──
+    // Update lastLogin & loginCount
     const loginTime = new Date().toLocaleString('en-PK', {
       year: 'numeric', month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
@@ -259,7 +348,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       loginCount: (match.loginCount || 0) + 1
     };
 
-    // Persist update in admin-created users list if not system user
     if (!isSystemUser) {
       const updated = registeredUsers.map((u) => u.id === match.id ? updatedUser : u);
       setRegisteredUsers(updated);
@@ -271,7 +359,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setActiveRole(updatedUser.role);
     setIsAuthenticated(true);
 
-    // Track login log for teacher roles
     if (updatedUser.role === 'REGULAR_TEACHER' || updatedUser.role === 'VISITING_TEACHER') {
       const newLog: LoginLog = {
         id: `log-${Date.now()}`,
@@ -285,19 +372,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoginLogs(updatedLogs);
       saveLoginLogs(updatedLogs);
     }
-
-    // Try backend login
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailLower, password })
-      });
-      const data = await res.json();
-      if (data.success && data.token) {
-        localStorage.setItem('cfms_token', data.token);
-      }
-    } catch {}
 
     return { success: true };
   };
@@ -384,7 +458,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     totalCredits: number,
     teacherType: 'REGULAR_TEACHER' | 'VISITING_TEACHER',
     departmentId: string,
-    departmentName: string
+    departmentName: string,
+    campusName?: string,
+    hodId?: string,
+    hodName?: string
   ): Promise<{ success: boolean; error?: string; message?: string }> => {
     if (!loggedInUser) return { success: false, error: 'Not authenticated' };
 
@@ -397,16 +474,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     }
 
+    const finalCampus = campusName || formData.campusName || formData.campus || 'Attock Campus';
+    const finalCampusId = formData.campusId || '';
+    const finalHodId = hodId || formData.hodId || '';
+    const finalHodName = hodName || formData.hodName || 'Department HOD';
+
     const payload = {
       teacherId: loggedInUser.id,
       teacherName: loggedInUser.name,
       teacherEmail: loggedInUser.email,
       teacherType,
+      campusId: finalCampusId,
+      campusName: finalCampus,
       departmentId,
       departmentName,
+      hodId: finalHodId,
+      hodName: finalHodName,
       selectedCourses,
       totalCredits,
-      profileData: formData
+      profileData: {
+        ...formData,
+        campusId: finalCampusId,
+        campus: finalCampus,
+        hodId: finalHodId,
+        hodName: finalHodName
+      }
     };
 
     try {
@@ -432,11 +524,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedUser: User = {
         ...loggedInUser,
         role: teacherType,
+        campus: finalCampus,
         departmentId,
         departmentName,
         enrollmentStatus: 'PendingHODApproval',
         profileFormSubmitted: true,
-        profileFormData: formData,
+        profileFormData: {
+          ...formData,
+          campus: finalCampus,
+          hodId: finalHodId,
+          hodName: finalHodName
+        },
         totalCredits,
         selectedCourseIds: selectedCourses.map((c) => c.courseId)
       };
@@ -454,15 +552,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         teacherName: loggedInUser.name,
         teacherEmail: loggedInUser.email,
         teacherType,
+        campusName: finalCampus,
         departmentId,
         departmentName,
-        hodId: '',
-        hodName: 'Department HOD',
+        hodId: finalHodId,
+        hodName: finalHodName,
         selectedCourses,
         totalCredits,
         creditLimit: limit,
         status: 'PendingHODApproval',
-        profileData: formData,
+        profileData: {
+          ...formData,
+          campus: finalCampus,
+          hodId: finalHodId,
+          hodName: finalHodName
+        },
         submittedAt: new Date().toISOString()
       };
       setTeacherRequest(mockReq);
@@ -471,11 +575,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedUser: User = {
         ...loggedInUser,
         role: teacherType,
+        campus: finalCampus,
         departmentId,
         departmentName,
         enrollmentStatus: 'PendingHODApproval',
         profileFormSubmitted: true,
-        profileFormData: formData,
+        profileFormData: {
+          ...formData,
+          campus: finalCampus,
+          hodId: finalHodId,
+          hodName: finalHodName
+        },
         totalCredits,
         selectedCourseIds: selectedCourses.map((c) => c.courseId)
       };
@@ -497,13 +607,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTeacherRequest(data.data);
         localStorage.setItem('cfms_my_teacher_request', JSON.stringify(data.data));
 
-        if (data.data.status !== loggedInUser.enrollmentStatus) {
+        if (data.data.status !== loggedInUser.enrollmentStatus || !loggedInUser.hodName || !loggedInUser.campus) {
           const updatedUser: User = {
             ...loggedInUser,
             enrollmentStatus: data.data.status,
+            status: data.data.status === 'Approved' ? 'Active' : loggedInUser.status,
             rejectionReason: data.data.rejectionReason,
             departmentId: data.data.departmentId || loggedInUser.departmentId,
             departmentName: data.data.departmentName || loggedInUser.departmentName,
+            campus: data.data.campusName || loggedInUser.campus,
+            campusName: data.data.campusName || loggedInUser.campusName || loggedInUser.campus,
+            hodId: data.data.hodId || loggedInUser.hodId,
+            hodName: data.data.hodName || loggedInUser.hodName,
             role: data.data.teacherType || loggedInUser.role
           };
           setLoggedInUser(updatedUser);

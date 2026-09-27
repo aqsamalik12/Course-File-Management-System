@@ -1,0 +1,38 @@
+[
+  {
+    "id": "camp-attock",
+    "code": "UE-ATK",
+    "name": "Attock Campus",
+    "city": "Attock",
+    "address": "University Road, Attock City",
+    "directorName": "Prof. Dr. Muhammad Aslam",
+    "status": "Active"
+  },
+  {
+    "id": "camp-main",
+    "code": "UE-MAIN",
+    "name": "Main Campus",
+    "city": "Lahore",
+    "address": "College Road, Township, Lahore",
+    "directorName": "Prof. Dr. Shahid Iqbal",
+    "status": "Active"
+  },
+  {
+    "id": "camp-multan",
+    "code": "UE-MLT",
+    "name": "Multan Campus",
+    "city": "Multan",
+    "address": "Bosan Road, Multan",
+    "directorName": "Prof. Dr. Rashid Mehmood",
+    "status": "Active"
+  },
+  {
+    "id": "camp-1790533144804",
+    "name": "Lahore Campus 1790533105943",
+    "code": "LHR-1790533105943",
+    "city": "Lahore",
+    "address": "",
+    "directorName": "",
+    "status": "Active"
+  }
+]

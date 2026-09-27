@@ -23,7 +23,12 @@ import {
   Unlock,
   FileCheck2,
   Activity,
-  AlertCircle
+  AlertCircle,
+  LayoutGrid,
+  List,
+  Mail,
+  Phone,
+  Building2
 } from 'lucide-react';
 
 interface UserManagementProps {
@@ -48,10 +53,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeModule }) 
   const [resetConfirmPasswordInput, setResetConfirmPasswordInput] = useState('');
   const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
   const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   React.useEffect(() => {
     if (activeModule === 'Create User') {
       setIsCreateModalOpen(true);
+    } else if (activeModule === 'Teacher Directory') {
+      setViewMode('cards');
+    } else {
+      setViewMode('table');
     }
   }, [activeModule]);
 
@@ -59,9 +69,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeModule }) 
   const filteredUsers = usersList.filter((u) => {
     if (u.deleted) return false;
     if (activeModule === 'Admins') return u.role === 'ADMIN';
-    if (activeModule === 'HODs') return u.role === 'HOD';
-    if (activeModule === 'Regular Teachers') return u.role === 'REGULAR_TEACHER';
-    if (activeModule === 'Visiting Teachers') return u.role === 'VISITING_TEACHER';
+    if (activeModule === 'HODs' || activeModule === 'HOD Accounts') return u.role === 'HOD';
+    if (activeModule === 'Regular Teachers' || activeModule === 'Regular Faculty' || activeModule === 'Regular Teacher Policy') return u.role === 'REGULAR_TEACHER';
+    if (activeModule === 'Visiting Teachers' || activeModule === 'Visiting Faculty' || activeModule === 'Visiting Teacher Policy') return u.role === 'VISITING_TEACHER';
+    if (activeModule === 'Teacher Management' || activeModule === 'All Teachers' || activeModule === 'Teacher Accounts' || activeModule === 'Teacher Directory' || activeModule === 'Teacher Types') {
+      return u.role === 'REGULAR_TEACHER' || u.role === 'VISITING_TEACHER';
+    }
     if (activeModule === 'Active Users') return u.status === 'Active';
     if (activeModule === 'Inactive Users') return u.status === 'Inactive' || u.status === 'Locked';
     return true;
@@ -332,126 +345,343 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeModule }) 
     }
   ];
 
+  const isTeacherPolicy =
+    activeModule === 'Teacher Types' ||
+    activeModule === 'Regular Teacher Policy' ||
+    activeModule === 'Visiting Teacher Policy';
+
+  const getUserManagementTitle = () => {
+    if (activeModule === 'Regular Teacher Policy') return 'Regular Faculty Appointment & Tenure Policy';
+    if (activeModule === 'Visiting Teacher Policy') return 'Visiting Faculty Appointment & Contract Policy';
+    if (activeModule === 'Teacher Types') return 'Faculty Classifications & Employment Rules';
+    if (activeModule === 'Teacher Directory') return 'Faculty Directory & Contact Cards';
+    if (activeModule === 'Admins') return 'System Administrators Directory';
+    if (activeModule === 'HOD Accounts' || activeModule === 'HODs') return 'Heads of Departments (HOD) Accounts';
+    if (activeModule === 'Teacher Accounts' || activeModule === 'All Teachers') return 'Academic Teaching Faculty Accounts';
+    if (activeModule === 'Active Users') return 'Active User Accounts';
+    if (activeModule === 'Inactive Users') return 'Inactive & Suspended Accounts';
+    return `User Management (${activeModule || 'All Users'})`;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
       {/* Header Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-3xs font-mono font-extrabold text-[#1E7B4E] uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              User Directory
+              {isTeacherPolicy ? 'Faculty Governance Policy' : 'User Directory'}
             </span>
-            <span className="text-3xs text-slate-400 font-mono">Attock Campus</span>
+            <span className="text-3xs text-slate-400 font-mono">University of Education, Attock</span>
           </div>
           <h2 className="text-xl font-extrabold font-heading text-slate-900 mt-1">
-            User Management ({activeModule || 'All Users'})
+            {getUserManagementTitle()}
           </h2>
         </div>
 
-        <ActionButton
-          variant="primary"
-          label="Add New User"
-          onClick={() => {
-            setValidationError(null);
-            setIsCreateModalOpen(true);
-          }}
-          size="md"
-        />
+        <div className="flex items-center gap-2.5">
+          {/* View Mode Toggle */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200 text-xs">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'table' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" /> Table
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'cards' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> Cards
+            </button>
+          </div>
+
+          <ActionButton
+            variant="primary"
+            label="Add New User"
+            onClick={() => {
+              setValidationError(null);
+              setIsCreateModalOpen(true);
+            }}
+            size="md"
+          />
+        </div>
       </div>
 
-      {/* Users Table */}
-      <DataTable
-        data={filteredUsers}
-        columns={columns}
-        searchPlaceholder="Search users by name, email, employee ID, role, department..."
-        filters={[
-          {
-            key: 'role',
-            label: 'Role',
-            options: [
-              { value: 'ADMIN', label: 'Admin' },
-              { value: 'HOD', label: 'HOD' },
-              { value: 'REGULAR_TEACHER', label: 'Regular Teacher' },
-              { value: 'VISITING_TEACHER', label: 'Visiting Teacher' }
-            ]
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            options: [
-              { value: 'Active', label: 'Active' },
-              { value: 'Locked', label: 'Locked' },
-              { value: 'Inactive', label: 'Inactive' }
-            ]
-          }
-        ]}
-        onRowClick={(u) => {
-          setSelectedUser(u);
-          setIsDrawerOpen(true);
-        }}
-        actions={(u) => (
-          <div className="flex items-center justify-end gap-1.5">
-            <ActionButton
-              variant="view"
-              label="View"
-              size="xs"
-              onClick={() => {
-                setSelectedUser(u);
-                setIsDrawerOpen(true);
-              }}
-              tooltip="View Profile Details"
-            />
-
-            <ActionButton
-              variant="edit"
-              label="Edit"
-              size="xs"
-              onClick={() => {
-                setEditingUser({ ...u });
-                setIsEditModalOpen(true);
-              }}
-              tooltip="Edit User Info"
-            />
-
-            <ActionButton
-              variant={u.status === 'Active' ? 'lock' : 'unlock'}
-              label={u.status === 'Active' ? 'Lock' : 'Unlock'}
-              size="xs"
-              onClick={() => toggleUserStatus(u.id)}
-              tooltip={u.status === 'Active' ? 'Lock Account' : 'Unlock Account'}
-            />
-
-            <ActionButton
-              variant="reset-password"
-              label="Reset"
-              size="xs"
-              onClick={() => {
-                setResetTargetUser(u);
-                setResetPasswordInput('Teacher@123');
-                setResetConfirmPasswordInput('Teacher@123');
-                setResetErrorMsg(null);
-                setIsResetModalOpen(true);
-              }}
-              tooltip="Reset Password"
-            />
-
-            <ActionButton
-              variant="delete"
-              iconOnly
-              size="xs"
-              onClick={() => {
-                setConfirmDialog({
-                  isOpen: true,
-                  title: `Delete User ${u.name}`,
-                  message: `Are you sure you want to soft delete account "${u.name}" (${u.email})?`,
-                  action: () => deleteUser(u.id)
-                });
-              }}
-              tooltip="Delete Account"
-            />
+      {/* Teacher Policy & Guidelines Banner */}
+      {isTeacherPolicy && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 font-heading">
+              Faculty Appointment Classifications & Compliance Framework
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Official University guidelines governing Regular vs Visiting faculty credentials, credit thresholds, and evaluation protocols.
+            </p>
           </div>
-        )}
-      />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Regular Faculty Policy */}
+            <div className={`p-5 rounded-2xl border transition-all ${activeModule === 'Visiting Teacher Policy' ? 'bg-slate-50/60 border-slate-200 opacity-60' : 'bg-blue-50/40 border-blue-200 shadow-xs'}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  RF
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-blue-950 text-sm">Regular Faculty Service Rules</h4>
+                  <p className="text-3xs text-blue-700 font-medium">BPS / TTS Permanent Cadre</p>
+                </div>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span><strong>Workload Mandate:</strong> 09 to 18 credit hours per semester. Target teaching load: 12-15 Cr.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span><strong>Administrative Eligibility:</strong> Eligible for HOD appointments, Dean roles, and statutory committees.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span><strong>Course Dossier Obligation:</strong> Complete digital course file mandatory for all assigned courses.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span><strong>Evaluation Cycle:</strong> Annual Confidential Report (ACR) and Quality Enhancement Cell (QEC) audit.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Visiting Faculty Policy */}
+            <div className={`p-5 rounded-2xl border transition-all ${activeModule === 'Regular Teacher Policy' ? 'bg-slate-50/60 border-slate-200 opacity-60' : 'bg-amber-50/40 border-amber-200 shadow-xs'}`}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold text-xs">
+                  VF
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-amber-950 text-sm">Visiting Faculty Contract Rules</h4>
+                  <p className="text-3xs text-amber-700 font-medium">Semester-to-Semester Contract Cadre</p>
+                </div>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-700">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span><strong>Workload Cap:</strong> Maximum 09 credit hours per semester (Strict HEC cap). Standard: 06 Cr.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span><strong>Contract Expiration:</strong> System account expires automatically on semester closing date.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span><strong>Billing Clearance:</strong> Department HOD must approve complete course file dossier before final payment release.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span><strong>Academic Integrity:</strong> Bound by university code of conduct, exam confidentiality, and grading rubrics.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Directory Cards View */}
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredUsers.length === 0 ? (
+            <div className="col-span-full bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+              No faculty or user accounts match the current filter.
+            </div>
+          ) : (
+            filteredUsers.map((u) => {
+              const initials = u.name
+                .split(' ')
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+
+              return (
+                <div
+                  key={u.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-[#0c4727] text-white flex items-center justify-center font-extrabold text-sm shadow-2xs">
+                          {initials}
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-900 text-sm">{u.name}</h4>
+                          <p className="text-3xs text-slate-500 font-medium">{u.designation || 'Faculty Member'}</p>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-3xs font-extrabold border ${
+                          u.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-rose-50 text-rose-800 border-rose-200'
+                        }`}
+                      >
+                        {u.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{u.departmentName || 'Computer Science'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-2xs">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{u.email}</span>
+                      </div>
+                      {u.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{u.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-3xs font-bold border ${
+                        u.role === 'REGULAR_TEACHER'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : u.role === 'VISITING_TEACHER'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : u.role === 'HOD'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {u.role === 'REGULAR_TEACHER'
+                        ? 'Regular Faculty'
+                        : u.role === 'VISITING_TEACHER'
+                        ? 'Visiting Faculty'
+                        : u.role === 'HOD'
+                        ? 'HOD'
+                        : 'Administrator'}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        setSelectedUser(u);
+                        setIsDrawerOpen(true);
+                      }}
+                      className="text-xs font-bold text-[#1E7B4E] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      View Profile <Eye className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* Users Table */
+        <DataTable
+          data={filteredUsers}
+          columns={columns}
+          searchPlaceholder="Search users by name, email, employee ID, role, department..."
+          filters={[
+            {
+              key: 'role',
+              label: 'Role',
+              options: [
+                { value: 'ADMIN', label: 'Admin' },
+                { value: 'HOD', label: 'HOD' },
+                { value: 'REGULAR_TEACHER', label: 'Regular Teacher' },
+                { value: 'VISITING_TEACHER', label: 'Visiting Teacher' }
+              ]
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              options: [
+                { value: 'Active', label: 'Active' },
+                { value: 'Locked', label: 'Locked' },
+                { value: 'Inactive', label: 'Inactive' }
+              ]
+            }
+          ]}
+          onRowClick={(u) => {
+            setSelectedUser(u);
+            setIsDrawerOpen(true);
+          }}
+          actions={(u) => (
+            <div className="flex items-center justify-end gap-1.5">
+              <ActionButton
+                variant="view"
+                label="View"
+                size="xs"
+                onClick={() => {
+                  setSelectedUser(u);
+                  setIsDrawerOpen(true);
+                }}
+                tooltip="View Profile Details"
+              />
+
+              <ActionButton
+                variant="edit"
+                label="Edit"
+                size="xs"
+                onClick={() => {
+                  setEditingUser({ ...u });
+                  setIsEditModalOpen(true);
+                }}
+                tooltip="Edit User Info"
+              />
+
+              <ActionButton
+                variant={u.status === 'Active' ? 'lock' : 'unlock'}
+                label={u.status === 'Active' ? 'Lock' : 'Unlock'}
+                size="xs"
+                onClick={() => toggleUserStatus(u.id)}
+                tooltip={u.status === 'Active' ? 'Lock Account' : 'Unlock Account'}
+              />
+
+              <ActionButton
+                variant="reset-password"
+                label="Reset"
+                size="xs"
+                onClick={() => {
+                  setResetTargetUser(u);
+                  setResetPasswordInput('Teacher@123');
+                  setResetConfirmPasswordInput('Teacher@123');
+                  setResetErrorMsg(null);
+                  setIsResetModalOpen(true);
+                }}
+                tooltip="Reset Password"
+              />
+
+              <ActionButton
+                variant="delete"
+                iconOnly
+                size="xs"
+                onClick={() => {
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: `Delete User ${u.name}`,
+                    message: `Are you sure you want to soft delete account "${u.name}" (${u.email})?`,
+                    action: () => deleteUser(u.id)
+                  });
+                }}
+                tooltip="Delete Account"
+              />
+            </div>
+          )}
+        />
+      )}
 
       {/* User Detail Drawer (Issue 4 - Complete Profile, Courses & Files Count) */}
       <DetailDrawer

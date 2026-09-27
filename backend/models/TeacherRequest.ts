@@ -16,6 +16,8 @@ export interface ITeacherRequest {
   teacherName: string;
   teacherEmail: string;
   teacherType: TeacherType;
+  campusId?: string;
+  campusName?: string;
   departmentId: string;
   departmentName: string;
   hodId?: string;

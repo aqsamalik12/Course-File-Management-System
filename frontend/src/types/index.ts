@@ -1,5 +1,39 @@
 export type UserRole = 'ADMIN' | 'HOD' | 'REGULAR_TEACHER' | 'VISITING_TEACHER';
 
+export interface Campus {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+  address?: string;
+  directorName?: string;
+  status?: 'Active' | 'Inactive';
+}
+
+export interface HODAssignment {
+  id: string;
+  hodId: string;
+  hodName: string;
+  hodEmail?: string;
+  email?: string;
+  password?: string;
+  campusId: string;
+  campusName: string;
+  departmentId: string;
+  departmentName: string;
+  status: 'Active' | 'Inactive';
+  assignedDate: string;
+  assignedBy?: string;
+  sessionName?: string;
+  academicSession?: string;
+  permissions?: {
+    canApproveCourseFiles?: boolean;
+    canApproveTeacherRequests?: boolean;
+    canGrantDeadlineExtensions?: boolean;
+    canViewDepartmentReports?: boolean;
+  };
+}
+
 // Teacher profile form data submitted to Admin
 export interface TeacherProfileFormData {
   cnic: string;
@@ -9,6 +43,12 @@ export interface TeacherProfileFormData {
   personalEmail?: string;
   bloodGroup?: string;
   emergencyContact?: string;
+  // Campus & Department
+  campus?: string;
+  campusId?: string;
+  campusName?: string;
+  hodId?: string;
+  hodName?: string;
   // Academic fields
   highestQualification: string;
   specialization: string;
@@ -50,6 +90,7 @@ export interface User {
   role: UserRole;
   departmentId: string;
   departmentName: string;
+  campus?: string;
   designation: string;
   phone: string;
   status: 'Active' | 'Inactive' | 'Locked' | 'Suspended';
@@ -74,6 +115,9 @@ export interface User {
   approvedBy?: string;
   totalCredits?: number;
   selectedCourseIds?: string[];
+  campusId?: string;
+  campusName?: string;
+  hodAssignment?: any;
 }
 
 export type EnrollmentStatus =
@@ -102,6 +146,8 @@ export interface TeacherEnrollmentRequest {
   teacherName: string;
   teacherEmail: string;
   teacherType: 'REGULAR_TEACHER' | 'VISITING_TEACHER';
+  campusId?: string;
+  campusName?: string;
   departmentId: string;
   departmentName: string;
   hodId?: string;
@@ -121,30 +167,42 @@ export interface Department {
   id: string;
   code: string;
   name: string;
-  hodId: string;
-  hodName: string;
-  facultyCount: number;
-  courseCount: number;
-  submissionRate: number;
-  building: string;
+  campusId?: string;
+  campusName?: string;
+  status?: 'Active' | 'Inactive';
+  hodId?: string;
+  hodName?: string;
+  facultyCount?: number;
+  courseCount?: number;
+  submissionRate?: number;
+  building?: string;
 }
 
 export interface Course {
   id: string;
   code: string;
   title: string;
+  campusId?: string;
+  campusName?: string;
   departmentId: string;
   departmentName: string;
   credits: number;
-  type: 'Core' | 'Elective' | 'Lab';
+  theoryCredits?: number;
+  labCredits?: number;
+  type: 'Core' | 'Elective' | 'Lab' | 'General';
   assignedTeacherId: string;
   assignedTeacherName: string;
   assignedTeacherRole: UserRole;
   semester: string;
   academicSession: string;
   batch?: string; // Student Batch e.g. "2023-2027", "2022-2026"
+  sections?: string[];
   totalStudents: number;
   status: 'Active' | 'Archived';
+  archiveReason?: string;
+  archivedAt?: string;
+  description?: string;
+  prerequisites?: string;
 }
 
 export type FileCategoryType =
@@ -220,7 +278,19 @@ export interface CourseFileItem {
   fileSize: string;
   fileUrl: string;
   status: FileStatus;
-  batch?: string; // Student Batch e.g. "2023-2027", "2022-2026"
+  batch?: string; // Student Batch e.g. "2024", "2025"
+  session?: string; // Session e.g. "2024–2025"
+  semester?: string; // Semester e.g. "1st Semester", "2nd Semester", "3rd Semester", "4th Semester"
+  campusId?: string;
+  campusName?: string;
+  hodId?: string;
+  hodName?: string;
+  credits?: number;
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewComment?: string;
+  templateData?: any;
   uploadDate: string;
   lastModified: string;
   archived: boolean;

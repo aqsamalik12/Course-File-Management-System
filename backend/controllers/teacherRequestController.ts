@@ -5,7 +5,9 @@ import {
   CourseService,
   UserService,
   NotificationService,
-  AuditService
+  AuditService,
+  HODAssignmentService,
+  CampusService
 } from '../services/supabaseService';
 import { logger } from '../config/logger';
 
@@ -25,17 +27,58 @@ const getCallerInfo = (req: Request) => {
   };
 };
 
+/**
+ * Resolves the authenticated HOD's active authorization scope (Campus + Department)
+ */
+const resolveHODScope = async (callerId: string, defaultDeptId?: string) => {
+  if (!callerId) return null;
+  // 1. Check active HOD assignment from HODAssignmentService
+  const assignment = await HODAssignmentService.getActiveByHodId(callerId);
+  if (assignment && assignment.status === 'Active') {
+    return {
+      campusId: assignment.campusId,
+      campusName: assignment.campusName,
+      departmentId: assignment.departmentId,
+      departmentName: assignment.departmentName,
+      hodId: assignment.hodId,
+      hodName: assignment.hodName
+    };
+  }
+  // 2. Fallback to user and department tables
+  const user = await UserService.getById(callerId);
+  const deptId = defaultDeptId || user?.departmentId;
+  if (deptId) {
+    const dept = await DepartmentService.getById(deptId);
+    return {
+      campusId: dept?.campusId || 'camp-attock',
+      campusName: dept?.campusName || user?.campus || 'Attock Campus',
+      departmentId: deptId,
+      departmentName: dept?.name || user?.departmentName || 'Department',
+      hodId: callerId,
+      hodName: user?.name || 'HOD'
+    };
+  }
+  return null;
+};
+
+
 export const getTeacherRequests = async (req: Request, res: Response) => {
   try {
     const caller = getCallerInfo(req);
-    const { departmentId, status, teacherId, search } = req.query;
+    const { departmentId, campusId, status, teacherId, search } = req.query;
 
     let filterDeptId = departmentId ? String(departmentId) : undefined;
+    let filterCampusId = campusId ? String(campusId) : undefined;
 
-    // Strict Authorization for HOD:
-    // A HOD must NEVER be able to see requests from another department!
-    if (caller.role === 'HOD' && caller.departmentId) {
-      filterDeptId = caller.departmentId;
+    // Strict Multi-Campus & Multi-Department Authorization for HOD:
+    let hodScope: any = null;
+    if (caller.role === 'HOD') {
+      hodScope = await resolveHODScope(caller.id, caller.departmentId);
+      if (hodScope) {
+        // Enforce HOD's authorized scope - ignore or reject any client attempt to change department or campus
+        filterDeptId = hodScope.departmentId;
+        filterCampusId = hodScope.campusId;
+      }
     }
 
     // Teacher can only view their own requests
@@ -47,8 +90,25 @@ export const getTeacherRequests = async (req: Request, res: Response) => {
     let requests = await TeacherRequestService.getAll({
       departmentId: filterDeptId,
       status: status ? String(status) : undefined,
-      teacherId: filterTeacherId
+      teacherId: filterTeacherId,
+      campusId: filterCampusId
     });
+
+    // Enforce HOD scope isolation in memory / result set
+    if (caller.role === 'HOD') {
+      requests = requests.filter((r: any) => {
+        // If request has specific hodId, ensure it matches caller
+        if (r.hodId && caller.id && r.hodId !== caller.id) {
+          return false;
+        }
+        if (hodScope) {
+          const matchDept = r.departmentId === hodScope.departmentId;
+          const matchCampus = !r.campusId || r.campusId === hodScope.campusId || (r.campusName && r.campusName.toLowerCase() === hodScope.campusName.toLowerCase());
+          return matchDept && matchCampus;
+        }
+        return r.hodId === caller.id;
+      });
+    }
 
     // Search filter
     if (search) {
@@ -57,6 +117,7 @@ export const getTeacherRequests = async (req: Request, res: Response) => {
         (r.teacherName && r.teacherName.toLowerCase().includes(q)) ||
         (r.teacherEmail && r.teacherEmail.toLowerCase().includes(q)) ||
         (r.departmentName && r.departmentName.toLowerCase().includes(q)) ||
+        (r.campusName && r.campusName.toLowerCase().includes(q)) ||
         (r.selectedCourses && Array.isArray(r.selectedCourses) &&
           r.selectedCourses.some((c: any) =>
             (c.courseName && c.courseName.toLowerCase().includes(q)) ||
@@ -86,12 +147,25 @@ export const getTeacherRequestById = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Teacher request not found.' });
     }
 
-    // Authorization: HOD cannot view requests of another department
-    if (caller.role === 'HOD' && caller.departmentId && request.departmentId !== caller.departmentId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied: You can only view teacher requests for your assigned department.'
-      });
+    // Strict Scope Authorization: HOD cannot view requests outside authorized Campus + Department scope or assigned to another HOD
+    if (caller.role === 'HOD') {
+      if (request.hodId && caller.id && request.hodId !== caller.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You cannot view a request routed to another Head of Department.'
+        });
+      }
+      const hodScope = await resolveHODScope(caller.id, caller.departmentId);
+      if (hodScope) {
+        const matchDept = request.departmentId === hodScope.departmentId;
+        const matchCampus = !request.campusId || request.campusId === hodScope.campusId || (request.campusName && request.campusName.toLowerCase() === hodScope.campusName.toLowerCase());
+        if (!matchDept || !matchCampus) {
+          return res.status(403).json({
+            success: false,
+            message: `Access denied: You can only view teacher requests within your authorized scope (${hodScope.campusName} - ${hodScope.departmentName}).`
+          });
+        }
+      }
     }
 
     // Teacher can only view their own
@@ -121,11 +195,29 @@ export const getMyTeacherRequest = async (req: Request, res: Response) => {
 
     if (!request && email) {
       const all = await TeacherRequestService.getAll();
-      request = all.find((r: any) => r.teacherEmail.toLowerCase() === email.toLowerCase());
+      request = all.find((r: any) => r.teacherEmail && r.teacherEmail.toLowerCase() === email.toLowerCase());
     }
 
     if (!request) {
       return res.json({ success: true, data: null, message: 'No registration request found for this teacher.' });
+    }
+
+    // If request is approved, ensure teacher user record is synchronized as Approved & Active
+    if (request.status === 'Approved' && (teacherId || request.teacherId)) {
+      const tid = teacherId || request.teacherId;
+      const u = await UserService.getById(tid);
+      if (u && (u.enrollmentStatus !== 'Approved' || u.status !== 'Active')) {
+        await UserService.update(tid, {
+          enrollmentStatus: 'Approved',
+          status: 'Active',
+          campus: request.campusName,
+          campusId: request.campusId,
+          departmentId: request.departmentId,
+          departmentName: request.departmentName,
+          hodId: request.hodId,
+          hodName: request.hodName
+        });
+      }
     }
 
     return res.json({ success: true, data: request });
@@ -142,6 +234,10 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       teacherEmail,
       teacherType,
       departmentId,
+      campusId,
+      campusName,
+      hodId: selectedHodId,
+      hodName: selectedHodName,
       selectedCourses,
       profileData
     } = req.body;
@@ -198,19 +294,76 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       });
     }
 
-    // 3. Department & Automatic HOD Routing
-    const dept = await DepartmentService.getById(departmentId);
+    // 3. Strict Relational Validation (Campus -> Department -> HOD)
+    if (!campusId && !campusName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Campus is required. Please select a valid campus.'
+      });
+    }
+
+    const allCampuses = await CampusService.getAll();
+    const campus = allCampuses.find(
+      (c: any) => c.id === campusId || c.name.toLowerCase() === String(campusId || campusName).toLowerCase()
+    );
+    if (!campus) {
+      return res.status(400).json({
+        success: false,
+        message: `Selected campus does not exist in the database.`
+      });
+    }
+
+    const dept = (await DepartmentService.getById(departmentId)) || (await DepartmentService.getAll()).find((d: any) => d.id === departmentId);
     if (!dept) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: `Selected department with ID "${departmentId}" does not exist in the database.`
       });
     }
 
+    // Verify Department belongs to selected Campus
+    if (dept.campusId && dept.campusId !== campus.id && dept.campusName?.toLowerCase() !== campus.name.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: `Validation failed: Department "${dept.name}" does not belong to Campus "${campus.name}".`
+      });
+    }
+
+    // Verify Active HOD Assignment exists for this Campus + Department
+    const adminAssignment = await HODAssignmentService.getActiveByScope(campus.id, dept.id);
+    const expectedHodId = adminAssignment?.hodId || (dept.hodId && dept.hodId !== 'Unassigned' ? dept.hodId : '');
+    const expectedHodName = adminAssignment?.hodName || (dept.hodName && dept.hodName !== 'Unassigned' ? dept.hodName : '');
+
+    if (!expectedHodId) {
+      return res.status(400).json({
+        success: false,
+        message: `No HOD has been assigned to ${dept.name} at ${campus.name}. Requests cannot be submitted until Admin assigns an HOD.`
+      });
+    }
+
+    // If teacher submitted a hodId, it MUST match the actual assigned HOD
+    if (selectedHodId && selectedHodId !== expectedHodId) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid HOD mapping: The selected HOD does not match the active HOD assigned to ${dept.name} at ${campus.name}.`
+      });
+    }
+
+    // Verify HOD user exists
+    const hodUser = await UserService.getById(expectedHodId);
+    if (!hodUser) {
+      return res.status(400).json({
+        success: false,
+        message: `Assigned HOD user record was not found in the database.`
+      });
+    }
+
+    const finalCampusId = campus.id;
+    const finalCampusName = campus.name;
     const departmentName = dept.name;
-    const hasAssignedHOD = dept.hodId && dept.hodId.trim() !== '' && dept.hodName && dept.hodName !== 'Unassigned';
-    const hodId = hasAssignedHOD ? dept.hodId : '';
-    const hodName = hasAssignedHOD ? dept.hodName : 'Unassigned';
+    const hodId = expectedHodId;
+    const hodName = expectedHodName || hodUser.name;
+    const hasAssignedHOD = true;
 
     // 4. Check for existing request to prevent duplicate active records
     const existingReq = await TeacherRequestService.getByTeacherId(teacherId);
@@ -224,6 +377,8 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       teacherName,
       teacherEmail: teacherEmail.trim().toLowerCase(),
       teacherType,
+      campusId: finalCampusId,
+      campusName: finalCampusName,
       departmentId,
       departmentName,
       hodId,
@@ -233,7 +388,13 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       creditLimit,
       status: 'PendingHODApproval',
       rejectionReason: '',
-      profileData: profileData || {},
+      profileData: {
+        ...(profileData || {}),
+        campus: finalCampusName,
+        campusId: finalCampusId,
+        hodId,
+        hodName
+      },
       submittedAt: nowIso,
       updated_at: nowIso
     };
@@ -249,10 +410,17 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
     await UserService.update(teacherId, {
       departmentId,
       departmentName,
+      campus: finalCampusName,
       role: teacherType,
       enrollmentStatus: 'PendingHODApproval',
       profileFormSubmitted: true,
-      profileFormData: profileData || {},
+      profileFormData: {
+        ...(profileData || {}),
+        campus: finalCampusName,
+        campusId: finalCampusId,
+        hodId,
+        hodName
+      },
       totalCredits,
       selectedCourseIds: selectedCourses.map((c: any) => c.courseId)
     });
@@ -264,16 +432,17 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
         title: 'New Teacher Enrollment Request',
         message: `New enrollment request from ${teacherName} (${
           teacherType === 'REGULAR_TEACHER' ? 'Regular Faculty' : 'Visiting Faculty'
-        }, ${totalCredits} Credit Hours) in ${departmentName} is pending your review.`,
+        }, ${totalCredits} Credit Hours) in ${departmentName} (${finalCampusName}) is pending your approval. Isko accept karein taake teacher course file bana sake.`,
         type: 'info',
         targetRole: 'HOD',
-        linkModule: 'Teacher Management'
+        targetUserId: hodId,
+        linkModule: 'HOD Dashboard'
       });
     } else {
       // Department has no HOD: Flag and notify Admin
       await NotificationService.create({
-        title: `HOD Missing for ${departmentName}`,
-        message: `Teacher ${teacherName} has submitted registration for ${departmentName}, but this department has no assigned HOD. Please assign an HOD in Department Management.`,
+        title: `HOD Missing for ${departmentName} (${finalCampusName})`,
+        message: `Teacher ${teacherName} has submitted registration for ${departmentName} (${finalCampusName}), but no HOD is assigned. Please assign an HOD in Department Management.`,
         type: 'warning',
         targetRole: 'ADMIN',
         linkModule: 'Department Management'
@@ -284,7 +453,7 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       eventType: 'TEACHER_REGISTRATION_SUBMITTED',
       actor: teacherName,
       role: teacherType,
-      resource: `Department:${departmentName}, Credits:${totalCredits}/${creditLimit}`,
+      resource: `Campus:${finalCampusName}, Department:${departmentName}, HOD:${hodName}, Credits:${totalCredits}/${creditLimit}`,
       status: 'SUCCESS',
       severity: 'INFO'
     });
@@ -292,7 +461,7 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
     return res.status(201).json({
       success: true,
       message: hasAssignedHOD
-        ? `Registration submitted successfully! Your request has been routed to HOD ${hodName} of ${departmentName} for review.`
+        ? `Registration submitted successfully! Your request has been routed to HOD ${hodName} of ${departmentName} (${finalCampusName}) for review.`
         : `Registration submitted! Note: Department HOD is currently unassigned. Administrator has been alerted to assign an HOD.`,
       data: savedRequest,
       hodAssigned: !!hasAssignedHOD
@@ -313,12 +482,32 @@ export const approveTeacherRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Teacher request not found.' });
     }
 
-    // Strict Authorization:
-    // A HOD can only approve requests belonging to their assigned department!
-    if (caller.role === 'HOD' && caller.departmentId && request.departmentId !== caller.departmentId) {
-      return res.status(403).json({
+    // Strict Scope Authorization:
+    // A HOD can only approve requests belonging to their authorized Campus + Department scope
+    if (caller.role === 'HOD') {
+      if (request.hodId && caller.id && request.hodId !== caller.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You cannot approve a request routed to another Head of Department.'
+        });
+      }
+      const hodScope = await resolveHODScope(caller.id, caller.departmentId);
+      if (hodScope) {
+        const matchDept = request.departmentId === hodScope.departmentId;
+        const matchCampus = !request.campusId || request.campusId === hodScope.campusId || (request.campusName && request.campusName.toLowerCase() === hodScope.campusName.toLowerCase());
+        if (!matchDept || !matchCampus) {
+          return res.status(403).json({
+            success: false,
+            message: `Access denied: You can only approve teacher requests within your authorized scope (${hodScope.campusName} - ${hodScope.departmentName}).`
+          });
+        }
+      }
+    }
+
+    if (request.status === 'Approved') {
+      return res.status(400).json({
         success: false,
-        message: 'Access denied: You can only approve teacher requests for your own assigned department.'
+        message: 'This teacher registration request has already been approved.'
       });
     }
 
@@ -333,17 +522,28 @@ export const approveTeacherRequest = async (req: Request, res: Response) => {
       rejectionReason: ''
     });
 
-    // 2. Update Teacher User record: Mark Enrolled/Approved
-    await UserService.update(request.teacherId, {
+    // 2. Update Teacher User record: Mark Enrolled/Approved and save complete profile
+    let teacherUser = await UserService.getById(request.teacherId);
+    if (!teacherUser && request.teacherEmail) {
+      teacherUser = await UserService.getByEmail(request.teacherEmail);
+    }
+    const targetUserId = teacherUser ? teacherUser.id : request.teacherId;
+
+    await UserService.update(targetUserId, {
       enrollmentStatus: 'Approved',
       status: 'Active',
       approvedAt: reviewedAt,
       approvedBy: reviewedBy,
       rejectionReason: '',
+      campusId: request.campusId,
+      campus: request.campusName,
       departmentId: request.departmentId,
       departmentName: request.departmentName,
+      hodId: request.hodId,
+      hodName: request.hodName,
       role: request.teacherType,
-      totalCredits: request.totalCredits
+      totalCredits: request.totalCredits,
+      courses: request.selectedCourses
     });
 
     // 3. Link selected courses to the teacher
@@ -387,6 +587,15 @@ export const approveTeacherRequest = async (req: Request, res: Response) => {
       linkModule: 'Teacher Dashboard'
     });
 
+    // 5. Notify Admin (Requirement 14: Admin registration update notification)
+    await NotificationService.create({
+      title: 'New Teacher Registered',
+      message: `Teacher ${request.teacherName} has been approved for ${request.departmentName} (${request.campusName}) by HOD ${reviewedBy}.`,
+      type: 'info',
+      targetRole: 'ADMIN',
+      linkModule: 'Teacher Registrations'
+    });
+
     await AuditService.log({
       eventType: 'TEACHER_REGISTRATION_APPROVED',
       actor: reviewedBy,
@@ -425,12 +634,38 @@ export const rejectTeacherRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Teacher request not found.' });
     }
 
-    // Strict Authorization:
-    // A HOD can only reject requests belonging to their assigned department!
-    if (caller.role === 'HOD' && caller.departmentId && request.departmentId !== caller.departmentId) {
-      return res.status(403).json({
+    // Strict Scope Authorization:
+    // A HOD can only reject requests belonging to their authorized Campus + Department scope!
+    if (caller.role === 'HOD') {
+      if (request.hodId && caller.id && request.hodId !== caller.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You cannot reject a request routed to another Head of Department.'
+        });
+      }
+      const hodScope = await resolveHODScope(caller.id, caller.departmentId);
+      if (hodScope) {
+        const matchDept = request.departmentId === hodScope.departmentId;
+        const matchCampus = !request.campusId || request.campusId === hodScope.campusId || (request.campusName && request.campusName.toLowerCase() === hodScope.campusName.toLowerCase());
+        if (!matchDept || !matchCampus) {
+          return res.status(403).json({
+            success: false,
+            message: `Access denied: You can only review teacher requests for your authorized scope (${hodScope.campusName} - ${hodScope.departmentName}).`
+          });
+        }
+      }
+    }
+
+    if (request.status === 'Rejected') {
+      return res.status(400).json({
         success: false,
-        message: 'Access denied: You can only review teacher requests for your own assigned department.'
+        message: 'This teacher registration request has already been rejected.'
+      });
+    }
+    if (request.status === 'Approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot reject an already approved teacher request.'
       });
     }
 

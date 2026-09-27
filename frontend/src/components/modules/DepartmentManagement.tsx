@@ -1,367 +1,852 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCFMS } from '../../context/CFMSContext';
-import { Department, User } from '../../types';
-import { ActionButton } from '../common/ActionButton';
+import { Department, Campus } from '../../types';
 import {
-  Building2, Plus, Users, BookOpen, BarChart2, Edit2,
-  CheckCircle2, TrendingUp, UserCheck, AlertTriangle,
-  Mail, ShieldCheck, X
+  Building2,
+  Search,
+  Plus,
+  Eye,
+  Edit2,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  X,
+  ToggleLeft,
+  ToggleRight,
+  RefreshCw,
+  Landmark,
+  MapPin,
+  Filter
 } from 'lucide-react';
 
 interface DepartmentManagementProps {
-  activeModule?: string;
+  activeSubModule?: 'All Department' | 'Add Department' | string;
+  onNavigate?: (moduleName: string) => void;
 }
 
-export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({ activeModule }) => {
-  const { departments, createDepartment, assignDepartmentHOD, usersList } = useCFMS();
-  const [showModal, setShowModal] = useState(false);
-  const [assignModalDept, setAssignModalDept] = useState<Department | null>(null);
-  const [selectedHodId, setSelectedHodId] = useState<string>('');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+export const DepartmentManagement: React.FC<DepartmentManagementProps> = ({
+  activeSubModule = 'All Department',
+  onNavigate
+}) => {
+  const {
+    departments,
+    campuses,
+    createDepartment,
+    updateDepartment,
+    deleteDepartment,
+    refreshDepartments,
+    refreshCampuses
+  } = useCFMS();
 
-  // New Department fields
+  // Loading & Error States
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Search & Filter States for All Department
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCampusFilter, setSelectedCampusFilter] = useState('ALL');
+
+  // Notifications (Toast / Banner)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Add Department Form State
+  const [selectedCampusId, setSelectedCampusId] = useState('');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [hodName, setHodName] = useState('');
-  const [building, setBuilding] = useState('');
+  const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isStatsView = activeModule === 'Department Statistics';
+  // View Department Modal State
+  const [viewDept, setViewDept] = useState<Department | null>(null);
 
+  // Edit Department Modal State
+  const [editDept, setEditDept] = useState<Department | null>(null);
+  const [editCampusId, setEditCampusId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editStatus, setEditStatus] = useState<'Active' | 'Inactive'>('Active');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Status toggle confirmation / loading tracking
+  const [togglingDeptId, setTogglingDeptId] = useState<string | null>(null);
+
+  // Auto-dismiss success notification
   useEffect(() => {
-    if (activeModule === 'Create Department') {
-      setShowModal(true);
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 4000);
+      return () => clearTimeout(timer);
     }
-  }, [activeModule]);
+  }, [successMessage]);
 
-  // Eligible users who can be assigned as HOD (teachers, faculty, current HODs)
-  const eligibleFaculty = usersList.filter(
-    (u) => u.role === 'HOD' || u.role === 'REGULAR_TEACHER' || u.role === 'VISITING_TEACHER'
-  );
+  // Initial load
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        await Promise.all([refreshDepartments(), refreshCampuses()]);
+      } catch {
+        setLoadError('Unable to load departments. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const deptsWithHOD = departments.filter((d) => !!d.hodName && !!d.hodId).length;
-  const deptsWithoutHOD = departments.length - deptsWithHOD;
+  // Auto-select first active campus if none selected
+  useEffect(() => {
+    if (!selectedCampusId && campuses.length > 0) {
+      const activeCampus = campuses.find((c) => c.status !== 'Inactive') || campuses[0];
+      if (activeCampus) setSelectedCampusId(activeCampus.id);
+    }
+  }, [campuses, selectedCampusId]);
 
-  const handleCreate = (e: React.FormEvent) => {
+  // Filtered Departments (Search by Name or Code, and Filter by Campus)
+  const filteredDepartments = useMemo(() => {
+    let list = departments || [];
+
+    // 1. Filter by Campus
+    if (selectedCampusFilter !== 'ALL') {
+      list = list.filter(
+        (d) => d.campusId === selectedCampusFilter || d.campusName === selectedCampusFilter
+      );
+    }
+
+    // 2. Filter by Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (d) =>
+          (d.name && d.name.toLowerCase().includes(q)) ||
+          (d.code && d.code.toLowerCase().includes(q)) ||
+          (d.campusName && d.campusName.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [departments, selectedCampusFilter, searchQuery]);
+
+  // Handle Add Department submit
+  const handleAddDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !code) return;
-    createDepartment({
-      code,
-      name,
-      hodId: `user-${Date.now()}`,
-      hodName,
-      facultyCount: 10,
-      courseCount: 15,
-      submissionRate: 90.0,
-      building
-    });
-    setShowModal(false);
-    setName('');
-    setCode('');
-    setHodName('');
-    setBuilding('');
-    setToastMessage(`Department ${name} created successfully.`);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-  const handleOpenAssignModal = (dept: Department) => {
-    setAssignModalDept(dept);
-    setSelectedHodId(dept.hodId || '');
-  };
+    if (!selectedCampusId || !selectedCampusId.trim()) {
+      setErrorMessage('Campus is required. Please select a valid campus.');
+      return;
+    }
+    if (!name.trim()) {
+      setErrorMessage('Department Name is required.');
+      return;
+    }
+    if (!code.trim()) {
+      setErrorMessage('Department Code is required.');
+      return;
+    }
 
-  const handleAssignHOD = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assignModalDept || !selectedHodId) return;
+    setIsSubmitting(true);
+    try {
+      const targetCampus = campuses.find(
+        (c) => c.id === selectedCampusId || c.name === selectedCampusId
+      );
 
-    const selectedUser = usersList.find((u) => u.id === selectedHodId);
-    if (!selectedUser) return;
+      const res = await createDepartment({
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        campusId: targetCampus ? targetCampus.id : selectedCampusId,
+        campusName: targetCampus ? targetCampus.name : '',
+        status
+      } as any);
 
-    const success = await assignDepartmentHOD(assignModalDept.id, selectedUser.id, selectedUser.name);
-    if (success) {
-      setToastMessage(`Assigned ${selectedUser.name} as HOD of ${assignModalDept.name}.`);
-      setAssignModalDept(null);
-      setSelectedHodId('');
-      setTimeout(() => setToastMessage(null), 4000);
+      if (!res.success) {
+        setErrorMessage(res.message || 'Failed to add department.');
+        return;
+      }
+
+      setSuccessMessage('Department added successfully.');
+      setName('');
+      setCode('');
+      setStatus('Active');
+
+      // Navigate back to All Department list after brief delay
+      if (onNavigate) {
+        setTimeout(() => {
+          onNavigate('All Department');
+        }, 1000);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Open Edit Modal
+  const openEditModal = (dept: Department) => {
+    setEditDept(dept);
+    setEditCampusId(dept.campusId || '');
+    setEditName(dept.name || '');
+    setEditCode(dept.code || '');
+    setEditStatus((dept.status as 'Active' | 'Inactive') || 'Active');
+    setEditError(null);
+  };
+
+  // Handle Edit Department submit
+  const handleUpdateDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editDept) return;
+    setEditError(null);
+
+    if (!editCampusId || !editCampusId.trim()) {
+      setEditError('Campus is required. Please select a valid campus.');
+      return;
+    }
+    if (!editName.trim()) {
+      setEditError('Department Name is required.');
+      return;
+    }
+    if (!editCode.trim()) {
+      setEditError('Department Code is required.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const targetCampus = campuses.find(
+        (c) => c.id === editCampusId || c.name === editCampusId
+      );
+
+      const res = await updateDepartment(editDept.id, {
+        name: editName.trim(),
+        code: editCode.trim().toUpperCase(),
+        campusId: targetCampus ? targetCampus.id : editCampusId,
+        campusName: targetCampus ? targetCampus.name : '',
+        status: editStatus
+      } as any);
+
+      if (!res.success) {
+        setEditError(res.message || 'Failed to update department.');
+        setIsUpdating(false);
+        return;
+      }
+
+      setSuccessMessage('Department updated successfully.');
+      setEditDept(null);
+      setIsUpdating(false);
+    } catch (err: any) {
+      setEditError(err.message || 'An error occurred while updating department.');
+      setIsUpdating(false);
+    }
+  };
+
+  // Toggle Department Status (Active / Inactive)
+  const handleToggleStatus = async (dept: Department) => {
+    const nextStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
+    setTogglingDeptId(dept.id);
+    try {
+      const res = await updateDepartment(dept.id, { status: nextStatus } as any);
+      if (res.success) {
+        setSuccessMessage(`Department "${dept.name}" is now ${nextStatus}.`);
+      } else {
+        setErrorMessage(res.message || 'Failed to change department status.');
+      }
+    } catch {
+      setErrorMessage('Unable to change status. Please try again.');
+    } finally {
+      setTogglingDeptId(null);
+    }
+  };
+
+  const isAddView = activeSubModule === 'Add Department';
 
   return (
-    <div className="space-y-6">
-      {toastMessage && (
-        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-900 font-bold flex items-center gap-2 animate-fade-in shadow-sm">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{toastMessage}</span>
+    <div className="min-h-[80vh] w-full p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* Global Alerts / Toasts */}
+      {successMessage && (
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm font-medium shadow-sm transition-all animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <span>{successMessage}</span>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="ml-auto text-emerald-600 hover:text-emerald-900"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold font-heading text-slate-900">
-            {isStatsView ? 'Department Statistics & Compliance Analytics' : 'Campus Department & HOD Management'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Administer academic departments and assign designated Department Heads (HODs) for teacher approval routing.
-          </p>
+      {errorMessage && (
+        <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm font-medium shadow-sm transition-all animate-in fade-in">
+          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+          <span>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="ml-auto text-rose-600 hover:text-rose-900"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <ActionButton
-          variant="primary"
-          label="Add Department"
-          onClick={() => setShowModal(true)}
-          size="md"
-        />
-      </div>
+      )}
 
-      {/* KPI Cards: Total, With HOD, Without HOD */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
-          <span className="text-3xs font-mono font-extrabold uppercase tracking-wider text-slate-400">Total Departments</span>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-black text-slate-900">{departments.length}</span>
-            <Building2 className="w-6 h-6 text-indigo-500" />
+      {/* ========================================================================= */}
+      {/* SUB-CATEGORY 1: ADD DEPARTMENT VIEW                                       */}
+      {/* ========================================================================= */}
+      {isAddView ? (
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="border-b border-slate-200 pb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Add Department
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Create a department under an existing campus.
+            </p>
           </div>
-          <p className="text-3xs text-slate-500">Active university academic departments</p>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-1">
-          <span className="text-3xs font-mono font-extrabold uppercase tracking-wider text-emerald-600">Departments with HOD</span>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-black text-emerald-700">{deptsWithHOD}</span>
-            <ShieldCheck className="w-6 h-6 text-emerald-500" />
-          </div>
-          <p className="text-3xs text-slate-500">HOD assigned & active for approval routing</p>
-        </div>
+          {/* Form */}
+          <form
+            onSubmit={handleAddDepartment}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6"
+          >
+            {/* Inline Form Error / Success Alerts */}
+            {errorMessage && (
+              <div className="flex items-center gap-3 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+            {successMessage && (
+              <div className="flex items-center gap-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>{successMessage}</span>
+              </div>
+            )}
 
-        <div className={`rounded-2xl border p-5 shadow-2xs space-y-1 ${
-          deptsWithoutHOD > 0 ? 'bg-amber-50/60 border-amber-300' : 'bg-white border-slate-200'
-        }`}>
-          <span className="text-3xs font-mono font-extrabold uppercase tracking-wider text-amber-700">Departments Without HOD</span>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-black text-amber-900">{deptsWithoutHOD}</span>
-            <AlertTriangle className="w-6 h-6 text-amber-600" />
-          </div>
-          <p className="text-3xs text-amber-800">
-            {deptsWithoutHOD > 0 ? 'Requires HOD assignment for teacher requests' : 'All departments have assigned HODs'}
-          </p>
-        </div>
-      </div>
-
-      {/* Department Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {departments.map((dept) => {
-          const hasHOD = !!(dept.hodId && dept.hodName);
-          const hodUser = usersList.find(
-            (u) => u.id === dept.hodId || (dept.hodName && u.name.toLowerCase() === dept.hodName.toLowerCase())
-          );
-          const hodEmail = hodUser?.email || (hasHOD ? `${dept.code.toLowerCase()}.hod@ue.edu.pk` : 'No Email');
-
-          return (
-            <div key={dept.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                      {dept.code}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">{dept.name}</h3>
-                      <p className="text-3xs text-slate-400">{dept.building || 'Campus Academic Block'}</p>
-                    </div>
-                  </div>
-                  <span className={`px-2.5 py-1 text-3xs font-bold rounded-full border ${
-                    hasHOD
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-300'
-                  }`}>
-                    {hasHOD ? '✓ HOD Assigned' : '⚠️ No HOD Assigned'}
-                  </span>
-                </div>
-
-                {/* HOD Details Box */}
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-3xs font-bold text-slate-500 uppercase tracking-wider">Current HOD:</span>
-                    <span className="font-extrabold text-slate-900">
-                      {hasHOD ? `Prof. ${dept.hodName}` : <span className="text-rose-600 font-bold">Unassigned</span>}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-2xs">
-                    <span className="text-slate-500 flex items-center gap-1 font-medium">
-                      <Mail className="w-3 h-3 text-slate-400" /> HOD Email:
-                    </span>
-                    <span className="font-mono text-slate-700 font-semibold">{hasHOD ? hodEmail : '—'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="p-2 bg-slate-50 rounded-lg">
-                    <span className="text-3xs text-slate-400 block">Faculty Members</span>
-                    <span className="font-bold text-slate-800">{dept.facultyCount} Members</span>
-                  </div>
-                  <div className="p-2 bg-slate-50 rounded-lg">
-                    <span className="text-3xs text-slate-400 block">Active Courses</span>
-                    <span className="font-bold text-slate-800">{dept.courseCount} Courses</span>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              {/* Campus Selector (Department ALWAYS belongs to a Campus) */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Campus <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={selectedCampusId}
+                  onChange={(e) => setSelectedCampusId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+                >
+                  <option value="">Select Campus</option>
+                  {campuses
+                    .filter((c) => c.status !== 'Inactive')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                </select>
+                {campuses.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1.5">
+                    No campuses found. Please create a campus in Campus Management first.
+                  </p>
+                )}
               </div>
 
-              {/* Assign / Change HOD Action Button */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleOpenAssignModal(dept)}
-                  className="px-3 py-1.5 bg-[#165534] hover:bg-[#1E7B4E] text-white font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+              {/* Department Name */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Department Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Computer Science"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
+                />
+              </div>
+
+              {/* Department Code */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Department Code <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. CS"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors uppercase"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as 'Active' | 'Inactive')}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors"
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-200" />
-                  <span>{hasHOD ? 'Change Department HOD' : 'Assign Department HOD'}</span>
-                </button>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          ASSIGN / CHANGE HOD MODAL
-         ══════════════════════════════════════════════════════════════════════ */}
-      {assignModalDept && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-5 text-xs">
-            <div className="flex items-start justify-between pb-3 border-b border-slate-200">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 font-heading flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-emerald-700" />
-                  Assign Head of Department (HOD)
-                </h3>
-                <p className="text-2xs text-slate-500 mt-0.5">
-                  {assignModalDept.name} ({assignModalDept.code})
-                </p>
-              </div>
+            {/* Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setAssignModalDept(null)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+                onClick={() => onNavigate && onNavigate('All Department')}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || campuses.length === 0}
+                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold shadow-sm hover:shadow transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                Add Department
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* SUB-CATEGORY 2: ALL DEPARTMENT VIEW                                       */
+        /* ========================================================================= */
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="border-b border-slate-200 pb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              All Department
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Manage departments within their respective campuses.
+            </p>
+          </div>
+
+          {/* Search Bar & Campus Filter */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
+              {/* Search input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search Departments by name or code..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors shadow-2xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Optional Campus Filter (Loads REAL Campuses from database) */}
+              <div className="relative min-w-[200px]">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={selectedCampusFilter}
+                  onChange={(e) => setSelectedCampusFilter(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-colors shadow-2xs cursor-pointer font-medium"
+                >
+                  <option value="ALL">All Campus</option>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                refreshDepartments();
+                refreshCampuses();
+              }}
+              title="Refresh departments from database"
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors self-end sm:self-auto flex items-center gap-1.5 text-xs font-semibold shadow-2xs"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center py-16 bg-white border border-slate-200/80 rounded-2xl shadow-2xs">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
+              <p className="text-sm text-slate-600 font-medium">Loading departments...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {!isLoading && loadError && (
+            <div className="flex flex-col items-center justify-center py-12 px-4 bg-white border border-rose-200 rounded-2xl text-center space-y-3 shadow-2xs">
+              <AlertCircle className="w-10 h-10 text-rose-500" />
+              <p className="text-slate-800 font-semibold">{loadError}</p>
+              <button
+                onClick={() => {
+                  refreshDepartments();
+                  refreshCampuses();
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Real Department Table */}
+          {!isLoading && !loadError && (
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden">
+              {filteredDepartments.length === 0 ? (
+                /* Empty State */
+                <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Building2 className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      No departments found.
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                      {searchQuery || selectedCampusFilter !== 'ALL'
+                        ? 'No departments match the selected search or campus filter.'
+                        : 'There are currently no departments configured.'}
+                    </p>
+                  </div>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('Add Department')}
+                      className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Department
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        <th className="py-3.5 px-4 sm:px-6">Department Name</th>
+                        <th className="py-3.5 px-4 sm:px-6">Department Code</th>
+                        <th className="py-3.5 px-4 sm:px-6">Campus</th>
+                        <th className="py-3.5 px-4 sm:px-6">Status</th>
+                        <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {filteredDepartments.map((dept) => {
+                        const isActive = dept.status === 'Active';
+                        const isToggling = togglingDeptId === dept.id;
+
+                        return (
+                          <tr
+                            key={dept.id}
+                            className="hover:bg-slate-50/70 transition-colors group"
+                          >
+                            {/* Department Name */}
+                            <td className="py-4 px-4 sm:px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
+                                  <Building2 className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                                    {dept.name}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Department Code */}
+                            <td className="py-4 px-4 sm:px-6">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+                                {dept.code}
+                              </span>
+                            </td>
+
+                            {/* Campus */}
+                            <td className="py-4 px-4 sm:px-6">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
+                                <Landmark className="w-3.5 h-3.5 text-slate-400" />
+                                {dept.campusName || 'Attock Campus'}
+                              </span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-4 px-4 sm:px-6">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  isActive
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isActive ? 'bg-emerald-500' : 'bg-slate-400'
+                                  }`}
+                                />
+                                {dept.status || 'Active'}
+                              </span>
+                            </td>
+
+                            {/* Actions: View, Edit, Activate/Deactivate */}
+                            <td className="py-4 px-4 sm:px-6 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* View */}
+                                <button
+                                  onClick={() => setViewDept(dept)}
+                                  title="View Department Details"
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+
+                                {/* Edit */}
+                                <button
+                                  onClick={() => openEditModal(dept)}
+                                  title="Edit Department"
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+
+                                {/* Activate / Deactivate Toggle */}
+                                <button
+                                  onClick={() => handleToggleStatus(dept)}
+                                  disabled={isToggling}
+                                  title={isActive ? 'Deactivate Department' : 'Activate Department'}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    isActive
+                                      ? 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50'
+                                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {isToggling ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                                  ) : isActive ? (
+                                    <ToggleRight className="w-5 h-5 text-emerald-600" />
+                                  ) : (
+                                    <ToggleLeft className="w-5 h-5 text-slate-400" />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: VIEW DEPARTMENT DETAILS                                            */}
+      {/* ========================================================================= */}
+      {viewDept && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-5 h-5 text-emerald-700" />
+                <h3 className="font-bold text-slate-900 text-base">Department Details</h3>
+              </div>
+              <button
+                onClick={() => setViewDept(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAssignHOD} className="space-y-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-slate-500 font-medium block text-2xs">Department Name:</span>
-                <p className="font-bold text-slate-900">{assignModalDept.name}</p>
-                <span className="text-slate-500 font-medium block text-2xs pt-1">Current Assigned HOD:</span>
-                <p className="font-bold text-emerald-800">{assignModalDept.hodName || 'None (Unassigned)'}</p>
+            <div className="p-6 space-y-4 text-sm">
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">
+                  Department Name
+                </span>
+                <span className="font-bold text-slate-900 text-right">
+                  {viewDept.name}
+                </span>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-700">
-                  Select New HOD from Faculty Roster <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  required
-                  value={selectedHodId}
-                  onChange={(e) => setSelectedHodId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 text-xs"
-                >
-                  <option value="">-- Choose Faculty Member --</option>
-                  {eligibleFaculty.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email}) • {u.role === 'HOD' ? 'HOD' : 'Faculty'}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-3xs text-slate-400">
-                  Only the assigned HOD will receive and review teacher registration requests for this department.
-                </p>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">
+                  Department Code
+                </span>
+                <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-xs">
+                  {viewDept.code}
+                </span>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setAssignModalDept(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedHodId}
-                  className="px-5 py-2 bg-[#165534] hover:bg-[#1E7B4E] disabled:opacity-50 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer"
-                >
-                  Confirm HOD Assignment
-                </button>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">
+                  Campus
+                </span>
+                <span className="text-slate-800 font-medium flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-slate-400" />
+                  {viewDept.campusName || 'Attock Campus'}
+                </span>
               </div>
-            </form>
+
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">
+                  Status
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    viewDept.status === 'Active'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}
+                >
+                  {viewDept.status || 'Active'}
+                </span>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setViewDept(null)}
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          CREATE DEPARTMENT MODAL
-         ══════════════════════════════════════════════════════════════════════ */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-2xs">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
-            <h3 className="text-sm font-bold text-slate-900">Add Academic Department</h3>
-            <form onSubmit={handleCreate} className="space-y-3">
+      {/* ========================================================================= */}
+      {/* MODAL: EDIT DEPARTMENT                                                    */}
+      {/* ========================================================================= */}
+      {editDept && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <Edit2 className="w-5 h-5 text-emerald-700" />
+                <h3 className="font-bold text-slate-900 text-base">Edit Department</h3>
+              </div>
+              <button
+                onClick={() => setEditDept(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateDepartment} className="p-6 space-y-4">
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Campus */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Department Code *</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                  Campus <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={editCampusId}
+                  onChange={(e) => setEditCampusId(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                >
+                  <option value="">Select Campus</option>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Department Name */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                  Department Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. CS, IT, PHY, MATH"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                 />
               </div>
 
+              {/* Department Code */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Department Name *</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                  Department Code <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Department of Computer Science"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+                  value={editCode}
+                  onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase"
                 />
               </div>
 
+              {/* Status */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Initial Head of Department (HOD) Name</label>
-                <input
-                  type="text"
-                  value={hodName}
-                  onChange={(e) => setHodName(e.target.value)}
-                  placeholder="Enter HOD name (or assign later)"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-                />
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as 'Active' | 'Inactive')}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Building Location</label>
-                <input
-                  type="text"
-                  value={building}
-                  onChange={(e) => setBuilding(e.target.value)}
-                  placeholder="e.g. Academic Block B, 2nd Floor"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-3 py-1.5 bg-slate-100 rounded-lg text-slate-600 font-bold"
+                  onClick={() => setEditDept(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700"
+                  disabled={isUpdating}
+                  className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  Save Department
+                  {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Save Changes
                 </button>
               </div>
             </form>

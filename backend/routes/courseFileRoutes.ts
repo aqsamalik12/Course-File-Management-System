@@ -3,6 +3,7 @@ import { upload } from '../middlewares/uploadMiddleware';
 import {
   getCourseFiles,
   uploadCourseFile,
+  updateCourseFile,
   uploadNewVersion,
   updateFileStatus,
   archiveCourseFile,
@@ -15,7 +16,10 @@ import {
 const router = Router();
 
 router.get('/', getCourseFiles);
+router.post('/', upload.single('file'), uploadCourseFile);
 router.post('/upload', upload.single('file'), uploadCourseFile);
+router.put('/:id', updateCourseFile);
+router.patch('/:id', updateCourseFile);
 router.post('/:id/version', upload.single('file'), uploadNewVersion);
 router.patch('/:id/status', updateFileStatus);
 router.patch('/:id/archive', archiveCourseFile);

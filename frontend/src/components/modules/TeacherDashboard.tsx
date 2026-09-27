@@ -30,15 +30,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
   const { currentUser } = useAuth();
 
   // Teacher Profile Info
-  const teacherName = currentUser?.name || 'Dr. Tariq Mahmood';
-  const departmentName = currentUser?.departmentName || 'Department of Computer Science';
+  const teacherName = currentUser?.name || 'Faculty Member';
+  const departmentName = currentUser?.departmentName || 'Department';
+  const campusName = currentUser?.campus || currentUser?.campusName || 'Main Campus';
+  const hodName = currentUser?.hodName || currentUser?.profileFormData?.hodName || 'Department HOD';
   const isVisiting = currentUser?.role === 'VISITING_TEACHER';
 
-  // Personal Data Scoping
+  // Personal Data Scoping (Real assigned courses only, zero dummy fallback)
   const myCourses = courses.filter(
-    (c) => c.assignedTeacherId === currentUser?.id || c.assignedTeacherName === teacherName
+    (c) => c.assignedTeacherId === currentUser?.id || (currentUser?.email && c.assignedTeacherId === currentUser?.email) || c.assignedTeacherName === teacherName
   );
-  const displayCourses = myCourses.length > 0 ? myCourses : courses.slice(0, 3);
+  const displayCourses = myCourses;
 
   const myFiles = courseFiles.filter(
     (f) => f.teacherId === currentUser?.id || f.teacherName === teacherName
@@ -89,11 +91,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 font-heading flex items-center gap-2">
             <span>👋</span>
-            Hello, {teacherName}!
+            Welcome, {teacherName}!
           </h1>
-          <p className="text-xs text-slate-500 flex items-center gap-1.5">
+          <p className="text-xs text-slate-600 flex items-center gap-2 flex-wrap">
             <Building2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>{departmentName} • Attock Campus</span>
+            <span className="font-semibold text-slate-800">{departmentName}</span>
+            <span>•</span>
+            <span className="font-semibold text-slate-800">{campusName}</span>
+            <span>•</span>
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              HOD: {hodName}
+            </span>
           </p>
           {currentUser?.profileFormData && (
             <div className="flex items-center gap-2 flex-wrap mt-1">
@@ -240,58 +248,66 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {displayCourses.map((c) => {
-            const courseFile = myFiles.find((f) => f.courseCode === c.code);
-            const statusPill = courseFile ? courseFile.status : 'Not Uploaded';
+        {displayCourses.length === 0 ? (
+          <div className="text-center py-8 bg-slate-50/70 rounded-xl border border-dashed border-slate-200">
+            <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-bold text-slate-600">No courses assigned yet</p>
+            <p className="text-3xs text-slate-400 mt-0.5">Approved courses assigned by your department HOD will appear here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {displayCourses.map((c) => {
+              const courseFile = myFiles.find((f) => f.courseCode === c.code);
+              const statusPill = courseFile ? courseFile.status : 'Not Uploaded';
 
-            return (
-              <div
-                key={c.id}
-                className="bg-slate-50/70 rounded-xl border border-slate-200 p-4 space-y-3 hover:border-emerald-300 transition-all flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-extrabold text-[#1E7B4E] bg-white px-2.5 py-0.5 rounded border border-emerald-200">
-                      {c.code}
+              return (
+                <div
+                  key={c.id}
+                  className="bg-slate-50/70 rounded-xl border border-slate-200 p-4 space-y-3 hover:border-emerald-300 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-extrabold text-[#1E7B4E] bg-white px-2.5 py-0.5 rounded border border-emerald-200">
+                        {c.code}
+                      </span>
+                      <span
+                        className={`text-3xs font-bold px-2 py-0.5 rounded-full border ${
+                          statusPill === 'Approved'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : statusPill === 'Submitted' || statusPill === 'In Review'
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : statusPill === 'Returned for Revision' || statusPill === 'Revision Requested'
+                            ? 'bg-red-100 text-red-800 border-red-300'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {statusPill}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-xs font-extrabold text-slate-900 line-clamp-1">{c.title}</h3>
+                      <p className="text-3xs text-slate-500 mt-0.5">{c.departmentName} • {c.credits} Credits</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-3xs">
+                    <span className="text-slate-500 font-mono">
+                      {courseFile ? `Version: ${courseFile.currentVersion}` : 'No file uploaded'}
                     </span>
-                    <span
-                      className={`text-3xs font-bold px-2 py-0.5 rounded-full border ${
-                        statusPill === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : statusPill === 'Submitted' || statusPill === 'In Review'
-                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                          : statusPill === 'Returned for Revision' || statusPill === 'Revision Requested'
-                          ? 'bg-red-100 text-red-800 border-red-300'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}
+                    <button
+                      onClick={() => onNavigate('Course File Submission')}
+                      className="font-bold text-[#1E7B4E] hover:underline cursor-pointer flex items-center gap-0.5"
                     >
-                      {statusPill}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-extrabold text-slate-900 line-clamp-1">{c.title}</h3>
-                    <p className="text-3xs text-slate-500 mt-0.5">{c.departmentName} • {c.credits} Credits</p>
+                      <span>Manage</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-3xs">
-                  <span className="text-slate-500 font-mono">
-                    {courseFile ? `Version: ${courseFile.currentVersion}` : 'No file uploaded'}
-                  </span>
-                  <button
-                    onClick={() => onNavigate('Course File Submission')}
-                    className="font-bold text-[#1E7B4E] hover:underline cursor-pointer flex items-center gap-0.5"
-                  >
-                    <span>Manage</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 5. Recent Notifications */}

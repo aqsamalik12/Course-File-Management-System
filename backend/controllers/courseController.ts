@@ -1,9 +1,38 @@
 import { Request, Response } from 'express';
-import { CourseService } from '../services/supabaseService';
+import { CourseService, HODAssignmentService, UserService } from '../services/supabaseService';
 
 export const getCourses = async (req: Request, res: Response) => {
   try {
-    const courses = await CourseService.getAll();
+    let courses = await CourseService.getAll();
+    const { departmentId, search } = req.query;
+
+    const headerUserId = req.headers['x-user-id'] as string;
+    const headerRole = req.headers['x-user-role'] as string;
+    const user = (req as any).user;
+    const callerId = user?.id || headerUserId;
+    const callerRole = user?.role || headerRole;
+
+    if (callerRole === 'HOD' && callerId) {
+      const assignment = await HODAssignmentService.getActiveByHodId(callerId);
+      const hodUser = await UserService.getById(callerId);
+      const deptId = assignment?.departmentId || hodUser?.departmentId;
+      if (deptId) {
+        courses = courses.filter((c: any) => c.departmentId === deptId);
+      }
+    } else if (departmentId) {
+      courses = courses.filter((c: any) => c.departmentId === departmentId);
+    }
+
+    if (search) {
+      const s = String(search).toLowerCase();
+      courses = courses.filter(
+        (c: any) =>
+          (c.code && c.code.toLowerCase().includes(s)) ||
+          (c.title && c.title.toLowerCase().includes(s)) ||
+          (c.departmentName && c.departmentName.toLowerCase().includes(s))
+      );
+    }
+
     return res.json({ success: true, count: courses.length, data: courses });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

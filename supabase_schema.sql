@@ -4,11 +4,26 @@
 -- Institution: University of Education, Attock Campus
 -- ==============================================================================
 
+-- 0. CAMPUSES TABLE (University of Education Campuses)
+CREATE TABLE IF NOT EXISTS public."campuses" (
+  "id" TEXT PRIMARY KEY,
+  "code" TEXT UNIQUE NOT NULL,
+  "name" TEXT NOT NULL,
+  "city" TEXT NOT NULL,
+  "address" TEXT,
+  "directorName" TEXT,
+  "status" TEXT DEFAULT 'Active' CHECK ("status" IN ('Active', 'Inactive')),
+  "created_at" TIMESTAMPTZ DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 1. DEPARTMENTS TABLE
 CREATE TABLE IF NOT EXISTS public."departments" (
   "id" TEXT PRIMARY KEY,
   "code" TEXT UNIQUE NOT NULL,
   "name" TEXT NOT NULL,
+  "campusId" TEXT DEFAULT 'camp-attock',
+  "campusName" TEXT DEFAULT 'Attock Campus',
   "hodId" TEXT DEFAULT '',
   "hodName" TEXT DEFAULT 'Unassigned',
   "facultyCount" INTEGER DEFAULT 0,
@@ -66,6 +81,12 @@ CREATE TABLE IF NOT EXISTS public."users" (
   "contractEndDate" TEXT,
   "contractStatus" TEXT,
   "supervisorName" TEXT,
+  "campusId" TEXT DEFAULT 'camp-attock',
+  "hodId" TEXT,
+  "enrollmentStatus" TEXT DEFAULT 'ProfileIncomplete',
+  "approvedAt" TEXT,
+  "approvedBy" TEXT,
+  "totalCredits" NUMERIC DEFAULT 0,
   "createdAt" TEXT DEFAULT CURRENT_DATE::TEXT,
   "lastLogin" TEXT DEFAULT 'Never',
   "refreshToken" TEXT,
@@ -309,6 +330,8 @@ CREATE TABLE IF NOT EXISTS public."teacher_requests" (
   "teacherName" TEXT NOT NULL,
   "teacherEmail" TEXT NOT NULL,
   "teacherType" TEXT NOT NULL CHECK ("teacherType" IN ('REGULAR_TEACHER', 'VISITING_TEACHER')),
+  "campusId" TEXT DEFAULT 'camp-attock',
+  "campusName" TEXT DEFAULT 'Attock Campus',
   "departmentId" TEXT NOT NULL,
   "departmentName" TEXT NOT NULL,
   "hodId" TEXT DEFAULT '',
@@ -322,6 +345,23 @@ CREATE TABLE IF NOT EXISTS public."teacher_requests" (
   "submittedAt" TIMESTAMPTZ DEFAULT NOW(),
   "reviewedAt" TIMESTAMPTZ,
   "reviewedBy" TEXT,
+  "created_at" TIMESTAMPTZ DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 18. HOD ASSIGNMENTS TABLE (Admin source-of-truth for HOD authorization & scope)
+CREATE TABLE IF NOT EXISTS public."hod_assignments" (
+  "id" TEXT PRIMARY KEY,
+  "hodId" TEXT NOT NULL,
+  "hodName" TEXT NOT NULL,
+  "hodEmail" TEXT NOT NULL,
+  "campusId" TEXT NOT NULL,
+  "campusName" TEXT NOT NULL,
+  "departmentId" TEXT NOT NULL,
+  "departmentName" TEXT NOT NULL,
+  "status" TEXT DEFAULT 'Active' CHECK ("status" IN ('Active', 'Inactive')),
+  "assignedDate" TEXT DEFAULT CURRENT_DATE::TEXT,
+  "assignedBy" TEXT DEFAULT 'Administrator',
   "created_at" TIMESTAMPTZ DEFAULT NOW(),
   "updated_at" TIMESTAMPTZ DEFAULT NOW()
 );
@@ -343,21 +383,44 @@ END $$;
 -- INITIAL UNIVERSITY DATA SEED
 -- ==============================================================================
 
--- 1. Insert Initial Departments
-INSERT INTO public."departments" ("id", "code", "name", "hodId", "hodName", "facultyCount", "courseCount", "submissionRate", "building")
+-- 0. Insert Initial University Campuses
+INSERT INTO public."campuses" ("id", "code", "name", "city", "address", "directorName", "status")
 VALUES
-  ('dept-cs', 'CS', 'Computer Science', 'usr-hod-cs', 'Dr. Sarah Ahmad', 18, 42, 92, 'Academic Block A (IT Wing)'),
-  ('dept-math', 'MATH', 'Mathematics', 'usr-hod-math', 'Dr. Usman Ghani', 12, 28, 88, 'Science Block B'),
-  ('dept-eng', 'ENG', 'English Literature', 'usr-hod-eng', 'Dr. Ayesha Malik', 10, 22, 95, 'Humanities Block C')
+  ('camp-attock', 'UE-ATK', 'Attock Campus', 'Attock', 'Attock City, Punjab', 'Prof. Dr. Muhammad Aslam', 'Active'),
+  ('camp-township', 'UE-TNS', 'Township Campus, Lahore', 'Lahore', 'College Road, Township, Lahore', 'Prof. Dr. Shahid Iqbal', 'Active'),
+  ('camp-lowermall', 'UE-LML', 'Lower Mall Campus, Lahore', 'Lahore', 'Lower Mall, Near Civil Secretariat, Lahore', 'Prof. Dr. Naeem Khan', 'Active'),
+  ('camp-bankroad', 'UE-BRD', 'Bank Road Campus, Lahore', 'Lahore', 'Bank Road, Lahore', 'Prof. Dr. Farhat Saleem', 'Active'),
+  ('camp-multan', 'UE-MLT', 'Multan Campus', 'Multan', 'Bosan Road, Multan', 'Prof. Dr. Rashid Mehmood', 'Active'),
+  ('camp-vehari', 'UE-VHR', 'Vehari Campus', 'Vehari', 'Vehari City, Punjab', 'Prof. Dr. Amjad Ali', 'Active'),
+  ('camp-dgkhan', 'UE-DGK', 'D.G. Khan Campus', 'D.G. Khan', 'Dera Ghazi Khan', 'Prof. Dr. Munir Ahmed', 'Active'),
+  ('camp-faisalabad', 'UE-FSD', 'Faisalabad Campus', 'Faisalabad', 'Jaranwala Road, Faisalabad', 'Prof. Dr. Tanveer Akhtar', 'Active'),
+  ('camp-jauharabad', 'UE-JBD', 'Jauharabad Campus', 'Jauharabad', 'Jauharabad, District Khushab', 'Prof. Dr. Sajjad Hussain', 'Active')
 ON CONFLICT ("id") DO NOTHING;
 
--- 2. Insert Initial Users (Admin, HOD, Regular Teacher, Visiting Teacher)
-INSERT INTO public."users" ("id", "name", "email", "passwordHash", "role", "departmentId", "departmentName", "designation", "phone", "status", "createdAt", "lastLogin", "employeeId")
+-- 1. Insert Initial Departments
+INSERT INTO public."departments" ("id", "code", "name", "campusId", "campusName", "hodId", "hodName", "facultyCount", "courseCount", "submissionRate", "building")
 VALUES
-  ('usr-admin', 'Prof. Dr. Muhammad Aslam', 'admin@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'ADMIN', 'dept-cs', 'Computer Science', 'System Administrator & Dean', '+92 300 1234567', 'Active', '2024-01-15', CURRENT_DATE::TEXT, 'EMP-ADMIN-001'),
-  ('usr-hod-cs', 'Dr. Sarah Ahmad', 'hod.cs@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'HOD', 'dept-cs', 'Computer Science', 'Head of Department (CS)', '+92 301 9876543', 'Active', '2024-02-01', CURRENT_DATE::TEXT, 'EMP-HOD-002'),
-  ('usr-teacher-1', 'Dr. Tariq Mahmood', 'tariq.mahmood@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'REGULAR_TEACHER', 'dept-cs', 'Computer Science', 'Assistant Professor', '+92 321 4567890', 'Active', '2024-03-10', CURRENT_DATE::TEXT, 'EMP-FAC-003'),
-  ('usr-visiting-1', 'Engr. Bilal Khan', 'bilal.visiting@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'VISITING_TEACHER', 'dept-cs', 'Computer Science', 'Visiting Lecturer', '+92 333 7890123', 'Active', '2025-08-25', CURRENT_DATE::TEXT, 'EMP-VIS-004')
+  ('dept-cs', 'CS', 'Computer Science', 'camp-attock', 'Attock Campus', 'usr-hod-asif', 'Dr. Muhammad Asif', 18, 42, 92, 'Academic Block A (IT Wing)'),
+  ('dept-math', 'MATH', 'Mathematics', 'camp-attock', 'Attock Campus', 'usr-hod-abuzarr', 'Dr. Abu Zarr', 12, 28, 88, 'Science Block B'),
+  ('dept-eng', 'ENG', 'English Literature', 'camp-attock', 'Attock Campus', 'usr-hod-eng', 'Dr. Ayesha Malik', 10, 22, 95, 'Humanities Block C')
+ON CONFLICT ("id") DO NOTHING;
+
+-- 2. Insert Initial Users (Admin, HODs for CS and Math, Regular Teachers, Visiting Teachers)
+INSERT INTO public."users" ("id", "name", "email", "passwordHash", "role", "departmentId", "departmentName", "campus", "designation", "phone", "status", "createdAt", "lastLogin", "employeeId")
+VALUES
+  ('usr-admin', 'Prof. Dr. Muhammad Aslam', 'admin@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'ADMIN', 'dept-cs', 'Computer Science', 'Attock Campus', 'System Administrator & Dean', '+92 300 1234567', 'Active', '2024-01-15', CURRENT_DATE::TEXT, 'EMP-ADMIN-001'),
+  ('usr-hod-asif', 'Dr. Muhammad Asif', 'asif.cs@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'HOD', 'dept-cs', 'Computer Science', 'Attock Campus', 'Head of Department (Computer Science)', '+92 302 1122334', 'Active', '2024-02-01', CURRENT_DATE::TEXT, 'EMP-HOD-002'),
+  ('usr-hod-abuzarr', 'Dr. Abu Zarr', 'abuzarr.math@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'HOD', 'dept-math', 'Mathematics', 'Attock Campus', 'Head of Department (Mathematics)', '+92 305 5544332', 'Active', '2024-02-01', CURRENT_DATE::TEXT, 'EMP-HOD-003'),
+  ('usr-teacher-1', 'Dr. Tariq Mahmood', 'tariq.mahmood@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'REGULAR_TEACHER', 'dept-cs', 'Computer Science', 'Attock Campus', 'Assistant Professor', '+92 321 4567890', 'Active', '2024-03-10', CURRENT_DATE::TEXT, 'EMP-FAC-004'),
+  ('usr-visiting-1', 'Engr. Bilal Khan', 'bilal.visiting@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'VISITING_TEACHER', 'dept-cs', 'Computer Science', 'Attock Campus', 'Visiting Lecturer', '+92 333 7890123', 'Active', '2025-08-25', CURRENT_DATE::TEXT, 'EMP-VIS-005'),
+  ('usr-teacher-math', 'Prof. Yasir Math', 'yasir.math@ue.edu.pk', '$2a$10$wE99V.k88V/G8l/VbAknq.b0rOmszE9xN5/u9U1NZZYQ12x5qWf7K', 'REGULAR_TEACHER', 'dept-math', 'Mathematics', 'Attock Campus', 'Lecturer in Mathematics', '+92 301 2233445', 'Active', '2024-04-12', CURRENT_DATE::TEXT, 'EMP-FAC-006')
+ON CONFLICT ("id") DO NOTHING;
+
+-- 2.5 Insert Initial HOD Scope Assignments (Admin mapping: HOD -> Campus + Department)
+INSERT INTO public."hod_assignments" ("id", "hodId", "hodName", "hodEmail", "campusId", "campusName", "departmentId", "departmentName", "status", "assignedDate")
+VALUES
+  ('asgn-hod-asif', 'usr-hod-asif', 'Dr. Muhammad Asif', 'asif.cs@ue.edu.pk', 'camp-attock', 'Attock Campus', 'dept-cs', 'Computer Science', 'Active', '2024-02-01'),
+  ('asgn-hod-abuzarr', 'usr-hod-abuzarr', 'Dr. Abu Zarr', 'abuzarr.math@ue.edu.pk', 'camp-attock', 'Attock Campus', 'dept-math', 'Mathematics', 'Active', '2024-02-01')
 ON CONFLICT ("id") DO NOTHING;
 
 -- 3. Insert Initial Courses

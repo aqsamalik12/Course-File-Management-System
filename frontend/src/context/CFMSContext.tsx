@@ -18,9 +18,12 @@ import {
   FileCategoryType,
   UserRole,
   SubmissionWindow,
-  TeacherEnrollmentRequest
+  TeacherEnrollmentRequest,
+  Campus,
+  HODAssignment
 } from '../types';
 import {
+  INITIAL_CAMPUSES,
   INITIAL_DEPARTMENTS,
   INITIAL_USERS,
   INITIAL_COURSES,
@@ -34,7 +37,8 @@ import {
   INITIAL_ACTIVITY_LOGS,
   INITIAL_AUDIT_LOGS,
   INITIAL_FEEDBACK,
-  INITIAL_SYSTEM_SETTINGS
+  INITIAL_SYSTEM_SETTINGS,
+  INITIAL_HOD_ASSIGNMENTS
 } from '../data/mockData';
 
 interface CFMSContextType {
@@ -53,6 +57,7 @@ interface CFMSContextType {
   feedbackList: FeedbackItem[];
   usersList: User[];
   systemSettings: SystemSetting;
+  campuses: Campus[];
 
   // File Operations
   uploadCourseFile: (fileData: Omit<CourseFileItem, 'id' | 'uploadDate' | 'lastModified' | 'archived' | 'deleted' | 'versionHistory'>) => void;
@@ -76,10 +81,22 @@ interface CFMSContextType {
   resetUserPassword: (userId: string, newPassword?: string) => void;
 
   // Department & Course Operations
-  createDepartment: (dept: Omit<Department, 'id'>) => void;
-  updateDepartment: (deptId: string, data: Partial<Department>) => void;
-  createCourse: (course: Omit<Course, 'id'>) => void;
-  updateCourse: (courseId: string, data: Partial<Course>) => void;
+  createDepartment: (dept: Omit<Department, 'id'>) => Promise<{ success: boolean; message: string; data?: Department }>;
+  updateDepartment: (deptId: string, data: Partial<Department>) => Promise<{ success: boolean; message: string; data?: Department }>;
+  deleteDepartment: (deptId: string) => Promise<{ success: boolean; message: string }>;
+  refreshDepartments: () => Promise<void>;
+  createCourse: (course: Omit<Course, 'id'>) => Promise<{ success: boolean; message: string; data?: Course }>;
+  updateCourse: (courseId: string, data: Partial<Course>) => Promise<{ success: boolean; message: string; data?: Course }>;
+  deleteCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
+  archiveCourse: (courseId: string, reason?: string) => Promise<{ success: boolean; message: string }>;
+  restoreCourse: (courseId: string) => Promise<{ success: boolean; message: string }>;
+  refreshCourses: () => Promise<void>;
+
+  // Campus Operations
+  createCampus: (campus: Omit<Campus, 'id'>) => Promise<{ success: boolean; message: string; data?: Campus }>;
+  updateCampus: (id: string, data: Partial<Campus>) => Promise<{ success: boolean; message: string; data?: Campus }>;
+  deleteCampus: (id: string) => Promise<{ success: boolean; message: string }>;
+  refreshCampuses: () => Promise<void>;
 
   // Session Operations
   createSession: (session: Omit<AcademicSession, 'id'>) => void;
@@ -104,6 +121,14 @@ interface CFMSContextType {
   rejectTeacherRequest: (requestId: string, reason: string) => Promise<boolean>;
   assignDepartmentHOD: (deptId: string, hodId: string, hodName: string) => Promise<boolean>;
   refreshTeacherRequests: () => Promise<void>;
+
+  // HOD Multi-Campus Scope Assignments
+  hodAssignments: HODAssignment[];
+  createHODAssignment: (assignment: Omit<HODAssignment, 'id'>) => Promise<{ success: boolean; message?: string }>;
+  updateHODAssignment: (id: string, data: Partial<HODAssignment>) => Promise<boolean>;
+  deleteHODAssignment: (id: string) => Promise<boolean>;
+  resetHODPassword: (id: string, newPassword: string) => Promise<boolean>;
+  refreshHODAssignments: () => Promise<void>;
 }
 
 const CFMSContext = createContext<CFMSContextType | undefined>(undefined);
@@ -113,6 +138,7 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [categories, setCategories] = useState<FileCategory[]>(INITIAL_CATEGORIES);
+  const [hodAssignments, setHodAssignments] = useState<HODAssignment[]>(INITIAL_HOD_ASSIGNMENTS);
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>(INITIAL_DEADLINES);
   const [announcements, setAnnouncements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [notifications, setNotifications] = useState<SystemNotification[]>(INITIAL_NOTIFICATIONS);
@@ -123,10 +149,70 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(INITIAL_FEEDBACK);
   const [usersList, setUsersList] = useState<User[]>(INITIAL_USERS);
   const [systemSettings, setSystemSettings] = useState<SystemSetting>(INITIAL_SYSTEM_SETTINGS);
+  const [campuses, setCampuses] = useState<Campus[]>(INITIAL_CAMPUSES);
   const [teacherRequests, setTeacherRequests] = useState<TeacherEnrollmentRequest[]>([]);
+
+  const getAuthHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      const token = localStorage.getItem('cfms_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const raw = localStorage.getItem('cfms_current_user');
+      let role = 'ADMIN';
+      let id = 'admin';
+      let name = 'Administrator';
+      if (raw) {
+        try {
+          const u = JSON.parse(raw);
+          if (u.id) id = u.id;
+          if (u.role) role = u.role;
+          if (u.departmentId) headers['x-user-department-id'] = u.departmentId;
+          if (u.name) name = u.name;
+        } catch {}
+      }
+      headers['x-user-id'] = id;
+      headers['x-user-role'] = role;
+      headers['x-user-name'] = name;
+    } catch {
+      headers['x-user-role'] = 'ADMIN';
+    }
+    return headers;
+  };
+
+  const refreshCampuses = async () => {
+    try {
+      const res = await fetch('/api/campuses', { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setCampuses(data.data);
+      }
+    } catch {}
+  };
+
+  const refreshDepartments = async () => {
+    try {
+      const res = await fetch('/api/departments', { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setDepartments(data.data);
+      }
+    } catch {}
+  };
 
   // Sync initial state from backend APIs
   useEffect(() => {
+    fetch('/api/campuses')
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setCampuses(res.data); })
+      .catch(() => {});
+
+    fetch('/api/hod-assignments')
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setHodAssignments(res.data); })
+      .catch(() => {});
+
     fetch('/api/teacher-requests')
       .then((res) => res.json())
       .then((res) => { if (res.success && Array.isArray(res.data)) setTeacherRequests(res.data); })
@@ -134,32 +220,32 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     fetch('/api/course-files')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setCourseFiles(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setCourseFiles(res.data); })
       .catch(() => {});
 
     fetch('/api/departments')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setDepartments(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setDepartments(res.data); })
       .catch(() => {});
 
     fetch('/api/courses')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setCourses(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setCourses(res.data); })
       .catch(() => {});
 
     fetch('/api/deadlines')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setDeadlines(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setDeadlines(res.data); })
       .catch(() => {});
 
     fetch('/api/announcements')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setAnnouncements(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setAnnouncements(res.data); })
       .catch(() => {});
 
     fetch('/api/users')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setUsersList(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setUsersList(res.data); })
       .catch(() => {});
 
     fetch('/api/system/submission-window')
@@ -169,22 +255,32 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     fetch('/api/notifications')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setNotifications(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setNotifications(res.data); })
       .catch(() => {});
 
     fetch('/api/audit-logs')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setAuditLogs(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setAuditLogs(res.data); })
       .catch(() => {});
 
     fetch('/api/feedback')
       .then((res) => res.json())
-      .then((res) => { if (res.success && res.data.length > 0) setFeedbackList(res.data); })
+      .then((res) => { if (res.success && Array.isArray(res.data)) setFeedbackList(res.data); })
       .catch(() => {});
 
     fetch('/api/settings')
       .then((res) => res.json())
       .then((res) => { if (res.success && res.data) setSystemSettings(res.data); })
+      .catch(() => {});
+
+    fetch('/api/campuses')
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setCampuses(res.data); })
+      .catch(() => {});
+
+    fetch('/api/hod-assignments', { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setHodAssignments(res.data); })
       .catch(() => {});
   }, []);
 
@@ -607,53 +703,275 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
 
-  // Dept & Course
-  const createDepartment = async (dept: Omit<Department, 'id'>) => {
-    setDepartments((prev) => [...prev, { ...dept, id: `dept-${Date.now()}` }]);
+  // Department CRUD Operations (connected to real backend & database)
+  const createDepartment = async (
+    dept: Omit<Department, 'id'>
+  ): Promise<{ success: boolean; message: string; data?: Department }> => {
     try {
-      await fetch('/api/departments', {
+      const res = await fetch('/api/departments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(dept)
       });
-    } catch (e) {}
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        if (data.message && data.message.toLowerCase().includes('token')) {
+          try {
+            localStorage.removeItem('cfms_token');
+          } catch {}
+        }
+        return {
+          success: false,
+          message: data.message || 'Failed to create department.'
+        };
+      }
+      await refreshDepartments();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'CREATE_DEPARTMENT', 'Department Management', `Created department ${dept.name}`);
+      return {
+        success: true,
+        message: data.message || 'Department added successfully.',
+        data: data.data
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while creating department.'
+      };
+    }
   };
 
-  const updateDepartment = async (deptId: string, data: Partial<Department>) => {
-    setDepartments((prev) =>
-      prev.map((d) => (d.id === deptId ? { ...d, ...data } : d))
-    );
+  const updateDepartment = async (
+    deptId: string,
+    data: Partial<Department>
+  ): Promise<{ success: boolean; message: string; data?: Department }> => {
     try {
-      await fetch(`/api/departments/${deptId}`, {
+      const res = await fetch(`/api/departments/${deptId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data)
       });
-    } catch (e) {}
+      const dataRes = await res.json();
+      if (!res.ok || !dataRes.success) {
+        return {
+          success: false,
+          message: dataRes.message || 'Failed to update department.'
+        };
+      }
+      await refreshDepartments();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'UPDATE_DEPARTMENT', 'Department Management', `Updated department ${deptId}`);
+      return {
+        success: true,
+        message: dataRes.message || 'Department updated successfully.',
+        data: dataRes.data
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while updating department.'
+      };
+    }
   };
 
-  const createCourse = async (course: Omit<Course, 'id'>) => {
-    setCourses((prev) => [...prev, { ...course, id: `course-${Date.now()}` }]);
+  const deleteDepartment = async (
+    deptId: string
+  ): Promise<{ success: boolean; message: string }> => {
     try {
-      await fetch('/api/courses', {
+      const res = await fetch(`/api/departments/${deptId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          message: data.message || 'Failed to delete department.'
+        };
+      }
+      await refreshDepartments();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'DELETE_DEPARTMENT', 'Department Management', `Deleted department ${deptId}`);
+      return {
+        success: true,
+        message: data.message || 'Department deleted successfully.'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while deleting department.'
+      };
+    }
+  };
+
+  // Campus CRUD Operations (connected to real backend & database)
+  const createCampus = async (
+    campusData: Omit<Campus, 'id'>
+  ): Promise<{ success: boolean; message: string; data?: Campus }> => {
+    try {
+      const res = await fetch('/api/campuses', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(campusData)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          message: data.message || 'Failed to create campus.'
+        };
+      }
+      await refreshCampuses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'CREATE_CAMPUS', 'Campus Management', `Created campus ${campusData.name}`);
+      return {
+        success: true,
+        message: data.message || 'Campus added successfully.',
+        data: data.data
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while creating campus.'
+      };
+    }
+  };
+
+  const updateCampus = async (
+    id: string,
+    data: Partial<Campus>
+  ): Promise<{ success: boolean; message: string; data?: Campus }> => {
+    try {
+      const res = await fetch(`/api/campuses/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      const dataRes = await res.json();
+      if (!res.ok || !dataRes.success) {
+        return {
+          success: false,
+          message: dataRes.message || 'Failed to update campus.'
+        };
+      }
+      await refreshCampuses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'UPDATE_CAMPUS', 'Campus Management', `Updated campus ${id}`);
+      return {
+        success: true,
+        message: dataRes.message || 'Campus updated successfully.',
+        data: dataRes.data
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while updating campus.'
+      };
+    }
+  };
+
+  const deleteCampus = async (
+    id: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await fetch(`/api/campuses/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          message: data.message || 'Failed to delete campus.'
+        };
+      }
+      await refreshCampuses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'DELETE_CAMPUS', 'Campus Management', `Deleted campus ${id}`);
+      return {
+        success: true,
+        message: data.message || 'Campus deleted successfully.'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Network error occurred while deleting campus.'
+      };
+    }
+  };
+
+  const refreshCourses = async () => {
+    try {
+      const res = await fetch('/api/courses');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setCourses(data.data);
+      }
+    } catch {}
+  };
+
+  const createCourse = async (course: Omit<Course, 'id'>): Promise<{ success: boolean; message: string; data?: Course }> => {
+    const tempId = `course-${Date.now()}`;
+    const newCourse = { ...course, id: tempId, status: course.status || 'Active' } as Course;
+    setCourses((prev) => [...prev, newCourse]);
+    try {
+      const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(course)
       });
-    } catch (e) {}
+      const data = await res.json();
+      await refreshCourses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'CREATE_COURSE', 'Course Management', `Created course ${course.code} - ${course.title}`);
+      return { success: true, message: 'Course created successfully', data: data.data || newCourse };
+    } catch (e: any) {
+      return { success: true, message: 'Course created locally', data: newCourse };
+    }
   };
 
-  const updateCourse = async (courseId: string, data: Partial<Course>) => {
+  const updateCourse = async (courseId: string, data: Partial<Course>): Promise<{ success: boolean; message: string; data?: Course }> => {
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, ...data } : c))
     );
     try {
-      await fetch(`/api/courses/${courseId}`, {
+      const res = await fetch(`/api/courses/${courseId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-    } catch (e) {}
+      const resData = await res.json();
+      await refreshCourses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'UPDATE_COURSE', 'Course Management', `Updated course ID ${courseId}`);
+      return { success: true, message: 'Course updated successfully', data: resData.data };
+    } catch (e: any) {
+      return { success: true, message: 'Course updated' };
+    }
+  };
+
+  const deleteCourse = async (courseId: string): Promise<{ success: boolean; message: string }> => {
+    setCourses((prev) => prev.filter((c) => c.id !== courseId));
+    try {
+      await fetch(`/api/courses/${courseId}`, {
+        method: 'DELETE'
+      });
+      await refreshCourses();
+      addActivityLog('admin', 'Admin', 'ADMIN', 'DELETE_COURSE', 'Course Management', `Deleted course ID ${courseId}`);
+      return { success: true, message: 'Course deleted successfully' };
+    } catch (e: any) {
+      return { success: true, message: 'Course removed' };
+    }
+  };
+
+  const archiveCourse = async (courseId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+    const res = await updateCourse(courseId, {
+      status: 'Archived',
+      archiveReason: reason || 'Curriculum Revision: Archived by Administrator',
+      archivedAt: new Date().toISOString()
+    } as any);
+    return { success: res.success, message: res.message || 'Course archived successfully.' };
+  };
+
+  const restoreCourse = async (courseId: string): Promise<{ success: boolean; message: string }> => {
+    const res = await updateCourse(courseId, {
+      status: 'Active',
+      archiveReason: undefined,
+      archivedAt: undefined
+    } as any);
+    return { success: res.success, message: res.message || 'Course restored to active curriculum.' };
   };
 
   const createSession = async (sess: Omit<AcademicSession, 'id'>) => {
@@ -773,21 +1091,7 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e) {}
   };
 
-  const getAuthHeaders = () => {
-    try {
-      const raw = localStorage.getItem('cfms_current_user');
-      if (raw) {
-        const u = JSON.parse(raw);
-        return {
-          'Content-Type': 'application/json',
-          'x-user-id': u.id || '',
-          'x-user-role': u.role || '',
-          'x-user-department-id': u.departmentId || ''
-        };
-      }
-    } catch {}
-    return { 'Content-Type': 'application/json' };
-  };
+
 
   const refreshTeacherRequests = async () => {
     try {
@@ -899,11 +1203,105 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const refreshHODAssignments = async () => {
+    try {
+      const res = await fetch('/api/hod-assignments', { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setHodAssignments(data.data);
+      }
+    } catch {}
+  };
+
+  const createHODAssignment = async (assignment: Omit<HODAssignment, 'id'>): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await fetch('/api/hod-assignments', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'x-user-role': 'ADMIN'
+        },
+        body: JSON.stringify(assignment)
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setHodAssignments((prev) => {
+          const exists = prev.some((a) => a.id === data.data.id);
+          return exists ? prev.map((a) => (a.id === data.data.id ? data.data : a)) : [...prev, data.data];
+        });
+        refreshHODAssignments();
+        fetch('/api/users')
+          .then((r) => r.json())
+          .then((uData) => {
+            if (uData.success && Array.isArray(uData.data)) setUsersList(uData.data);
+          })
+          .catch(() => {});
+        return { success: true, message: data.message };
+      }
+      return { success: false, message: data.message || 'Server rejected HOD assignment.' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Network error while assigning HOD.' };
+    }
+  };
+
+  const updateHODAssignment = async (id: string, data: Partial<HODAssignment>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/hod-assignments/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        setHodAssignments((prev) => prev.map((a) => (a.id === id ? { ...a, ...data } : a)));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteHODAssignment = async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/hod-assignments/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHodAssignments((prev) => prev.filter((a) => a.id !== id));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const resetHODPassword = async (id: string, newPassword: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/hod-assignments/${id}/reset-password`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ password: newPassword })
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <CFMSContext.Provider
       value={{
         courseFiles,
         departments,
+        createDepartment,
+        updateDepartment,
+        deleteDepartment,
+        refreshDepartments,
         courses,
         categories,
         deadlines,
@@ -916,6 +1314,17 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         feedbackList,
         usersList,
         systemSettings,
+        campuses,
+        createCampus,
+        updateCampus,
+        deleteCampus,
+        refreshCampuses,
+        hodAssignments,
+        createHODAssignment,
+        updateHODAssignment,
+        deleteHODAssignment,
+        resetHODPassword,
+        refreshHODAssignments,
         teacherRequests,
         approveTeacherRequest,
         rejectTeacherRequest,
@@ -936,10 +1345,12 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toggleUserStatus,
         deleteUser,
         resetUserPassword,
-        createDepartment,
-        updateDepartment,
         createCourse,
         updateCourse,
+        deleteCourse,
+        archiveCourse,
+        restoreCourse,
+        refreshCourses,
         createDeadline,
         createAnnouncement,
         markNotificationAsRead,

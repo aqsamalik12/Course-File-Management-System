@@ -33,25 +33,37 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     tagline: 'System control, user permissions & audit logs'
   },
   {
-    id: 'demo-hod',
+    id: 'demo-hod-cs',
     role: 'HOD',
-    roleTitle: 'Head of Department',
-    name: 'Dr. Sarah Ahmad',
-    email: 'hod.cs@ue.edu.pk',
+    roleTitle: 'Head of Department (CS)',
+    name: 'Dr. Muhammad Asif',
+    email: 'asif.cs@ue.edu.pk',
     password: 'hod123',
-    badge: 'HOD Portal',
+    badge: 'HOD - Computer Science',
     badgeStyle: 'bg-purple-500/25 text-purple-200 border-purple-400/40',
     icon: Building2,
-    tagline: 'Course file reviews, approvals & department metrics'
+    tagline: 'Attock Campus • CS Dept approvals & scope'
+  },
+  {
+    id: 'demo-hod-math',
+    role: 'HOD',
+    roleTitle: 'Head of Department (Math)',
+    name: 'Dr. Abu Zarr',
+    email: 'abuzarr.math@ue.edu.pk',
+    password: 'hod123',
+    badge: 'HOD - Mathematics',
+    badgeStyle: 'bg-blue-500/25 text-blue-200 border-blue-400/40',
+    icon: Building2,
+    tagline: 'Attock Campus • Math Dept approvals & scope'
   },
   {
     id: 'demo-regular',
     role: 'REGULAR_TEACHER',
-    roleTitle: 'Regular Teacher',
+    roleTitle: 'Regular Teacher (CS)',
     name: 'Dr. Tariq Mahmood',
     email: 'tariq.mahmood@ue.edu.pk',
     password: 'teacher123',
-    badge: 'Regular Teacher',
+    badge: 'Regular Teacher (CS)',
     badgeStyle: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40',
     icon: BookOpen,
     tagline: 'Course syllabus, lecture notes & exam packages'
@@ -59,14 +71,26 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     id: 'demo-visiting',
     role: 'VISITING_TEACHER',
-    roleTitle: 'Visiting Teacher',
+    roleTitle: 'Visiting Teacher (CS)',
     name: 'Engr. Bilal Khan',
     email: 'bilal.visiting@ue.edu.pk',
     password: 'visiting123',
-    badge: 'Visiting Faculty',
+    badge: 'Visiting Faculty (CS)',
     badgeStyle: 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40',
     icon: Briefcase,
     tagline: 'Contract tracking, course uploads & submissions'
+  },
+  {
+    id: 'demo-math-faculty',
+    role: 'REGULAR_TEACHER',
+    roleTitle: 'Regular Teacher (Math)',
+    name: 'Dr. Noman Ali',
+    email: 'noman.math@ue.edu.pk',
+    password: 'teacher123',
+    badge: 'Regular Teacher (Math)',
+    badgeStyle: 'bg-teal-500/25 text-teal-200 border-teal-400/40',
+    icon: BookOpen,
+    tagline: 'Attock Campus • Mathematics Faculty'
   }
 ];
 
