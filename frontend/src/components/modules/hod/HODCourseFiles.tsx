@@ -388,7 +388,11 @@ export const HODCourseFiles: React.FC = () => {
             { name: '1st Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
             { name: '2nd Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
             { name: '3rd Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '4th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 }
+            { name: '4th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
+            { name: '5th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
+            { name: '6th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
+            { name: '7th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
+            { name: '8th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 }
           ]).map((sem) => {
             const isSelected = selectedSemester === sem.name;
             return (

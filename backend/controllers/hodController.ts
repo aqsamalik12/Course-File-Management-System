@@ -635,12 +635,16 @@ const STANDARD_SEMESTERS = [
   '1st Semester',
   '2nd Semester',
   '3rd Semester',
-  '4th Semester'
+  '4th Semester',
+  '5th Semester',
+  '6th Semester',
+  '7th Semester',
+  '8th Semester'
 ];
 
 /**
  * GET /api/hod/batches
- * Returns real Batch -> Session -> 4-Semester hierarchy for HOD's scope
+ * Returns real Batch -> Session -> 8-Semester hierarchy for HOD's scope
  * Semesters are automatically provided without manual folder creation.
  */
 export const getHODBatchesHierarchy = async (req: HODRequest, res: Response) => {
@@ -649,10 +653,10 @@ export const getHODBatchesHierarchy = async (req: HODRequest, res: Response) => 
     const allFiles = await CourseFileService.getAll();
     const scopedFiles = filterFilesByHODScope(allFiles, scope);
 
-    // Extract unique batches from existing files or standard academic batches
+    // Extract unique batches from existing files or standard academic batches (2026 to future years)
     const batchSet = new Set<string>();
     scopedFiles.forEach((f: any) => { if (f.batch) batchSet.add(f.batch.trim()); });
-    ['2024', '2025'].forEach(b => batchSet.add(b));
+    ['2035', '2034', '2033', '2032', '2031', '2030', '2029', '2028', '2027', '2026', '2025', '2024'].forEach(b => batchSet.add(b));
     const batches = Array.from(batchSet).sort((a, b) => b.localeCompare(a));
 
     const hierarchy = batches.map(batchName => {
@@ -660,9 +664,13 @@ export const getHODBatchesHierarchy = async (req: HODRequest, res: Response) => 
       scopedFiles.filter((f: any) => f.batch === batchName).forEach((f: any) => {
         if (f.session) sessionSet.add(f.session.trim());
       });
-      if (batchName === '2024') sessionSet.add('2024–2025');
-      if (batchName === '2025') sessionSet.add('2025–2026');
-      if (sessionSet.size === 0) sessionSet.add(`${batchName}–${parseInt(batchName) + 1}`);
+      const bYear = parseInt(batchName);
+      if (!isNaN(bYear)) {
+        sessionSet.add(`${bYear}–${bYear + 4}`);
+      } else {
+        sessionSet.add(`${batchName}–${parseInt(batchName) || 2026 + 4}`);
+      }
+
 
       const sessions = Array.from(sessionSet).sort().map(sessionName => {
         const semesters = STANDARD_SEMESTERS.map(semName => {

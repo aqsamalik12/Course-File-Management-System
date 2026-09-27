@@ -47,6 +47,44 @@ export interface SectionUploadState {
   verified: 'Yes' | 'None';
 }
 
+// Bachelor Degree Batches starting from 2026 onwards (extensible to future cohorts)
+export const BATCH_OPTIONS = [
+  '2026', '2027', '2028', '2029', '2030',
+  '2031', '2032', '2033', '2034', '2035',
+  '2036', '2037', '2038', '2039', '2040',
+  '2025', '2024'
+];
+
+// Standard 4-Year Degree Sessions starting from 2025 (4-year curriculum duration)
+export const SESSION_OPTIONS = [
+  '2025–2029',
+  '2026–2030',
+  '2027–2031',
+  '2028–2032',
+  '2029–2033',
+  '2030–2034',
+  '2031–2035',
+  '2032–2036',
+  '2033–2037',
+  '2034–2038',
+  '2035–2039',
+  '2036–2040',
+  '2024–2028',
+  '2023–2027'
+];
+
+// All 8 Semesters for BS 4-Year Degree Programs (1st to 8th Semester)
+export const SEMESTER_OPTIONS = [
+  '1st Semester',
+  '2nd Semester',
+  '3rd Semester',
+  '4th Semester',
+  '5th Semester',
+  '6th Semester',
+  '7th Semester',
+  '8th Semester'
+];
+
 interface CourseFileSubmissionModuleProps {
   onNavigate?: (moduleName: string) => void;
 }
@@ -67,9 +105,9 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   const [selectedCourseId, setSelectedCourseId] = useState<string>(displayCourses[0]?.id || '');
   const selectedCourse = displayCourses.find((c) => c.id === selectedCourseId) || displayCourses[0];
 
-  // Academic Term & Session State
-  const [submissionBatch, setSubmissionBatch] = useState('2024');
-  const [submissionSession, setSubmissionSession] = useState('2024–2025');
+  // Academic Term & Session State (Defaulting to Batch 2026, 4-Year Session 2026–2030, and 1st Semester)
+  const [submissionBatch, setSubmissionBatch] = useState('2026');
+  const [submissionSession, setSubmissionSession] = useState('2026–2030');
   const [submissionSemester, setSubmissionSemester] = useState('1st Semester');
   const [uploadNotes, setUploadNotes] = useState('');
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -399,17 +437,17 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="bg-emerald-500 text-slate-950 font-black text-2xs uppercase px-2 py-0.5 rounded font-mono tracking-wider">
-                RULE: MAKE A PDF
+                MANDATORY DIRECTIVE
               </span>
               <span className="text-emerald-400 font-bold text-xs font-sans">
-                تمام ڈاکومنٹس PDF فارمیٹ میں ہی اپلوڈ کرنے ہیں
+                PDF FORMAT ONLY (.pdf)
               </span>
             </div>
             <h2 className="text-sm font-extrabold tracking-tight text-white font-heading">
-              Make a PDF — Saare Documents as a PDF mein Upload Karne Hain
+              Make a PDF — All Course File Documents Must Be Uploaded in PDF Format
             </h2>
             <p className="text-2xs text-slate-300 leading-relaxed font-normal max-w-2xl">
-              Har session aur semester ke mutabiq tamam 15 checklist documents <strong>PDF format (.pdf)</strong> mein upload hon gay. Upload mukammal hone par aap apni complete Course File ko professional university template mein headings ke sath review kar saktay hain.
+              For each academic session, batch, and semester (1st through 8th), all 15 checklist documents must be compiled and uploaded as PDF documents. Once all mandatory sections are verified with "Yes", you can review the complete course dossier with official headings and submit to your Head of Department.
             </p>
           </div>
         </div>
@@ -510,48 +548,59 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           <div>
             <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Batch *
+              Batch (2026 onwards) *
             </label>
             <select
               value={submissionBatch}
               onChange={(e) => {
-                setSubmissionBatch(e.target.value);
-                setSubmissionSession(e.target.value === '2024' ? '2024–2025' : `${e.target.value}–${parseInt(e.target.value) + 1}`);
+                const newBatch = e.target.value;
+                setSubmissionBatch(newBatch);
+                const startYear = parseInt(newBatch);
+                if (!isNaN(startYear)) {
+                  setSubmissionSession(`${startYear}–${startYear + 4}`);
+                }
               }}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
             >
-              <option value="2024">Batch 2024</option>
-              <option value="2025">Batch 2025</option>
+              {BATCH_OPTIONS.map((batchYear) => (
+                <option key={batchYear} value={batchYear}>
+                  Batch {batchYear}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
             <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Academic Session *
+              Academic Session (4 Years) *
             </label>
             <select
               value={submissionSession}
               onChange={(e) => setSubmissionSession(e.target.value)}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
             >
-              <option value="2024–2025">Session 2024–2025</option>
-              <option value="2025–2026">Session 2025–2026</option>
+              {SESSION_OPTIONS.map((sess) => (
+                <option key={sess} value={sess}>
+                  Session {sess} (4-Year Duration)
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
             <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Semester *
+              Semester (1st to 8th) *
             </label>
             <select
               value={submissionSemester}
               onChange={(e) => setSubmissionSemester(e.target.value)}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
             >
-              <option value="1st Semester">1st Semester</option>
-              <option value="2nd Semester">2nd Semester</option>
-              <option value="3rd Semester">3rd Semester</option>
-              <option value="4th Semester">4th Semester</option>
+              {SEMESTER_OPTIONS.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
             </select>
           </div>
         </div>
