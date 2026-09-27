@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCFMS } from '../../context/CFMSContext';
 import { useAuth } from '../../context/AuthContext';
-import { OFFICIAL_COURSE_FILE_TEMPLATES, REQUIRED_DOCUMENT_CHECKLIST } from '../../data/mockData';
+import { OFFICIAL_COURSE_FILE_TEMPLATES, OFFICIAL_COURSE_FILE_CHECKLIST, OfficialChecklistItem } from '../../data/mockData';
 import {
   FileText,
   Download,
@@ -18,7 +18,8 @@ import {
   Edit2,
   Search,
   Layers,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 
 interface InstructionItem {
@@ -28,12 +29,7 @@ interface InstructionItem {
   description: string;
 }
 
-interface ChecklistItem {
-  id: string;
-  name: string;
-  description: string;
-  mandatory?: boolean;
-}
+type ChecklistItem = OfficialChecklistItem;
 
 interface TemplatesInstructionsModuleProps {
   activeModule?: string;
@@ -54,36 +50,50 @@ export const TemplatesInstructionsModule: React.FC<TemplatesInstructionsModulePr
   const [downloadAlert, setDownloadAlert] = useState<string | null>(null);
 
   // Modals State
+  const [showVerificationFormModal, setShowVerificationFormModal] = useState<boolean>(false);
   const [selectedInstructionView, setSelectedInstructionView] = useState<boolean>(false);
   const [showAdminUploadModal, setShowAdminUploadModal] = useState<boolean>(false);
 
   // Dynamic Templates state (so Admin can upload & delete templates)
   const [templatesList, setTemplatesList] = useState(OFFICIAL_COURSE_FILE_TEMPLATES);
 
-  // Dynamic Guidelines / Instructions state (so Admin can create, edit, & delete guidelines)
+  // Dynamic Guidelines / Instructions state (reflecting official 15-item university workflow)
   const [instructionsList, setInstructionsList] = useState<InstructionItem[]>([
     {
       id: 'inst-1',
       directiveNo: 'Guideline 01',
-      title: 'Single Compiled File Rule',
-      description: 'Each assigned course requires exactly ONE complete course file (.ZIP or .PDF) containing all 10 mandatory sections.'
+      title: 'Official 15-Item Verification Structure',
+      description: 'Course files must be compiled according to the university-approved 15-item Course File Verification Form. Each section must be provided in soft copy (.PDF format).'
     },
     {
       id: 'inst-2',
       directiveNo: 'Guideline 02',
-      title: 'Strict Deadline Compliance',
-      description: `Submissions past the cutoff date (${submissionWindow.endDate}) will automatically be flagged as "Late Submission" for QEC audit.`
+      title: 'Mandatory Submission Verification Gate',
+      description: 'A course file can only be submitted to the HOD when all mandatory checklist items are uploaded and verified as "Yes". Incomplete files will remain in Draft status.'
     },
     {
       id: 'inst-3',
       directiveNo: 'Guideline 03',
-      title: 'HOD Signoff & Archiving',
-      description: 'Once approved by the Head of Department, course files are automatically archived in the institutional repository.'
+      title: '3-Band Student Assessment Samples',
+      description: 'For Assignments, Quizzes, Midterms, and Finals, faculty must attach photocopies/scans of student work covering Best, Average, and Worst performance tiers along with official solution keys.'
+    },
+    {
+      id: 'inst-4',
+      directiveNo: 'Guideline 04',
+      title: 'Theory vs. Laboratory Courses',
+      description: 'Sections 10 (Semester Project), 11 (Lab Manuals), and 12 (Lab Practical) are marked "(If applicable)". For pure theory courses, these may be marked as "None (N/A)".'
+    },
+    {
+      id: 'inst-5',
+      directiveNo: 'Guideline 05',
+      title: 'Cutoff Compliance & HOD Signoff',
+      description: `All files must be submitted prior to the session deadline (${submissionWindow.endDate}). Once verified and signed off by the HOD, files are archived into the institutional repository.`
     }
   ]);
 
-  // Dynamic Checklist / Mandatory Sections state (so Admin can Add, Edit & Delete sections)
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(REQUIRED_DOCUMENT_CHECKLIST);
+  // Dynamic Checklist / Mandatory Sections state (loaded from official 15-item checklist)
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(OFFICIAL_COURSE_FILE_CHECKLIST);
+
 
   // Section Add / Edit Modal State
   const [showSectionModal, setShowSectionModal] = useState(false);
@@ -312,6 +322,13 @@ export const TemplatesInstructionsModule: React.FC<TemplatesInstructionsModulePr
                 <span>Upload Admin Template</span>
               </button>
             )}
+            <button
+              onClick={() => setShowVerificationFormModal(true)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 active:scale-[0.98] rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all border border-slate-300"
+            >
+              <Printer className="w-4 h-4 text-[#1E7B4E]" />
+              <span>Official Verification Form</span>
+            </button>
             <button
               onClick={() => handleDownload('All Admin Templates Package', 'UE_Course_File_Templates_Bundle.zip')}
               className="px-4 py-2.5 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] active:scale-[0.98] rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all border border-emerald-700/30"
@@ -1002,6 +1019,175 @@ export const TemplatesInstructionsModule: React.FC<TemplatesInstructionsModulePr
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. OFFICIAL 15-ITEM COURSE FILE VERIFICATION FORM MODAL (PRINTABLE) */}
+      {/* ========================================================================= */}
+      {showVerificationFormModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl overflow-hidden flex flex-col my-6 max-h-[92vh]">
+            {/* Modal Actions Header */}
+            <div className="p-4 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-50 no-print">
+              <div className="flex items-center gap-2">
+                <span className="text-3xs font-mono font-extrabold uppercase text-[#1E7B4E] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Official Document Format
+                </span>
+                <span className="text-xs font-bold text-slate-800">Course File Verification Form</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Form / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationFormModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Form Content - Exact Replica of University Verification Sheet */}
+            <div id="printable-verification-form" className="p-8 overflow-y-auto space-y-6 font-serif text-slate-900 bg-white">
+              {/* Document Header */}
+              <div className="text-center border-b-2 border-slate-800 pb-4 space-y-1">
+                <h2 className="text-xl font-black uppercase tracking-wider text-slate-900 font-sans">
+                  UNIVERSITY OF EDUCATION, LAHORE
+                </h2>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700 font-sans">
+                  Quality Enhancement Cell (QEC) • Course File Verification Form
+                </h3>
+                <p className="text-xs text-slate-500 font-sans italic">
+                  Academic Session: {submissionWindow.sessionName} • Mandatory Verification Checklist
+                </p>
+              </div>
+
+              {/* Sample Meta Table */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-sans bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div>
+                  <span className="text-slate-500 text-3xs uppercase block font-bold">Campus:</span>
+                  <span className="font-extrabold text-slate-800">{currentUser?.campus || 'Attock Campus'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-3xs uppercase block font-bold">Department:</span>
+                  <span className="font-extrabold text-slate-800">{currentUser?.departmentName || 'Computer Science'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-3xs uppercase block font-bold">Faculty Name:</span>
+                  <span className="font-extrabold text-slate-800">{currentUser?.name || 'Faculty Member'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-3xs uppercase block font-bold">Verification Standard:</span>
+                  <span className="font-extrabold text-emerald-800">QEC Standard 15-Item Check</span>
+                </div>
+              </div>
+
+              {/* 15-Row Verification Table Matching Physical Form Exactly */}
+              <div className="border border-slate-900 overflow-hidden font-sans">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-slate-900 bg-slate-100">
+                      <th className="py-2.5 px-3 font-black text-slate-900 w-16 border-r border-slate-900 text-center">
+                        Sr No.
+                      </th>
+                      <th className="py-2.5 px-4 font-black text-slate-900 border-r border-slate-900">
+                        Content
+                      </th>
+                      <th className="py-2.5 px-4 font-black text-slate-900 w-36 text-center">
+                        Verified(Yes/No)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-300">
+                    {OFFICIAL_COURSE_FILE_CHECKLIST.map((item) => (
+                      <tr key={item.srNo} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 font-bold text-slate-800 border-r border-slate-900 text-center">
+                          {item.srNo}.
+                        </td>
+                        <td className="py-2 px-4 text-slate-900 font-medium border-r border-slate-900 leading-snug">
+                          {item.content}
+                        </td>
+                        <td className="py-2 px-4 text-center font-bold">
+                          {item.isApplicableOnly ? (
+                            <span className="text-slate-600 font-semibold">None</span>
+                          ) : (
+                            <span className="text-emerald-700 font-extrabold">Yes</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Notice & Certification */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-3xs font-sans text-slate-600 space-y-1">
+                <p>
+                  <strong>Note:</strong> Items marked <em>(If applicable)</em> (Sections 10, 11, and 12) may remain as <strong>None</strong> for courses that do not include project or laboratory coursework.
+                </p>
+                <p>
+                  <strong>Verification Policy:</strong> All mandatory sections (1–9, 13–15) must be verified as <strong>Yes</strong> before the course file can be submitted to the Head of Department (HOD) for official approval.
+                </p>
+              </div>
+
+              {/* Signatures Block */}
+              <div className="pt-8 grid grid-cols-3 gap-6 font-sans text-xs text-center border-t border-slate-200">
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">Course Instructor</p>
+                    <p className="text-3xs text-slate-400">Signature & Date</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">Department Quality Audit</p>
+                    <p className="text-3xs text-slate-400">Signature & Date</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">Head of Department (HOD)</p>
+                    <p className="text-3xs text-slate-400">Approval Stamp & Date</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between no-print">
+              <span className="text-3xs text-slate-500 font-mono">Official QEC Form 15-CFMS</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationFormModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Form</span>
                 </button>
               </div>
             </div>

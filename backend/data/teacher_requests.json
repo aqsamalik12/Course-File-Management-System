@@ -1249,7 +1249,7 @@
     ],
     "totalCredits": 3,
     "creditLimit": 22,
-    "status": "PendingHODApproval",
+    "status": "Approved",
     "rejectionReason": "",
     "profileData": {
       "cnic": "39584-5948468-4",
@@ -1276,7 +1276,9 @@
       "campusId": "camp-attock"
     },
     "submittedAt": "2026-09-27T06:51:46.090Z",
-    "updated_at": "2026-09-27T06:51:46.090Z"
+    "updated_at": "2026-09-27T06:51:46.090Z",
+    "reviewedAt": "2026-09-27T19:45:56.553Z",
+    "reviewedBy": "Authorized User"
   },
   {
     "id": "req-1790487073873-514",

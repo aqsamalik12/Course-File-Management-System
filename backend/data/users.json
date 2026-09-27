@@ -1,5 +1,25 @@
 [
   {
+    "id": "usr-hod-1790467141427",
+    "name": "Dr. Tariq Mahmood",
+    "email": "tariq.cs@ue.edu.pk",
+    "passwordHash": "$2a$10$z6duyfbj/8Lo1U.6tDB5nelgssUpfwLu17yFwjLGsH4bNdXeWgOlu",
+    "role": "HOD",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "campus": "Attock Campus",
+    "campusId": "camp-attock",
+    "status": "Active",
+    "designation": "Head of Department (Computer Science)",
+    "phone": "+92 300 1234567",
+    "enrollmentStatus": "Approved",
+    "createdAt": "2026-09-26",
+    "lastLogin": "2026-09-27 19:44:56",
+    "loginCount": 1,
+    "loginAttempts": 0,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1ob2QtMTc5MDQ2NzE0MTQyNyIsImVtYWlsIjoidGFyaXEuY3NAdWUuZWR1LnBrIiwicm9sZSI6IkhPRCIsImlhdCI6MTc5MDUzODI5NiwiZXhwIjoxNzkxMTQzMDk2fQ.a3RetCklV3pppOgFTc7iuaAAj5hWtK0MnD0py_zGnZc"
+  },
+  {
     "id": "usr-test-teacher-1790537326071",
     "departmentId": "dept-1790466035357",
     "departmentName": "Computer Science",
@@ -1019,7 +1039,7 @@
     "campus": "Attock Campus",
     "status": "Active",
     "loginAttempts": 0,
-    "loginCount": 4,
+    "loginCount": 5,
     "deleted": false,
     "lockUntil": null,
     "contractStartDate": null,
@@ -1027,11 +1047,11 @@
     "contractStatus": null,
     "supervisorName": null,
     "createdAt": "2024-03-10",
-    "lastLogin": "2026-09-27 06:50:39",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci10ZWFjaGVyLTEiLCJlbWFpbCI6InRhcmlxLm1haG1vb2RAdWUuZWR1LnBrIiwicm9sZSI6IlJFR1VMQVJfVEVBQ0hFUiIsImlhdCI6MTc5MDQ5MTgzOSwiZXhwIjoxNzkxMDk2NjM5fQ.9Blf2xwhIaYtR2FmWCxjJoQedTJw0sy3vgnFT9Va59Q",
+    "lastLogin": "2026-09-27 19:45:45",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci10ZWFjaGVyLTEiLCJlbWFpbCI6InRhcmlxLm1haG1vb2RAdWUuZWR1LnBrIiwicm9sZSI6IlJFR1VMQVJfVEVBQ0hFUiIsImlhdCI6MTc5MDUzODM0NSwiZXhwIjoxNzkxMTQzMTQ1fQ.iaeSFSMYo4GiRsJNLYVHRb5M1Nih6u2g1tCjNJNmBRc",
     "created_at": "2026-09-25T06:46:02.217317+00:00",
     "updated_at": "2026-09-25T06:46:02.217317+00:00",
-    "enrollmentStatus": "PendingHODApproval",
+    "enrollmentStatus": "Approved",
     "profileFormSubmitted": true,
     "profileFormData": {
       "cnic": "39584-5948468-4",
@@ -1060,6 +1080,24 @@
     "totalCredits": 3,
     "selectedCourseIds": [
       "spec-1790491874892-gf6d"
+    ],
+    "approvedAt": "2026-09-27T19:45:56.553Z",
+    "approvedBy": "Authorized User",
+    "rejectionReason": "",
+    "campusId": "camp-attock",
+    "hodId": "usr-hod-1790489444990",
+    "hodName": "Aqsa",
+    "courses": [
+      {
+        "courseId": "spec-1790491874892-gf6d",
+        "courseCode": "CS44",
+        "courseTitle": "Data",
+        "courseName": "Data",
+        "credits": 3,
+        "creditHours": 3,
+        "section": "Section A",
+        "type": "Core"
+      }
     ]
   },
   {

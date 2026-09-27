@@ -471,8 +471,64 @@ export const HODPendingCourseFiles: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5 border-b pb-2">
                   <BookmarkCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Course File Components & Deliverables</span>
+                  <span>Course File Components & Verification Sheet</span>
                 </h4>
+
+                {/* Official 15-Item Verification Checklist Table */}
+                {viewFile.templateData?.checklist && Array.isArray(viewFile.templateData.checklist) && (
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h5 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                        <FileCheck2 className="w-4 h-4 text-emerald-600" />
+                        <span>Official 15-Item Course File Verification Sheet</span>
+                      </h5>
+                      <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {viewFile.templateData.checklist.filter((i: any) => i.verified === 'Yes').length} / 15 Verified (Yes)
+                      </span>
+                    </div>
+
+                    <div className="border border-slate-300 rounded-lg overflow-hidden">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-300">
+                            <th className="py-2 px-3 font-bold text-slate-800 w-16 text-center border-r border-slate-300">Sr No.</th>
+                            <th className="py-2 px-3 font-bold text-slate-800 border-r border-slate-300">Content</th>
+                            <th className="py-2 px-3 font-bold text-slate-800 w-32 text-center">Verified(Yes/No)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 text-2xs">
+                          {viewFile.templateData.checklist.map((item: any) => (
+                            <tr key={item.srNo} className="hover:bg-slate-50">
+                              <td className="py-1.5 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300">
+                                {item.srNo}.
+                              </td>
+                              <td className="py-1.5 px-3 text-slate-800 border-r border-slate-300">
+                                <span className="font-semibold">{item.content}</span>
+                                {item.fileName && (
+                                  <span className="block text-3xs text-slate-400 font-mono">
+                                    File: {item.fileName} ({item.fileSize})
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-3 text-center font-bold">
+                                {item.verified === 'Yes' ? (
+                                  <span className="text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-3xs">
+                                    Yes
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded text-3xs">
+                                    None
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
 
                 {/* Course Outline & Description */}
                 <div className="bg-white border border-slate-200 rounded-xl p-4">

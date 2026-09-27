@@ -45,18 +45,144 @@ export const INITIAL_COURSES: Course[] = [];
 // These are legitimate static data that don't change based on DB state.
 // ==================================================================================
 
-export const REQUIRED_DOCUMENT_CHECKLIST = [
-  { id: 'chk-1', name: 'Course Outline & Syllabus', description: 'Weekly breakdown, textbooks, grading criteria, policies', mandatory: true },
-  { id: 'chk-2', name: 'Weekly Lecture Plan & Slides Summary', description: 'Lecture plan alignment with 16-week schedule', mandatory: true },
-  { id: 'chk-3', name: 'Student Attendance Record', description: 'End-of-term attendance roster signed by teacher', mandatory: true },
-  { id: 'chk-4', name: 'Midterm Examination Package', description: 'Question paper, step-by-step solution key, best/avg/worst answer scripts', mandatory: true },
-  { id: 'chk-5', name: 'Final Examination Package', description: 'Final exam question paper, marking key, sample audited scripts', mandatory: true },
-  { id: 'chk-6', name: 'Assignments & Solutions', description: 'All assignment question sheets, rubrics, and sample keys', mandatory: true },
-  { id: 'chk-7', name: 'Quizzes & Solutions', description: 'Quiz papers and step-marking solution keys', mandatory: true },
-  { id: 'chk-8', name: 'CLO / PLO Mapping & Alignment Matrix', description: 'Course learning outcome mapping with program learning outcomes', mandatory: true },
-  { id: 'chk-9', name: 'Result Analysis & Grade Distribution Graph', description: 'Statistical grade analysis and pass/fail summary', mandatory: true },
-  { id: 'chk-10', name: 'Student Work Samples', description: 'Audited samples of student work across grade bands', mandatory: true }
+export interface OfficialChecklistItem {
+  srNo: number;
+  id: string;
+  name: string;
+  content: string;
+  description: string;
+  isApplicableOnly?: boolean;
+  mandatory: boolean;
+}
+
+export const OFFICIAL_COURSE_FILE_CHECKLIST: OfficialChecklistItem[] = [
+  {
+    srNo: 1,
+    id: 'chk-1',
+    name: 'Audit Report',
+    content: 'Audit Report',
+    description: 'Internal / Departmental audit sign-off sheet or compliance report.',
+    mandatory: true
+  },
+  {
+    srNo: 2,
+    id: 'chk-2',
+    name: 'Instructor CV',
+    content: 'Instructor CV',
+    description: 'Updated academic Curriculum Vitae of the assigned course instructor.',
+    mandatory: true
+  },
+  {
+    srNo: 3,
+    id: 'chk-3',
+    name: 'Course Outlines',
+    content: 'Course Outlines',
+    description: 'Approved official course outline, weekly lecture schedule, and reference textbooks.',
+    mandatory: true
+  },
+  {
+    srNo: 4,
+    id: 'chk-4',
+    name: 'Course Description Form ( Containing weekly course plan)',
+    content: 'Course Description Form ( Containing weekly course plan)',
+    description: 'Structured course description with weekly topic-wise breakdown and CLO alignments.',
+    mandatory: true
+  },
+  {
+    srNo: 5,
+    id: 'chk-5',
+    name: 'Attendance Record',
+    content: 'Attendance Record',
+    description: 'Complete student attendance sheet signed by the instructor.',
+    mandatory: true
+  },
+  {
+    srNo: 6,
+    id: 'chk-6',
+    name: 'Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)',
+    content: 'Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)',
+    description: 'All assignment question sheets, step-marking solution keys, and audited student samples (best, average, worst).',
+    mandatory: true
+  },
+  {
+    srNo: 7,
+    id: 'chk-7',
+    name: 'Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)',
+    content: 'Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)',
+    description: 'All quiz papers, marking keys, and graded samples across performance bands (best, average, worst).',
+    mandatory: true
+  },
+  {
+    srNo: 8,
+    id: 'chk-8',
+    name: 'Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )',
+    content: 'Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )',
+    description: 'Midterm exam question paper, standard solution key, and photocopies of best, average, worst answer sheets.',
+    mandatory: true
+  },
+  {
+    srNo: 9,
+    id: 'chk-9',
+    name: 'Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )',
+    content: 'Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )',
+    description: 'Terminal exam paper, official marking scheme, and photocopies of best, average, worst answer sheets.',
+    mandatory: true
+  },
+  {
+    srNo: 10,
+    id: 'chk-10',
+    name: 'Semester project (If applicable) (Best, worst, average)',
+    content: 'Semester project (If applicable) (Best, worst, average)',
+    description: 'Project statement, evaluation rubric, and audited project reports (best, average, worst) if applicable.',
+    isApplicableOnly: true,
+    mandatory: false
+  },
+  {
+    srNo: 11,
+    id: 'chk-11',
+    name: 'Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )',
+    content: 'Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )',
+    description: 'Lab experiment outlines, structured laboratory manual, and solution code/sheets in soft form if course has lab.',
+    isApplicableOnly: true,
+    mandatory: false
+  },
+  {
+    srNo: 12,
+    id: 'chk-12',
+    name: 'Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)',
+    content: 'Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)',
+    description: 'Practical exam paper, assessment rubric/solution, and photocopied student answer sheets if applicable.',
+    isApplicableOnly: true,
+    mandatory: false
+  },
+  {
+    srNo: 13,
+    id: 'chk-13',
+    name: 'Lecture Notes ( Only in soft form)',
+    content: 'Lecture Notes ( Only in soft form)',
+    description: 'Complete lecture slides, reading packages, or typed lecture notes in soft PDF format.',
+    mandatory: true
+  },
+  {
+    srNo: 14,
+    id: 'chk-14',
+    name: 'Complete Result',
+    content: 'Complete Result',
+    description: 'Final grade roster, award list, and overall mark distribution sheet.',
+    mandatory: true
+  },
+  {
+    srNo: 15,
+    id: 'chk-15',
+    name: 'Course Completion Certificate',
+    content: 'Course Completion Certificate',
+    description: 'Official signed Course Completion Certificate affirming curriculum coverage.',
+    mandatory: true
+  }
 ];
+
+export const REQUIRED_DOCUMENT_CHECKLIST = OFFICIAL_COURSE_FILE_CHECKLIST;
+
 
 export const OFFICIAL_COURSE_FILE_TEMPLATES = [
   {
