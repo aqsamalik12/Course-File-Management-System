@@ -24,7 +24,11 @@ import {
   FileUp,
   Trash2,
   Lock,
-  ChevronDown
+  ChevronDown,
+  ExternalLink,
+  Layers,
+  Award,
+  GraduationCap
 } from 'lucide-react';
 
 export interface SectionUploadState {
@@ -72,6 +76,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
 
   // Modals
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showCourseFileDossierModal, setShowCourseFileDossierModal] = useState(false);
   const [showIncompleteWarningModal, setShowIncompleteWarningModal] = useState(false);
   const [viewHistoryModal, setViewHistoryModal] = useState(false);
 
@@ -160,7 +165,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      showToast('Only PDF (.pdf) documents are accepted for course file verification.', 'error');
+      showToast('Make a PDF: Only PDF (.pdf) documents are accepted for course file verification.', 'error');
       return;
     }
 
@@ -229,9 +234,22 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     );
   };
 
+  // Handle opening / viewing uploaded PDF
+  const handleViewPdf = (item: SectionUploadState) => {
+    if (item.file) {
+      const url = URL.createObjectURL(item.file);
+      window.open(url, '_blank');
+    } else if (item.fileName) {
+      const sampleText = `%PDF-1.4\nOfficial University of Education Course File Document\nSection ${item.srNo}: ${item.content}\nFile: ${item.fileName}\nCourse: ${selectedCourse?.code} - ${selectedCourse?.title}\nFaculty: ${teacherName}\nStatus: Verified (Yes)`;
+      const blob = new Blob([sampleText], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } else {
+      showToast(`Document not yet uploaded for Section ${item.srNo}.`, 'warning');
+    }
+  };
+
   // Verification Gate Calculation
-  // Mandatory items: Sr No 1–9, 13–15 -> MUST be 'Yes'
-  // Optional items: Sr No 10–12 -> MUST be 'Yes' OR marked isNA === true
   const mandatoryItems = checklist.filter((i) => !i.isApplicableOnly);
   const optionalItems = checklist.filter((i) => i.isApplicableOnly);
 
@@ -319,7 +337,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       showToast(`Course file draft saved for ${selectedCourse.code} (${verifiedYesCount} of 15 documents uploaded).`, 'success');
     } else {
       showToast(`Course file for ${selectedCourse.code} successfully submitted to your HOD with full verification!`, 'success');
-      setShowVerificationModal(true);
+      setShowCourseFileDossierModal(true);
     }
   };
 
@@ -342,14 +360,23 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowCourseFileDossierModal(true)}
+            className="px-4 py-2.5 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-200" />
+            <span>Review Complete Course File</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowVerificationModal(true)}
             className="px-4 py-2.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
           >
             <Printer className="w-4 h-4 text-[#1E7B4E]" />
-            <span>Check Verification Form</span>
+            <span>Check Verification Sheet</span>
           </button>
 
           <button
@@ -359,6 +386,41 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           >
             <Clock className="w-4 h-4 text-amber-700" />
             <span>Save Draft</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Mandatory Directive: Make a PDF Instruction Banner ─── */}
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-5 rounded-2xl shadow-sm border border-emerald-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-emerald-500 text-slate-950 font-black text-2xs uppercase px-2 py-0.5 rounded font-mono tracking-wider">
+                RULE: MAKE A PDF
+              </span>
+              <span className="text-emerald-400 font-bold text-xs font-sans">
+                تمام ڈاکومنٹس PDF فارمیٹ میں ہی اپلوڈ کرنے ہیں
+              </span>
+            </div>
+            <h2 className="text-sm font-extrabold tracking-tight text-white font-heading">
+              Make a PDF — Saare Documents as a PDF mein Upload Karne Hain
+            </h2>
+            <p className="text-2xs text-slate-300 leading-relaxed font-normal max-w-2xl">
+              Har session aur semester ke mutabiq tamam 15 checklist documents <strong>PDF format (.pdf)</strong> mein upload hon gay. Upload mukammal hone par aap apni complete Course File ko professional university template mein headings ke sath review kar saktay hain.
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCourseFileDossierModal(true)}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98]"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Open Course File Dossier</span>
           </button>
         </div>
       </div>
@@ -535,21 +597,31 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
 
         {/* Dynamic Gate Notice */}
         {allMandatoryVerified ? (
-          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex items-center justify-between gap-3 animate-fade-in">
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
               <span>
-                All mandatory documents verified with "Yes"! The course file is eligible for immediate submission to your Head of Department.
+                All mandatory documents verified with "Yes"! The course file is eligible for immediate review and submission to your Head of Department.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleSaveOrSubmit('Submitted')}
-              className="px-4 py-2 bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-xl font-bold text-xs shrink-0 cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Submit to HOD</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowCourseFileDossierModal(true)}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Review Course File</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveOrSubmit('Submitted')}
+                className="px-4 py-2 bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Submit to HOD</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-medium flex items-center justify-between gap-3 animate-fade-in">
@@ -657,14 +729,24 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                           {item.fileSize || 'PDF'} • {item.uploadedAt || 'Uploaded'}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(item.srNo)}
-                        className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer ml-1"
-                        title="Remove file"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 ml-1">
+                        <button
+                          type="button"
+                          onClick={() => handleViewPdf(item)}
+                          className="p-1 text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
+                          title="View PDF"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(item.srNo)}
+                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Remove file"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ) : isNA ? (
                     <div className="text-3xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
@@ -732,7 +814,16 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowCourseFileDossierModal(true)}
+            className="px-4 py-2.5 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl cursor-pointer flex items-center gap-1.5 transition-all shadow-2xs"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-200" />
+            <span>Review Complete Course File</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowVerificationModal(true)}
@@ -766,7 +857,306 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         </div>
       </div>
 
-      {/* ─── Modal 1: Official Verification Table Modal (Matches Paper Image) ─── */}
+      {/* ─── Modal 1: Complete Course File Dossier Review (Professional University Template) ─── */}
+      {showCourseFileDossierModal && selectedCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-5xl overflow-hidden flex flex-col my-6 max-h-[92vh]">
+            {/* Modal Actions Header */}
+            <div className="p-4 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white no-print">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold">Complete Course File Dossier Review</h3>
+                  <p className="text-3xs text-slate-300">
+                    {selectedCourse.code} — {selectedCourse.title} • {submissionSession} ({submissionSemester})
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Dossier / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCourseFileDossierModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Course Dossier Content */}
+            <div id="printable-course-dossier" className="p-8 overflow-y-auto space-y-8 font-sans text-slate-900 bg-white">
+              {/* Cover Page */}
+              <div className="text-center border-4 border-double border-slate-900 p-8 rounded-2xl space-y-4 bg-slate-50/50">
+                <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-[#1E7B4E] flex items-center justify-center border-2 border-emerald-300 font-serif font-black text-xl">
+                  UE
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900">
+                    UNIVERSITY OF EDUCATION, LAHORE
+                  </h1>
+                  <h2 className="text-base font-bold text-slate-700 uppercase tracking-widest mt-1">
+                    {selectedCourse.departmentName || 'Department of Computer Science'}
+                  </h2>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    {currentUser?.campus || 'Attock Campus'}
+                  </p>
+                </div>
+
+                <div className="w-32 h-1 bg-[#1E7B4E] mx-auto rounded-full my-3" />
+
+                <div className="space-y-1">
+                  <span className="text-3xs font-mono font-extrabold uppercase bg-emerald-100 text-emerald-900 px-3 py-1 rounded-full border border-emerald-300">
+                    Official Course File Dossier
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-2">
+                    {selectedCourse.code}: {selectedCourse.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Credit Hours: {selectedCourse.credits || 3} • Enrolled Students: {selectedCourse.totalStudents || 45}
+                  </p>
+                </div>
+
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-4 border-t border-slate-200 text-left">
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span className="text-3xs text-slate-400 uppercase font-mono block">Course Instructor</span>
+                    <strong className="text-slate-900 font-bold block">{teacherName}</strong>
+                    <span className="text-3xs text-slate-500">{currentUser?.role || 'Faculty Member'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span className="text-3xs text-slate-400 uppercase font-mono block">Academic Session</span>
+                    <strong className="text-slate-900 font-bold block">{submissionSession}</strong>
+                    <span className="text-3xs text-slate-500">Batch {submissionBatch}</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span className="text-3xs text-slate-400 uppercase font-mono block">Term / Semester</span>
+                    <strong className="text-slate-900 font-bold block">{submissionSemester}</strong>
+                    <span className="text-3xs text-slate-500">Regular Semester</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span className="text-3xs text-slate-400 uppercase font-mono block">Verification Status</span>
+                    <strong className="text-[#1E7B4E] font-bold block">{verifiedYesCount} / 15 Verified</strong>
+                    <span className="text-3xs text-slate-500">{allMandatoryVerified ? 'Ready for HOD' : 'Draft Progress'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table of Contents & 15-Item Verification Summary Table */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#1E7B4E]" />
+                    <span>Table of Contents & Verification Summary</span>
+                  </h3>
+                  <span className="text-3xs font-mono font-extrabold text-[#1E7B4E] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    QEC 15-Item Standard
+                  </span>
+                </div>
+
+                <div className="border border-slate-900 overflow-hidden text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-slate-900">
+                        <th className="py-2 px-3 font-black text-slate-900 w-16 text-center border-r border-slate-900">
+                          Sr No.
+                        </th>
+                        <th className="py-2 px-4 font-black text-slate-900 border-r border-slate-900">
+                          Content Description
+                        </th>
+                        <th className="py-2 px-4 font-black text-slate-900 w-32 text-center">
+                          Verified(Yes/No)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-300">
+                      {checklist.map((item) => (
+                        <tr key={item.srNo} className="hover:bg-slate-50">
+                          <td className="py-1.5 px-3 font-bold text-slate-800 text-center border-r border-slate-900">
+                            {item.srNo}.
+                          </td>
+                          <td className="py-1.5 px-4 text-slate-900 border-r border-slate-900">
+                            <span className="font-semibold">{item.content}</span>
+                            {item.fileName && (
+                              <span className="block text-3xs text-slate-500 font-mono">
+                                [Attached: {item.fileName} • {item.fileSize}]
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-1.5 px-4 text-center font-bold">
+                            {item.verified === 'Yes' ? (
+                              <span className="text-emerald-700 font-extrabold">Yes</span>
+                            ) : (
+                              <span className="text-slate-600 font-semibold">None</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Section-by-Section Compiled Dossier with Official Headings (1 to 15) */}
+              <div className="space-y-6 pt-4">
+                <div className="border-b-2 border-[#1E7B4E] pb-2 flex items-center justify-between">
+                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    <FileArchive className="w-5 h-5 text-[#1E7B4E]" />
+                    <span>Compiled Course File Documents by Official Headings</span>
+                  </h3>
+                  <span className="text-3xs font-mono text-slate-500">
+                    15 Structured University Sections
+                  </span>
+                </div>
+
+                <div className="space-y-5">
+                  {checklist.map((item) => {
+                    const isVerified = item.verified === 'Yes';
+                    const isNA = item.isApplicableOnly && item.isNA;
+
+                    return (
+                      <div
+                        key={item.srNo}
+                        className="p-5 rounded-2xl border border-slate-200 bg-white space-y-3 shadow-2xs hover:border-emerald-300 transition-all"
+                      >
+                        {/* Section Official Heading */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-lg bg-emerald-50 text-[#1E7B4E] border border-emerald-200 font-mono font-black text-xs flex items-center justify-center shrink-0">
+                              {item.srNo < 10 ? `0${item.srNo}` : item.srNo}
+                            </span>
+                            <h4 className="text-sm font-extrabold text-slate-900 leading-snug">
+                              Section {item.srNo}: {item.content}
+                            </h4>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isVerified ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✓ Verified: Yes
+                              </span>
+                            ) : isNA ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                None (Theory N/A)
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                None (Pending Upload)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Section Directive & Description */}
+                        <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                          {item.description}
+                        </p>
+
+                        {/* Attached PDF Card or Status */}
+                        {item.fileName ? (
+                          <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white rounded-lg border border-emerald-200 text-[#1E7B4E]">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <strong className="text-slate-900 block font-bold">{item.fileName}</strong>
+                                <span className="text-3xs text-slate-500 font-mono">
+                                  Format: PDF Document • Size: {item.fileSize || '1.8 MB'} • Uploaded: {item.uploadedAt || 'Current Session'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleViewPdf(item)}
+                              className="px-3 py-1.5 text-xs font-bold bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow-2xs self-start sm:self-auto"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>View PDF</span>
+                            </button>
+                          </div>
+                        ) : isNA ? (
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-3xs text-slate-500 font-medium">
+                            This section is marked as Not Applicable for this theory-only course offering.
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-3xs text-amber-800 font-medium flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>This document has not been uploaded yet. Please upload it in PDF format to complete verification.</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Official Signatures Block */}
+              <div className="pt-8 grid grid-cols-3 gap-6 font-sans text-xs text-center border-t border-slate-200">
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">{teacherName}</p>
+                    <p className="text-3xs text-slate-400">Course Instructor Signature & Date</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">Quality Coordinator</p>
+                    <p className="text-3xs text-slate-400">Department Quality Audit Signature</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="border-b border-slate-400 w-3/4 mx-auto pb-1"></div>
+                  <div>
+                    <p className="font-bold text-slate-800">Head of Department (HOD)</p>
+                    <p className="text-3xs text-slate-400">Official Approval Stamp & Date</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between no-print">
+              <span className="text-3xs text-slate-500 font-mono">
+                {verifiedYesCount} / 15 Sections Verified • Academic Session {submissionSession}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCourseFileDossierModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Complete Dossier</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal 2: Official Verification Sheet Modal (Matches Exact Paper Image) ─── */}
       {showVerificationModal && selectedCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl overflow-hidden flex flex-col my-6 max-h-[92vh]">
@@ -942,7 +1332,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         </div>
       )}
 
-      {/* ─── Modal 2: Incomplete Warning Modal (Strict HOD Gate) ─── */}
+      {/* ─── Modal 3: Incomplete Warning Modal (Strict HOD Gate) ─── */}
       {showIncompleteWarningModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">

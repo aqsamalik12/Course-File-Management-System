@@ -167,16 +167,19 @@
   will-change: transform;
 }
 
-/* Print Styles for Official Course File Verification Forms */
+/* Print Styles for Official Course File Verification Forms and Dossiers */
 @media print {
   body * {
     visibility: hidden;
   }
   #printable-verification-form,
-  #printable-verification-form * {
+  #printable-verification-form *,
+  #printable-course-dossier,
+  #printable-course-dossier * {
     visibility: visible;
   }
-  #printable-verification-form {
+  #printable-verification-form,
+  #printable-course-dossier {
     position: absolute;
     left: 0;
     top: 0;
