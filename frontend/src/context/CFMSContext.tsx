@@ -20,7 +20,9 @@ import {
   SubmissionWindow,
   TeacherEnrollmentRequest,
   Campus,
-  HODAssignment
+  HODAssignment,
+  Section,
+  TeacherAssignment
 } from '../types';
 import {
   INITIAL_CAMPUSES,
@@ -129,6 +131,36 @@ interface CFMSContextType {
   deleteHODAssignment: (id: string) => Promise<boolean>;
   resetHODPassword: (id: string, newPassword: string) => Promise<boolean>;
   refreshHODAssignments: () => Promise<void>;
+
+  // Sections Management
+  sections: Section[];
+  createSection: (section: Partial<Section>) => Promise<{ success: boolean; message: string; data?: Section }>;
+  updateSection: (id: string, data: Partial<Section>) => Promise<boolean>;
+  deleteSection: (id: string) => Promise<boolean>;
+  refreshSections: () => Promise<void>;
+
+  // Teacher Assignments (Teacher → Department → Section → Course → HOD)
+  teacherAssignments: TeacherAssignment[];
+  activeTeacherSetup: {
+    departmentId: string;
+    departmentName: string;
+    sectionId: string;
+    sectionName: string;
+    courseId: string;
+    courseCode: string;
+    courseName: string;
+    credits?: number;
+    hodId: string;
+    hodName: string;
+    campusId?: string;
+    campusName?: string;
+  } | null;
+  setActiveTeacherSetup: (setup: any) => void;
+  createTeacherAssignment: (assignment: Partial<TeacherAssignment>) => Promise<{ success: boolean; message: string; data?: TeacherAssignment }>;
+  updateTeacherAssignment: (id: string, data: Partial<TeacherAssignment>) => Promise<boolean>;
+  deleteTeacherAssignment: (id: string) => Promise<boolean>;
+  refreshTeacherAssignments: () => Promise<void>;
+  fetchMyAssignments: (teacherId?: string) => Promise<{ hasAssignments: boolean; departments: any[]; assignments: any[] }>;
 }
 
 const CFMSContext = createContext<CFMSContextType | undefined>(undefined);
@@ -151,6 +183,40 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [systemSettings, setSystemSettings] = useState<SystemSetting>(INITIAL_SYSTEM_SETTINGS);
   const [campuses, setCampuses] = useState<Campus[]>(INITIAL_CAMPUSES);
   const [teacherRequests, setTeacherRequests] = useState<TeacherEnrollmentRequest[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
+  const [activeTeacherSetup, setActiveTeacherSetupState] = useState<{
+    departmentId: string;
+    departmentName: string;
+    sectionId: string;
+    sectionName: string;
+    courseId: string;
+    courseCode: string;
+    courseName: string;
+    credits?: number;
+    hodId: string;
+    hodName: string;
+    campusId?: string;
+    campusName?: string;
+  } | null>(() => {
+    try {
+      const stored = sessionStorage.getItem('cfms_teacher_setup');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setActiveTeacherSetup = (setup: any) => {
+    setActiveTeacherSetupState(setup);
+    try {
+      if (setup) {
+        sessionStorage.setItem('cfms_teacher_setup', JSON.stringify(setup));
+      } else {
+        sessionStorage.removeItem('cfms_teacher_setup');
+      }
+    } catch {}
+  };
 
   const getAuthHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -282,6 +348,16 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .then((res) => res.json())
       .then((res) => { if (res.success && Array.isArray(res.data)) setHodAssignments(res.data); })
       .catch(() => {});
+
+    fetch('/api/sections')
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setSections(res.data); })
+      .catch(() => {});
+
+    fetch('/api/teacher-assignments', { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((res) => { if (res.success && Array.isArray(res.data)) setTeacherAssignments(res.data); })
+      .catch(() => {});
   }, []);
 
   const addActivityLog = async (
@@ -381,12 +457,19 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 
     try {
-      await fetch('/api/course-files/upload', {
+      const res = await fetch('/api/course-files/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fileData)
       });
-    } catch (e) {}
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Failed to upload course file');
+      }
+    } catch (e: any) {
+      setCourseFiles((prev) => prev.filter((f) => f.id !== newFile.id));
+      throw e;
+    }
   };
 
   const updateFileStatus = async (fileId: string, status: FileStatus, remarks?: string, reviewerName?: string) => {
@@ -1293,6 +1376,152 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Section Management Methods
+  const refreshSections = async () => {
+    try {
+      const res = await fetch('/api/sections', { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSections(data.data);
+      }
+    } catch {}
+  };
+
+  const createSection = async (sectionData: Partial<Section>): Promise<{ success: boolean; message: string; data?: Section }> => {
+    try {
+      const res = await fetch('/api/sections', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(sectionData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshSections();
+        return { success: true, message: data.message || 'Section created successfully.', data: data.data };
+      }
+      return { success: false, message: data.message || 'Failed to create section.' };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Network error creating section.' };
+    }
+  };
+
+  const updateSection = async (id: string, data: Partial<Section>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/sections/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        await refreshSections();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteSection = async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/sections/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshSections();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  // Teacher Assignment Methods
+  const refreshTeacherAssignments = async () => {
+    try {
+      const res = await fetch('/api/teacher-assignments', { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setTeacherAssignments(data.data);
+      }
+    } catch {}
+  };
+
+  const createTeacherAssignment = async (assignment: Partial<TeacherAssignment>): Promise<{ success: boolean; message: string; data?: TeacherAssignment }> => {
+    try {
+      const res = await fetch('/api/teacher-assignments', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(assignment)
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshTeacherAssignments();
+        return { success: true, message: data.message || 'Teacher assigned successfully.', data: data.data };
+      }
+      return { success: false, message: data.message || 'Failed to assign teacher.' };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Network error assigning teacher.' };
+    }
+  };
+
+  const updateTeacherAssignment = async (id: string, data: Partial<TeacherAssignment>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/teacher-assignments/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        await refreshTeacherAssignments();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const deleteTeacherAssignment = async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/teacher-assignments/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshTeacherAssignments();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const fetchMyAssignments = async (teacherId?: string): Promise<{ hasAssignments: boolean; departments: any[]; assignments: any[] }> => {
+    try {
+      const url = teacherId ? `/api/teacher-assignments/my-assignments?teacherId=${teacherId}` : '/api/teacher-assignments/my-assignments';
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success && data.data) {
+        return {
+          hasAssignments: data.hasAssignments,
+          departments: data.data.departments || [],
+          assignments: data.data.assignments || []
+        };
+      }
+      return { hasAssignments: false, departments: [], assignments: [] };
+    } catch {
+      return { hasAssignments: false, departments: [], assignments: [] };
+    }
+  };
+
   return (
     <CFMSContext.Provider
       value={{
@@ -1308,6 +1537,7 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         announcements,
         notifications,
         sessions,
+        createSession,
         submissionWindow,
         activityLogs,
         auditLogs,
@@ -1325,6 +1555,19 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         deleteHODAssignment,
         resetHODPassword,
         refreshHODAssignments,
+        sections,
+        createSection,
+        updateSection,
+        deleteSection,
+        refreshSections,
+        teacherAssignments,
+        activeTeacherSetup,
+        setActiveTeacherSetup,
+        createTeacherAssignment,
+        updateTeacherAssignment,
+        deleteTeacherAssignment,
+        refreshTeacherAssignments,
+        fetchMyAssignments,
         teacherRequests,
         approveTeacherRequest,
         rejectTeacherRequest,

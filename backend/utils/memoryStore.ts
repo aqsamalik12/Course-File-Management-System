@@ -18,6 +18,8 @@ export interface MemoryStore {
   notifications: any[];
   teacherRequests: any[];
   hodAssignments: any[];
+  sections: any[];
+  teacherAssignments: any[];
 }
 
 // ==================================================================================
@@ -111,5 +113,7 @@ export const memoryStore: MemoryStore = {
   feedback: [],
   archives: [],
   teacherRequests: [],
-  hodAssignments: []
+  hodAssignments: [],
+  sections: [],
+  teacherAssignments: []
 };

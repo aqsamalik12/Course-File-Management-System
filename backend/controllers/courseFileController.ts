@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { CourseFileService, ArchiveService, NotificationService, UserService, TeacherRequestService } from '../services/supabaseService';
+import { CourseFileService, ArchiveService, NotificationService, UserService, TeacherRequestService, TeacherAssignmentService } from '../services/supabaseService';
 import { logger } from '../config/logger';
 
 export const getCourseFiles = async (req: Request, res: Response) => {
@@ -46,6 +46,21 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
     const teacherRole = body.teacherRole || (req as any).user?.role || headerUserRole;
 
     if (teacherId) {
+      // 1. Strict Admin Teacher Assignment Validation (Department -> Section -> Course)
+      const hasAssignments = await TeacherAssignmentService.hasAssignmentsForTeacher(teacherId);
+      if (hasAssignments) {
+        const secVal = body.section || body.sectionName || body.sectionId || body.batch || '';
+        const crsVal = body.courseId || body.courseCode || body.courseTitle || '';
+        const deptVal = body.departmentId || body.departmentName || '';
+        const val = await TeacherAssignmentService.validateAssignment(teacherId, deptVal, secVal, crsVal);
+        if (!val.isValid) {
+          return res.status(403).json({
+            success: false,
+            message: 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.'
+          });
+        }
+      }
+
       const teacher = await UserService.getById(teacherId);
       const reqRecord = await TeacherRequestService.getByTeacherId(teacherId);
       const isTeacher =
@@ -56,7 +71,7 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
         !!reqRecord;
 
       if (isTeacher) {
-        const isApproved = teacher?.enrollmentStatus === 'Approved' || reqRecord?.status === 'Approved';
+        const isApproved = teacher?.enrollmentStatus === 'Approved' || reqRecord?.status === 'Approved' || hasAssignments;
         if (!isApproved) {
           return res.status(403).json({
             success: false,
@@ -80,13 +95,14 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
     const hodId = body.hodId || teacher?.hodId || reqRecord?.hodId || '';
     const hodName = body.hodName || reqRecord?.hodName || '';
 
-    // Strict Scope Validation: Teacher cannot create or submit a course file for another department or campus
+    // Strict Scope & Teacher Assignment Validation:
+    // Teacher cannot create or submit a course file for unauthorized department, section, or course
     if (teacher && (teacherRole === 'REGULAR_TEACHER' || teacherRole === 'VISITING_TEACHER' || teacher.role === 'REGULAR_TEACHER' || teacher.role === 'VISITING_TEACHER')) {
       const allowedDeptId = teacher.departmentId || reqRecord?.departmentId;
       if (body.departmentId && allowedDeptId && body.departmentId !== allowedDeptId) {
         return res.status(403).json({
           success: false,
-          message: 'Forbidden: You cannot create or submit course files outside your approved department.'
+          message: 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.'
         });
       }
       const allowedCampusId = teacher.campusId || reqRecord?.campusId;
@@ -95,6 +111,20 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
           success: false,
           message: 'Forbidden: You cannot create or submit course files outside your approved campus.'
         });
+      }
+
+      // Check Admin Teacher Assignment
+      const hasAssignments = await TeacherAssignmentService.hasAssignmentsForTeacher(teacherId);
+      if (hasAssignments) {
+        const secVal = body.section || body.sectionName || body.sectionId || body.batch || '';
+        const crsVal = body.courseId || body.courseCode || body.courseTitle || '';
+        const val = await TeacherAssignmentService.validateAssignment(teacherId, departmentId, secVal, crsVal);
+        if (!val.isValid) {
+          return res.status(403).json({
+            success: false,
+            message: 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.'
+          });
+        }
       }
     }
 

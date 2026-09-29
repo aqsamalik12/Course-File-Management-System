@@ -29,6 +29,8 @@ import teacherRequestRoutes from "./routes/teacherRequestRoutes";
 import campusRoutes from "./routes/campusRoutes";
 import hodAssignmentRoutes from "./routes/hodAssignmentRoutes";
 import hodRoutes from "./routes/hodRoutes";
+import sectionRoutes from "./routes/sectionRoutes";
+import teacherAssignmentRoutes from "./routes/teacherAssignmentRoutes";
 
 dotenv.config();
 
@@ -96,6 +98,8 @@ async function startServer() {
   app.use("/api/campuses", campusRoutes);
   app.use("/api/hod-assignments", hodAssignmentRoutes);
   app.use("/api/hod", hodRoutes);
+  app.use("/api/sections", sectionRoutes);
+  app.use("/api/teacher-assignments", teacherAssignmentRoutes);
 
   // Centralized Error Handling Middleware
   app.use(errorHandler);

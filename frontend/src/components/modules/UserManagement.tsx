@@ -744,7 +744,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeModule }) 
                 <div>
                   <span className="text-3xs text-slate-400 block">Uploaded Course Files</span>
                   <span className="font-bold text-emerald-700">
-                    {courseFiles.filter((f) => f.submittedById === selectedUser.id || f.teacherName === selectedUser.name).length} files
+                    {courseFiles.filter((f) => f.teacherId === selectedUser.id || f.submittedById === selectedUser.id || f.teacherName === selectedUser.name).length} files
                   </span>
                 </div>
                 <div>

@@ -7,7 +7,8 @@ import {
   NotificationService,
   AuditService,
   HODAssignmentService,
-  CampusService
+  CampusService,
+  TeacherAssignmentService
 } from '../services/supabaseService';
 import { logger } from '../config/logger';
 
@@ -294,6 +295,28 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       });
     }
 
+    // 2.5 Strict Admin Teacher Assignment Validation (Department → Section → Course)
+    // Verifies that every selected (Department + Section + Course) is explicitly authorized by Admin
+    const hasAssignments = await TeacherAssignmentService.hasAssignmentsForTeacher(teacherId);
+    if (hasAssignments) {
+      for (const courseItem of normalizedCourses) {
+        const secVal = courseItem.section || courseItem.sectionName || '';
+        const crsVal = courseItem.courseId || courseItem.courseCode || courseItem.courseName || courseItem.title || '';
+        const validation = await TeacherAssignmentService.validateAssignment(
+          teacherId,
+          departmentId,
+          secVal,
+          crsVal
+        );
+        if (!validation.isValid) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.'
+          });
+        }
+      }
+    }
+
     // 3. Strict Relational Validation (Campus -> Department -> HOD)
     if (!campusId && !campusName) {
       return res.status(400).json({
@@ -365,8 +388,8 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
     const hodName = expectedHodName || hodUser.name;
     const hasAssignedHOD = true;
 
-    // 4. Check for existing request to prevent duplicate active records
-    const existingReq = await TeacherRequestService.getByTeacherId(teacherId);
+    // 4. Check for existing request to prevent duplicate active records (per teacher+department)
+    const existingReq = await TeacherRequestService.getByTeacherId(teacherId, departmentId);
 
     const requestId = existingReq ? existingReq.id : `req-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
     const nowIso = new Date().toISOString();

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useCFMS } from '../../context/CFMSContext';
 import { SelectedCourseItem, User } from '../../types';
+import { TeacherAssignmentsModule } from './TeacherAssignmentsModule';
 import {
   GraduationCap,
   Users,
@@ -66,17 +67,22 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({
     campuses,
     departments,
     hodAssignments,
+    teacherAssignments,
     toggleUserStatus,
     refreshTeacherRequests
   } = useCFMS();
 
+  const [localTab, setLocalTab] = useState<string | null>(null);
+
   // Active Sub-Module Tab
   const currentTab = useMemo(() => {
+    if (localTab) return localTab;
+    if (activeSubModule === 'Teacher Assignments' || activeSubModule === 'Assignments') return 'Teacher Assignments';
     if (activeSubModule === 'Regular Faculty') return 'Regular Faculty';
     if (activeSubModule === 'Visiting Faculty') return 'Visiting Faculty';
     if (activeSubModule === 'Teacher Directory') return 'Teacher Directory';
     return 'All Teachers';
-  }, [activeSubModule]);
+  }, [activeSubModule, localTab]);
 
   // Loading & Feedback
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -442,7 +448,10 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({
         </button>
 
         <button
-          onClick={() => onNavigate && onNavigate('Teacher Directory')}
+          onClick={() => {
+            setLocalTab('Teacher Directory');
+            onNavigate && onNavigate('Teacher Directory');
+          }}
           className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
             currentTab === 'Teacher Directory'
               ? 'border-emerald-600 text-emerald-800 bg-emerald-50/50'
@@ -453,6 +462,24 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({
           <span>Teacher Directory</span>
           <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900">
             Grid View
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            setLocalTab('Teacher Assignments');
+            onNavigate && onNavigate('Teacher Assignments');
+          }}
+          className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors whitespace-nowrap ${
+            currentTab === 'Teacher Assignments'
+              ? 'border-emerald-600 text-emerald-800 bg-emerald-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-700" />
+          <span>Teacher Assignments</span>
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+            {teacherAssignments?.length || 0}
           </span>
         </button>
       </div>
@@ -482,8 +509,12 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({
         </div>
       )}
 
-      {/* 4. KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {currentTab === 'Teacher Assignments' ? (
+        <TeacherAssignmentsModule />
+      ) : (
+        <>
+          {/* 4. KPI Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3.5 shadow-xs">
           <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-800">
             <Users className="w-5 h-5" />
@@ -898,6 +929,8 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({
           </div>
         </div>
       )}
+    </>
+  )}
 
       {/* 7. COMPREHENSIVE FACULTY DOSSIER MODAL (SHOWING EVERY SINGLE ENTERED DATA POINT) */}
       {selectedFaculty && (

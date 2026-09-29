@@ -151,6 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: GraduationCap,
       children: [
         { name: 'All Teachers' },
+        { name: 'Teacher Assignments' },
         { name: 'Regular Faculty' },
         { name: 'Visiting Faculty' },
         { name: 'Teacher Directory' }
@@ -288,6 +289,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: !teacherFormSubmitted ? 1 : undefined,
       badgeColor: 'bg-amber-500 text-white'
     },
+    { name: 'Teacher Form Setup', icon: Sliders },
     { name: 'My Assigned Courses', icon: BookOpen },
     { name: 'Course File Submission', icon: Upload },
     { name: 'Templates & Instructions', icon: FileText },

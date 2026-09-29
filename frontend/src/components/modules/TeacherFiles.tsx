@@ -5,7 +5,9 @@ import { CourseFileItem } from '../../types';
 import { DataTable, Column } from '../common/DataTable';
 import { DetailDrawer } from '../common/DetailDrawer';
 import { FileUploadModal } from '../common/FileUploadModal';
-import { FileText, Upload, Download, Eye, History, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { FileText, Upload, Download, Eye, History, CheckCircle, Clock, AlertTriangle, Award } from 'lucide-react';
+import { CourseFileCertificateModal } from '../common/CourseFileCertificateModal';
+import { CourseFileDossierModal } from '../common/CourseFileDossierModal';
 
 export const TeacherFiles: React.FC = () => {
   const { courseFiles } = useCFMS();
@@ -14,6 +16,8 @@ export const TeacherFiles: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<CourseFileItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [showCertificateFile, setShowCertificateFile] = useState<any | null>(null);
+  const [showDossierFile, setShowDossierFile] = useState<any | null>(null);
 
   const myFiles = courseFiles.filter(
     (f) => (f.teacherId === currentUser.id || f.teacherName === currentUser.name) && !f.deleted
@@ -88,16 +92,44 @@ export const TeacherFiles: React.FC = () => {
           setIsDrawerOpen(true);
         }}
         actions={(f) => (
-          <button
-            onClick={() => {
-              setSelectedFile(f);
-              setIsDrawerOpen(true);
-            }}
-            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
-            title="Inspect Details & Version History"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 justify-end">
+            {f.status === 'Approved' && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDossierFile(f);
+                  }}
+                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                  title="Download Approved Course File PDF"
+                >
+                  <Download className="w-3 h-3 text-slate-300" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCertificateFile(f);
+                  }}
+                  className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-3xs font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                  title="Download Certificate"
+                >
+                  <Award className="w-3 h-3 text-emerald-300" />
+                  <span>Certificate</span>
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                setSelectedFile(f);
+                setIsDrawerOpen(true);
+              }}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
+              title="Inspect Details & Version History"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
         )}
       />
 
@@ -114,13 +146,24 @@ export const TeacherFiles: React.FC = () => {
                 <span className="text-3xs text-slate-400 block">Status</span>
                 <span className="text-sm font-bold text-indigo-900">{selectedFile.status}</span>
               </div>
-              <button
-                onClick={() => alert(`Downloading ${selectedFile.title}`)}
-                className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download File</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedFile.status === 'Approved' && (
+                  <button
+                    onClick={() => setShowCertificateFile(selectedFile)}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Award className="w-3.5 h-3.5" />
+                    <span>Certificate</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowDossierFile(selectedFile)}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
+                </button>
+              </div>
             </div>
 
             {selectedFile.remarks && (
@@ -154,6 +197,22 @@ export const TeacherFiles: React.FC = () => {
       </DetailDrawer>
 
       <FileUploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+
+      {/* Official Certificate Modal (Step 20, 21) */}
+      {showCertificateFile && (
+        <CourseFileCertificateModal
+          courseFile={showCertificateFile}
+          onClose={() => setShowCertificateFile(null)}
+        />
+      )}
+
+      {/* Official Printable Course Dossier Modal (Step 21) */}
+      {showDossierFile && (
+        <CourseFileDossierModal
+          courseFile={showDossierFile}
+          onClose={() => setShowDossierFile(null)}
+        />
+      )}
     </div>
   );
 };

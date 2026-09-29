@@ -29,7 +29,7 @@ export const AcademicSessions: React.FC<AcademicSessionsProps> = ({ activeModule
   const [startDate, setStartDate] = useState(submissionWindow.startDate);
   const [endDate, setEndDate] = useState(submissionWindow.endDate);
   const [windowStatus, setWindowStatus] = useState(submissionWindow.status);
-  const [allowLate, setAllowLate] = useState(submissionWindow.allowLateSubmissions);
+  const [allowLate, setAllowLate] = useState(submissionWindow.allowLateSubmissions ?? submissionWindow.allowLateSubmission);
   const [isSavedMsg, setIsSavedMsg] = useState(false);
 
   // Template Upload State
@@ -58,7 +58,8 @@ export const AcademicSessions: React.FC<AcademicSessionsProps> = ({ activeModule
       startDate,
       endDate,
       status: windowStatus,
-      allowLateSubmissions: allowLate
+      allowLateSubmission: !!allowLate,
+      allowLateSubmissions: !!allowLate
     });
     setIsSavedMsg(true);
     setTimeout(() => setIsSavedMsg(false), 4000);
@@ -83,7 +84,7 @@ export const AcademicSessions: React.FC<AcademicSessionsProps> = ({ activeModule
 
     createSession({
       name: sessionName,
-      year: sessionYear,
+      year: parseInt(sessionYear, 10) || new Date().getFullYear(),
       startDate: sessionStartDate,
       endDate: sessionEndDate,
       status: sessionStatus,

@@ -59,6 +59,7 @@ import { CourseFileSubmissionModule } from './components/modules/CourseFileSubmi
 import { SubmissionHistoryModule } from './components/modules/SubmissionHistoryModule';
 import { ChangePasswordModule } from './components/modules/ChangePasswordModule';
 import { TeacherProfileForm } from './components/modules/TeacherProfileForm';
+import { TeacherFormSetup } from './components/modules/TeacherFormSetup';
 
 import { LoginPage } from './components/auth/LoginPage';
 
@@ -450,7 +451,9 @@ const MainAppContent: React.FC = () => {
       case 'Regular Faculty':
       case 'Visiting Faculty':
       case 'Teacher Directory':
-        if (activeRole === 'HOD') {
+      case 'Teacher Assignments':
+      case 'Assignments':
+        if ((activeRole as string) === 'HOD') {
           return <HODTeachers activeModule={activeModule} />;
         }
         return (
@@ -548,6 +551,9 @@ const MainAppContent: React.FC = () => {
       // Teacher Views
       case 'Teacher Dashboard':
         return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
+      case 'Teacher Form Setup':
+      case 'Form Setup':
+        return <TeacherFormSetup onContinue={() => setActiveModule('Course File Submission')} />;
       case 'My Profile Form':
       case 'Teacher Profile Form':
         return <TeacherProfileForm onNavigate={(m) => setActiveModule(m)} />;

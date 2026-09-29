@@ -1,5 +1,56 @@
 [
   {
+    "id": "usr-hod-business",
+    "name": "Dr. Tariq Mahmood",
+    "email": "hod.bba.tariq@ue.edu.pk",
+    "passwordHash": "",
+    "role": "HOD",
+    "departmentId": "dept-business-admin",
+    "departmentName": "Business Administration",
+    "campus": "Attock Campus",
+    "campusId": "camp-attock",
+    "status": "Active",
+    "designation": "Head of Department (Business Administration)",
+    "phone": "+92 300 7654321",
+    "enrollmentStatus": "Approved",
+    "createdAt": "2026-09-28",
+    "lastLogin": "2026-09-28 20:00:00",
+    "loginCount": 1,
+    "loginAttempts": 0
+  },
+  {
+    "id": "usr-teacher-ahmed",
+    "name": "Ahmed Khan",
+    "email": "teacher.ahmed@ue.edu.pk",
+    "passwordHash": ".a4yYJ818fjMyI.w2bD.iL8QaFtuWPWs3TO.J6T2rH6V4y",
+    "role": "REGULAR_TEACHER",
+    "enrollmentStatus": "PendingHODApproval",
+    "profileFormSubmitted": true,
+    "departmentId": "dept-business-admin",
+    "departmentName": "Business Administration",
+    "designation": "Assistant Professor",
+    "phone": "+92 300 9876543",
+    "status": "Active",
+    "createdAt": "2026-09-28",
+    "lastLogin": "2026-09-28 20:00:00",
+    "loginCount": 1,
+    "deleted": false,
+    "campus": "Attock Campus",
+    "campusId": "camp-attock",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "totalCredits": 3,
+    "profileFormData": {
+      "campus": "Attock Campus",
+      "campusId": "camp-attock",
+      "hodId": "usr-hod-business",
+      "hodName": "Dr. Tariq Mahmood"
+    },
+    "selectedCourseIds": [
+      "c-bba-mgt"
+    ]
+  },
+  {
     "id": "usr-hod-1790467141427",
     "name": "Dr. Tariq Mahmood",
     "email": "tariq.cs@ue.edu.pk",

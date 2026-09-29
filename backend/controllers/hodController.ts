@@ -844,14 +844,16 @@ export const approveHODCourseFile = async (req: HODRequest, res: Response) => {
 
     const reviewedAt = new Date().toISOString();
     const reviewedBy = scope.hodName;
+    const templateData = req.body.templateData || (req.body.checklist ? { ...file.templateData, checklist: req.body.checklist } : file.templateData);
 
     const updated = await CourseFileService.update(id, {
       status: 'Approved',
       approvalStage: 'Approved',
       reviewedAt,
       reviewedBy,
+      templateData: templateData || file.templateData,
       lastModified: new Date().toISOString().split('T')[0],
-      remarks: 'Approved by HOD'
+      remarks: req.body.remarks || 'Approved by HOD'
     });
 
     // Notify teacher
@@ -929,6 +931,7 @@ export const returnHODCourseFile = async (req: HODRequest, res: Response) => {
 
     const reviewedAt = new Date().toISOString();
     const reviewedBy = scope.hodName;
+    const returnTemplateData = req.body.templateData || (req.body.checklist ? { ...file.templateData, checklist: req.body.checklist } : file.templateData);
 
     const updated = await CourseFileService.update(id, {
       status: 'Returned',
@@ -937,6 +940,7 @@ export const returnHODCourseFile = async (req: HODRequest, res: Response) => {
       reviewedBy,
       reviewComment,
       remarks: reviewComment,
+      templateData: returnTemplateData || file.templateData,
       lastModified: new Date().toISOString().split('T')[0]
     });
 

@@ -1395,27 +1395,34 @@ export const TeacherRequestService = {
     }
   },
 
-  async getByTeacherId(teacherId: string) {
+  async getByTeacherId(teacherId: string, departmentId?: string) {
     try {
-      const { data, error } = await supabase.from('teacher_requests').select('*').eq('teacherId', teacherId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      let query = supabase.from('teacher_requests').select('*').eq('teacherId', teacherId).order('created_at', { ascending: false });
+      if (departmentId) {
+        query = query.eq('departmentId', departmentId);
+      }
+      const { data, error } = await query.limit(1).maybeSingle();
       if (error || !data) {
         const local = loadLocalTeacherRequests();
-        const found = local.find((r) => r.teacherId === teacherId);
+        const found = local.find((r) => r.teacherId === teacherId && (!departmentId || r.departmentId === departmentId));
         if (found) return found;
-        return memoryStore.teacherRequests.find((r) => r.teacherId === teacherId);
+        return memoryStore.teacherRequests.find((r) => r.teacherId === teacherId && (!departmentId || r.departmentId === departmentId));
       }
       return data;
     } catch {
       const local = loadLocalTeacherRequests();
-      const found = local.find((r) => r.teacherId === teacherId);
+      const found = local.find((r) => r.teacherId === teacherId && (!departmentId || r.departmentId === departmentId));
       if (found) return found;
-      return memoryStore.teacherRequests.find((r) => r.teacherId === teacherId);
+      return memoryStore.teacherRequests.find((r) => r.teacherId === teacherId && (!departmentId || r.departmentId === departmentId));
     }
   },
 
   async create(req: any) {
     const local = loadLocalTeacherRequests();
-    const existingIdx = local.findIndex((r) => r.id === req.id || r.teacherId === req.teacherId);
+    // Match on (id) OR (teacherId + departmentId) to allow one request per teacher per department
+    const existingIdx = local.findIndex(
+      (r) => r.id === req.id || (r.teacherId === req.teacherId && r.departmentId === req.departmentId)
+    );
     if (existingIdx !== -1) {
       local[existingIdx] = { ...local[existingIdx], ...req };
     } else {
@@ -1689,3 +1696,363 @@ export const HODAssignmentService = {
     return true;
   }
 };
+
+// ==========================================
+// SECTIONS SERVICE
+// ==========================================
+const SECTIONS_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
+  ? path.join(process.cwd(), 'backend', 'data', 'sections.json')
+  : path.join(process.cwd(), 'data', 'sections.json');
+
+function persistLocalSections(list: any[]) {
+  try {
+    const dir = path.dirname(SECTIONS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SECTIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (err) {
+    logger.warn('[SectionService] Could not write sections.json', err);
+  }
+}
+
+function loadLocalSections(): any[] {
+  try {
+    if (fs.existsSync(SECTIONS_FILE)) {
+      const content = fs.readFileSync(SECTIONS_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return memoryStore.sections || [];
+}
+
+memoryStore.sections = loadLocalSections();
+
+export const SectionService = {
+  async getAll(filter?: { departmentId?: string; status?: string; campusId?: string }) {
+    try {
+      let query = supabase.from('sections').select('*');
+      if (filter?.departmentId) query = query.eq('departmentId', filter.departmentId);
+      if (filter?.status) query = query.eq('status', filter.status);
+      const { data, error } = await query;
+      if (error || !data || data.length === 0) {
+        if (!memoryStore.sections || memoryStore.sections.length === 0) {
+          memoryStore.sections = loadLocalSections();
+        }
+        let list = memoryStore.sections;
+        if (filter?.departmentId) list = list.filter((s: any) => s.departmentId === filter.departmentId);
+        if (filter?.status) list = list.filter((s: any) => s.status === filter.status);
+        if (filter?.campusId) list = list.filter((s: any) => !s.campusId || s.campusId === filter.campusId);
+        return list;
+      }
+      return data;
+    } catch {
+      let list = memoryStore.sections || loadLocalSections();
+      if (filter?.departmentId) list = list.filter((s: any) => s.departmentId === filter.departmentId);
+      if (filter?.status) list = list.filter((s: any) => s.status === filter.status);
+      if (filter?.campusId) list = list.filter((s: any) => !s.campusId || s.campusId === filter.campusId);
+      return list;
+    }
+  },
+
+  async getById(id: string) {
+    const list = await this.getAll();
+    return list.find((s: any) => s.id === id) || null;
+  },
+
+  async getByDepartmentId(departmentId: string) {
+    return this.getAll({ departmentId, status: 'Active' });
+  },
+
+  async create(section: any) {
+    try {
+      const { data, error } = await supabase.from('sections').insert([section]).select().single();
+      const created = (!error && data) ? data : section;
+      if (!memoryStore.sections) memoryStore.sections = loadLocalSections();
+      memoryStore.sections.unshift(created);
+      persistLocalSections(memoryStore.sections);
+      return created;
+    } catch {
+      if (!memoryStore.sections) memoryStore.sections = loadLocalSections();
+      memoryStore.sections.unshift(section);
+      persistLocalSections(memoryStore.sections);
+      return section;
+    }
+  },
+
+  async update(id: string, updates: any) {
+    try {
+      const { data, error } = await supabase.from('sections').update(updates).eq('id', id).select().single();
+      if (!memoryStore.sections) memoryStore.sections = loadLocalSections();
+      const idx = memoryStore.sections.findIndex((s: any) => s.id === id);
+      const updated = (!error && data) ? data : { ...(idx !== -1 ? memoryStore.sections[idx] : {}), ...updates };
+      if (idx !== -1) memoryStore.sections[idx] = updated;
+      else memoryStore.sections.push(updated);
+      persistLocalSections(memoryStore.sections);
+      return updated;
+    } catch {
+      if (!memoryStore.sections) memoryStore.sections = loadLocalSections();
+      const idx = memoryStore.sections.findIndex((s: any) => s.id === id);
+      if (idx !== -1) {
+        memoryStore.sections[idx] = { ...memoryStore.sections[idx], ...updates };
+        persistLocalSections(memoryStore.sections);
+        return memoryStore.sections[idx];
+      }
+      return null;
+    }
+  },
+
+  async delete(id: string) {
+    try {
+      await supabase.from('sections').delete().eq('id', id);
+    } catch {}
+    if (!memoryStore.sections) memoryStore.sections = loadLocalSections();
+    memoryStore.sections = memoryStore.sections.filter((s: any) => s.id !== id);
+    persistLocalSections(memoryStore.sections);
+    return true;
+  }
+};
+
+// ==========================================
+// TEACHER ASSIGNMENTS SERVICE
+// (Teacher → Department → Section → Course → HOD)
+// ==========================================
+const TEACHER_ASSIGNMENTS_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
+  ? path.join(process.cwd(), 'backend', 'data', 'teacher_assignments.json')
+  : path.join(process.cwd(), 'data', 'teacher_assignments.json');
+
+function persistLocalTeacherAssignments(list: any[]) {
+  try {
+    const dir = path.dirname(TEACHER_ASSIGNMENTS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(TEACHER_ASSIGNMENTS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (err) {
+    logger.warn('[TeacherAssignmentService] Could not write teacher_assignments.json', err);
+  }
+}
+
+function loadLocalTeacherAssignments(): any[] {
+  try {
+    if (fs.existsSync(TEACHER_ASSIGNMENTS_FILE)) {
+      const content = fs.readFileSync(TEACHER_ASSIGNMENTS_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return memoryStore.teacherAssignments || [];
+}
+
+memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+
+export const TeacherAssignmentService = {
+  async getAll(filter?: { teacherId?: string; departmentId?: string; sectionId?: string; courseId?: string; active?: boolean }) {
+    try {
+      let query = supabase.from('teacher_assignments').select('*');
+      if (filter?.teacherId) query = query.eq('teacherId', filter.teacherId);
+      if (filter?.departmentId) query = query.eq('departmentId', filter.departmentId);
+      if (filter?.sectionId) query = query.eq('sectionId', filter.sectionId);
+      if (filter?.courseId) query = query.eq('courseId', filter.courseId);
+      if (filter?.active !== undefined) query = query.eq('active', filter.active);
+      const { data, error } = await query;
+      if (error || !data || data.length === 0) {
+        if (!memoryStore.teacherAssignments || memoryStore.teacherAssignments.length === 0) {
+          memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+        }
+        let list = memoryStore.teacherAssignments;
+        if (filter?.teacherId) list = list.filter((a: any) => a.teacherId === filter.teacherId);
+        if (filter?.departmentId) list = list.filter((a: any) => a.departmentId === filter.departmentId);
+        if (filter?.sectionId) list = list.filter((a: any) => a.sectionId === filter.sectionId);
+        if (filter?.courseId) list = list.filter((a: any) => a.courseId === filter.courseId);
+        if (filter?.active !== undefined) list = list.filter((a: any) => a.active === filter.active);
+        return list;
+      }
+      return data;
+    } catch {
+      let list = memoryStore.teacherAssignments || loadLocalTeacherAssignments();
+      if (filter?.teacherId) list = list.filter((a: any) => a.teacherId === filter.teacherId);
+      if (filter?.departmentId) list = list.filter((a: any) => a.departmentId === filter.departmentId);
+      if (filter?.sectionId) list = list.filter((a: any) => a.sectionId === filter.sectionId);
+      if (filter?.courseId) list = list.filter((a: any) => a.courseId === filter.courseId);
+      if (filter?.active !== undefined) list = list.filter((a: any) => a.active === filter.active);
+      return list;
+    }
+  },
+
+  async getById(id: string) {
+    const list = await this.getAll();
+    return list.find((a: any) => a.id === id) || null;
+  },
+
+  async getByTeacherId(teacherId: string, onlyActive = true) {
+    const list = await this.getAll();
+    return list.filter((a: any) => a.teacherId === teacherId && (!onlyActive || a.active === true));
+  },
+
+  async hasAssignmentsForTeacher(teacherId: string) {
+    const list = await this.getAll();
+    return list.some((a: any) => a.teacherId === teacherId);
+  },
+
+  /**
+   * Strict validation of a teacher's selected Department + Section + Course
+   * Matches IDs or clean string values.
+   */
+  async validateAssignment(
+    teacherId: string,
+    departmentId: string,
+    sectionIdOrName: string,
+    courseIdOrCodeOrName: string
+  ): Promise<{ isValid: boolean; assignment?: any; message?: string }> {
+    const assignments = await this.getByTeacherId(teacherId, true);
+
+    if (!assignments || assignments.length === 0) {
+      return {
+        isValid: false,
+        message: 'No Department, Section, or Course has been assigned to your account. Please contact the Administrator.'
+      };
+    }
+
+    const cleanSec = (sectionIdOrName || '').trim().toLowerCase();
+    const cleanCrs = (courseIdOrCodeOrName || '').trim().toLowerCase();
+    const cleanDept = (departmentId || '').trim().toLowerCase();
+
+    const matched = assignments.find((a: any) => {
+      // 1. Department match
+      const deptMatch =
+        (a.departmentId && a.departmentId.toLowerCase() === cleanDept) ||
+        (a.departmentName && a.departmentName.toLowerCase() === cleanDept);
+      if (!deptMatch) return false;
+
+      // 2. Section match
+      const secMatch =
+        (a.sectionId && a.sectionId.toLowerCase() === cleanSec) ||
+        (a.sectionName && a.sectionName.toLowerCase() === cleanSec);
+      if (!secMatch) return false;
+
+      // 3. Course match
+      const crsMatch =
+        (a.courseId && a.courseId.toLowerCase() === cleanCrs) ||
+        (a.courseCode && a.courseCode.toLowerCase() === cleanCrs) ||
+        (a.courseName && a.courseName.toLowerCase() === cleanCrs);
+      if (!crsMatch) return false;
+
+      return a.active === true;
+    });
+
+    if (matched) {
+      return { isValid: true, assignment: matched };
+    }
+
+    return {
+      isValid: false,
+      message: 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.'
+    };
+  },
+
+  /**
+   * Constructs the hierarchical tree of authorized options for a teacher
+   * Teacher → Departments → Sections → Courses
+   */
+  async getAuthorizedHierarchy(teacherId: string) {
+    const activeAssignments = await this.getByTeacherId(teacherId, true);
+    if (!activeAssignments || activeAssignments.length === 0) {
+      return [];
+    }
+
+    const deptMap = new Map<string, any>();
+
+    for (const a of activeAssignments) {
+      if (!deptMap.has(a.departmentId)) {
+        deptMap.set(a.departmentId, {
+          id: a.departmentId,
+          name: a.departmentName,
+          campusId: a.campusId,
+          campusName: a.campusName,
+          hodId: a.hodId,
+          hodName: a.hodName,
+          sections: new Map<string, any>()
+        });
+      }
+
+      const dept = deptMap.get(a.departmentId);
+      if (!dept.sections.has(a.sectionId)) {
+        dept.sections.set(a.sectionId, {
+          id: a.sectionId,
+          name: a.sectionName,
+          courses: []
+        });
+      }
+
+      const sec = dept.sections.get(a.sectionId);
+      const exists = sec.courses.some((c: any) => c.id === a.courseId);
+      if (!exists) {
+        sec.courses.push({
+          id: a.courseId,
+          code: a.courseCode,
+          name: a.courseName,
+          credits: a.credits || 3,
+          assignmentId: a.id
+        });
+      }
+    }
+
+    // Convert Maps to nested Arrays
+    return Array.from(deptMap.values()).map((d) => ({
+      id: d.id,
+      name: d.name,
+      campusId: d.campusId,
+      campusName: d.campusName,
+      hodId: d.hodId,
+      hodName: d.hodName,
+      sections: Array.from(d.sections.values())
+    }));
+  },
+
+  async create(assignment: any) {
+    try {
+      const { data, error } = await supabase.from('teacher_assignments').insert([assignment]).select().single();
+      const created = (!error && data) ? data : assignment;
+      if (!memoryStore.teacherAssignments) memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+      memoryStore.teacherAssignments.unshift(created);
+      persistLocalTeacherAssignments(memoryStore.teacherAssignments);
+      return created;
+    } catch {
+      if (!memoryStore.teacherAssignments) memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+      memoryStore.teacherAssignments.unshift(assignment);
+      persistLocalTeacherAssignments(memoryStore.teacherAssignments);
+      return assignment;
+    }
+  },
+
+  async update(id: string, updates: any) {
+    try {
+      const { data, error } = await supabase.from('teacher_assignments').update(updates).eq('id', id).select().single();
+      if (!memoryStore.teacherAssignments) memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+      const idx = memoryStore.teacherAssignments.findIndex((a: any) => a.id === id);
+      const updated = (!error && data) ? data : { ...(idx !== -1 ? memoryStore.teacherAssignments[idx] : {}), ...updates };
+      if (idx !== -1) memoryStore.teacherAssignments[idx] = updated;
+      else memoryStore.teacherAssignments.push(updated);
+      persistLocalTeacherAssignments(memoryStore.teacherAssignments);
+      return updated;
+    } catch {
+      if (!memoryStore.teacherAssignments) memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+      const idx = memoryStore.teacherAssignments.findIndex((a: any) => a.id === id);
+      if (idx !== -1) {
+        memoryStore.teacherAssignments[idx] = { ...memoryStore.teacherAssignments[idx], ...updates };
+        persistLocalTeacherAssignments(memoryStore.teacherAssignments);
+        return memoryStore.teacherAssignments[idx];
+      }
+      return null;
+    }
+  },
+
+  async delete(id: string) {
+    try {
+      await supabase.from('teacher_assignments').delete().eq('id', id);
+    } catch {}
+    if (!memoryStore.teacherAssignments) memoryStore.teacherAssignments = loadLocalTeacherAssignments();
+    memoryStore.teacherAssignments = memoryStore.teacherAssignments.filter((a: any) => a.id !== id);
+    persistLocalTeacherAssignments(memoryStore.teacherAssignments);
+    return true;
+  }
+};
+

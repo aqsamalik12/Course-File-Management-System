@@ -1,0 +1,79 @@
+[
+  {
+    "id": "sec-cs-5a",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "name": "BSCS-5A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-cs-5b",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "name": "BSCS-5B",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-cs-7a",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "name": "BSCS-7A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-cs-3a",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "name": "BSCS-3A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-bba-3a",
+    "departmentId": "dept-business-admin",
+    "departmentName": "Business Administration",
+    "name": "BBA-3A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-bba-5a",
+    "departmentId": "dept-business-admin",
+    "departmentName": "Business Administration",
+    "name": "BBA-5A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  },
+  {
+    "id": "sec-math-3a",
+    "departmentId": "dept-1790488399668",
+    "departmentName": "Mathematics",
+    "name": "BSMath-3A",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "created_at": "2026-09-28T20:00:00.000Z",
+    "updated_at": "2026-09-28T20:00:00.000Z"
+  }
+]

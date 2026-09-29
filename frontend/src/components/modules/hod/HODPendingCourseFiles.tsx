@@ -19,8 +19,13 @@ import {
   FileCheck2,
   BookmarkCheck,
   User,
-  X
+  X,
+  Printer,
+  Download,
+  FileText
 } from 'lucide-react';
+import { CourseFileCertificateModal } from '../../common/CourseFileCertificateModal';
+import { CourseFileDossierModal } from '../../common/CourseFileDossierModal';
 
 interface CourseFileItem {
   id: string;
@@ -59,15 +64,53 @@ export const HODPendingCourseFiles: React.FC = () => {
 
   // Modals & Actions
   const [viewFile, setViewFile] = useState<CourseFileItem | null>(null);
+  const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null);
   const [returnModalFile, setReturnModalFile] = useState<CourseFileItem | null>(null);
   const [returnComment, setReturnComment] = useState('');
+  const [showCertificateFile, setShowCertificateFile] = useState<any | null>(null);
+  const [showDossierFile, setShowDossierFile] = useState<any | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  useEffect(() => {
+    if (viewFile?.templateData?.checklist && Array.isArray(viewFile.templateData.checklist)) {
+      setReviewItems(
+        viewFile.templateData.checklist.map((item: any) => ({
+          ...item,
+          status: item.status || (item.verified === 'Yes' ? 'Verified' : 'Needs Improvement'),
+          comment: item.comment || (item.verified === 'Yes' ? 'Verified and compliant.' : '')
+        }))
+      );
+    } else {
+      setReviewItems([]);
+    }
+  }, [viewFile]);
+
+  const updateItemStatus = (srNo: number, status: 'Verified' | 'Needs Improvement') => {
+    setReviewItems((prev) =>
+      prev.map((it) =>
+        it.srNo === srNo
+          ? {
+              ...it,
+              status,
+              verified: status === 'Verified' ? 'Yes' : 'None',
+              comment: it.comment || (status === 'Verified' ? 'Complete and verified.' : 'Needs improvement.')
+            }
+          : it
+      )
+    );
+  };
+
+  const updateItemComment = (srNo: number, comment: string) => {
+    setReviewItems((prev) =>
+      prev.map((it) => (it.srNo === srNo ? { ...it, comment } : it))
+    );
   };
 
   const fetchPendingFiles = async () => {
@@ -115,13 +158,25 @@ export const HODPendingCourseFiles: React.FC = () => {
           'x-user-role': currentUser?.role || 'HOD',
           'x-department-id': currentUser?.departmentId || ''
         },
-        body: JSON.stringify({ reviewComment: 'Course file reviewed and approved.' })
+        body: JSON.stringify({
+          checklist: reviewItems,
+          remarks: 'Approved by HOD'
+        })
       });
       const resData = await res.json();
       if (res.ok && resData.success) {
-        showToast('Course file approved successfully!', 'success');
+        showToast('Course file approved successfully! Certificate generated.', 'success');
         setApproveConfirmId(null);
-        if (viewFile?.id === fileId) setViewFile(null);
+        if (viewFile?.id === fileId) {
+          const approvedObj = {
+            ...viewFile,
+            status: 'Approved',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: currentUser?.name
+          };
+          setViewFile(null);
+          setShowCertificateFile(approvedObj);
+        }
         fetchPendingFiles();
       } else {
         showToast(resData.message || 'Failed to approve course file.', 'error');
@@ -136,14 +191,11 @@ export const HODPendingCourseFiles: React.FC = () => {
   // Handle Return
   const handleReturn = async () => {
     if (!returnModalFile) return;
-    if (!returnComment.trim()) {
-      showToast('Please provide feedback comments detailing what needs correction.', 'error');
-      return;
-    }
 
     setActionLoading(true);
     try {
       const token = localStorage.getItem('cfms_token');
+      const feedbackComment = returnComment.trim() || 'Returned for revision with individual item comments.';
       const res = await fetch(`/api/hod/course-files/${returnModalFile.id}/return`, {
         method: 'POST',
         headers: {
@@ -153,13 +205,15 @@ export const HODPendingCourseFiles: React.FC = () => {
           'x-user-role': currentUser?.role || 'HOD',
           'x-department-id': currentUser?.departmentId || ''
         },
-        body: JSON.stringify({ reviewComment: returnComment.trim() })
+        body: JSON.stringify({
+          checklist: reviewItems,
+          reviewComment: feedbackComment
+        })
       });
       const resData = await res.json();
       if (res.ok && resData.success) {
-        showToast('Course file returned to teacher with review comments.', 'success');
+        showToast('Course file returned to teacher with individual file comments.', 'success');
         setReturnModalFile(null);
-        setReturnComment('');
         if (viewFile?.id === returnModalFile.id) setViewFile(null);
         fetchPendingFiles();
       } else {
@@ -478,61 +532,159 @@ export const HODPendingCourseFiles: React.FC = () => {
                   <span>Course File Components & Verification Sheet</span>
                 </h4>
 
-                {/* Official 15-Item Verification Checklist Table */}
-                {viewFile.templateData?.checklist && Array.isArray(viewFile.templateData.checklist) && (
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b pb-2">
+                {/* Official 15-Item Verification Checklist with Mandatory Individual Comments (STEP 16 & STEP 17) */}
+                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+                    <div>
                       <h5 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                         <FileCheck2 className="w-4 h-4 text-emerald-600" />
-                        <span>Official 15-Item Course File Verification Sheet</span>
+                        <span>Official 15-Item Verification Sheet & Individual File Comments</span>
                       </h5>
-                      <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        {viewFile.templateData.checklist.filter((i: any) => i.verified === 'Yes').length} / 15 Verified (Yes)
-                      </span>
+                      <p className="text-3xs text-slate-500 mt-0.5">
+                        Rule: Every single document/file must have an individual comment before approval or return.
+                      </p>
                     </div>
 
-                    <div className="border border-slate-300 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-100 border-b border-slate-300">
-                            <th className="py-2 px-3 font-bold text-slate-800 w-16 text-center border-r border-slate-300">Sr No.</th>
-                            <th className="py-2 px-3 font-bold text-slate-800 border-r border-slate-300">Content</th>
-                            <th className="py-2 px-3 font-bold text-slate-800 w-32 text-center">Verified(Yes/No)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 text-2xs">
-                          {viewFile.templateData.checklist.map((item: any) => (
-                            <tr key={item.srNo} className="hover:bg-slate-50">
-                              <td className="py-1.5 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300">
-                                {item.srNo}.
-                              </td>
-                              <td className="py-1.5 px-3 text-slate-800 border-r border-slate-300">
-                                <span className="font-semibold">{item.content}</span>
-                                {item.fileName && (
-                                  <span className="block text-3xs text-slate-400 font-mono">
-                                    File: {item.fileName} ({item.fileSize})
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-1.5 px-3 text-center font-bold">
-                                {item.verified === 'Yes' ? (
-                                  <span className="text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-3xs">
-                                    Yes
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded text-3xs">
-                                    None
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xs font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                        {reviewItems.filter((i: any) => i.status === 'Verified' || i.verified === 'Yes').length} / {reviewItems.length || 15} Verified
+                      </span>
+                      {reviewItems.filter((i: any) => i.status === 'Needs Improvement').length > 0 && (
+                        <span className="text-3xs font-extrabold text-rose-800 bg-rose-50 px-2.5 py-1 rounded border border-rose-200">
+                          {reviewItems.filter((i: any) => i.status === 'Needs Improvement').length} Needs Improvement
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
 
+                  <div className="border border-slate-300 rounded-xl overflow-hidden shadow-xs">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100/90 border-b border-slate-300 text-slate-700">
+                          <th className="py-2.5 px-3 font-bold w-12 text-center border-r border-slate-300">Sr.</th>
+                          <th className="py-2.5 px-3 font-bold w-1/3 border-r border-slate-300">Document / Section</th>
+                          <th className="py-2.5 px-3 font-bold w-48 text-center border-r border-slate-300">Review Decision</th>
+                          <th className="py-2.5 px-3 font-bold">Mandatory HOD Comment / Feedback</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-2xs">
+                        {reviewItems.map((item: any) => {
+                          const isNeedsImp = item.status === 'Needs Improvement';
+                          const isVer = item.status === 'Verified' || item.verified === 'Yes';
+
+                          return (
+                            <tr
+                              key={item.srNo}
+                              className={`transition-colors ${
+                                isNeedsImp ? 'bg-rose-50/70' : isVer ? 'hover:bg-emerald-50/20' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <td className="py-2 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300 align-top pt-3">
+                                {item.srNo}.
+                              </td>
+
+                              <td className="py-2 px-3 border-r border-slate-300 align-top">
+                                <span className="font-extrabold text-slate-900 block text-xs">
+                                  {item.content || item.name}
+                                </span>
+                                {item.fileName ? (
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-3xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                      <span>📄</span>
+                                      <span className="truncate max-w-[200px]">{item.fileName}</span>
+                                      <span>({item.fileSize || 'PDF'})</span>
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-3xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mt-1 inline-block">
+                                    No direct file attached
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Review Decision Buttons */}
+                              <td className="py-2 px-3 border-r border-slate-300 align-top text-center">
+                                <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemStatus(item.srNo, 'Verified')}
+                                    className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                      isVer && !isNeedsImp
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'text-slate-600 hover:text-emerald-700 hover:bg-white'
+                                    }`}
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>Verified</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemStatus(item.srNo, 'Needs Improvement')}
+                                    className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                      isNeedsImp
+                                        ? 'bg-rose-600 text-white shadow-xs'
+                                        : 'text-slate-600 hover:text-rose-700 hover:bg-white'
+                                    }`}
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    <span>Return</span>
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Mandatory Individual Comment Field */}
+                              <td className="py-2 px-3 align-top space-y-1.5">
+                                <input
+                                  type="text"
+                                  value={item.comment || ''}
+                                  onChange={(e) => updateItemComment(item.srNo, e.target.value)}
+                                  placeholder="Enter specific mandatory comment for this document..."
+                                  className={`w-full px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                                    isNeedsImp
+                                      ? 'border-rose-400 bg-white text-rose-900 focus:ring-1 focus:ring-rose-500 font-semibold'
+                                      : 'border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500'
+                                  }`}
+                                />
+
+                                {/* Quick Suggestion Chips */}
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemComment(item.srNo, 'Complete and verified.')}
+                                    className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                  >
+                                    + Complete & Verified
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemComment(item.srNo, 'CV mein required information missing hai.')}
+                                    className="text-[9px] font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 cursor-pointer"
+                                  >
+                                    + CV Missing Info
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemComment(item.srNo, 'Mid Term paper and solutions upload kar dein.')}
+                                    className="text-[9px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 cursor-pointer"
+                                  >
+                                    + Midterm Upload Needed
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemComment(item.srNo, 'Final examination record complete hai.')}
+                                    className="text-[9px] font-semibold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-200 cursor-pointer"
+                                  >
+                                    + Final Exam Complete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
                 {/* Course Outline & Description */}
                 <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -592,31 +744,59 @@ export const HODPendingCourseFiles: React.FC = () => {
 
             {/* Modal Footer with HOD Review Actions */}
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <button
-                onClick={() => setViewFile(null)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
-              >
-                Close View
-              </button>
-
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    setReturnModalFile(viewFile);
-                    setReturnComment('');
-                  }}
-                  className="px-4 py-2 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  onClick={() => setViewFile(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 cursor-pointer text-xs"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Return with Comments</span>
+                  Close View
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDossierFile(viewFile)}
+                  className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs text-xs"
+                >
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Preview Course Dossier PDF</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {reviewItems.some((i: any) => i.status === 'Needs Improvement') ? (
+                  <button
+                    onClick={() => {
+                      setReturnModalFile(viewFile);
+                      const needsList = reviewItems
+                        .filter((i: any) => i.status === 'Needs Improvement')
+                        .map((i: any) => `${i.content || i.name}: ${i.comment || 'Needs update'}`)
+                        .join('\n• ');
+                      setReturnComment(`The following components need improvement:\n• ${needsList}`);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs text-xs"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Return for Revision ({reviewItems.filter((i: any) => i.status === 'Needs Improvement').length} flagged)</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setReturnModalFile(viewFile);
+                      setReturnComment('');
+                    }}
+                    className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs text-xs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Return File</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleApprove(viewFile.id)}
                   disabled={actionLoading}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md text-xs"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Approve Course File</span>
+                  <span>Approve & Issue Certificate</span>
                 </button>
               </div>
             </div>
@@ -717,6 +897,22 @@ export const HODPendingCourseFiles: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── Official Certificate Modal (STEP 20 & 23) ─── */}
+      {showCertificateFile && (
+        <CourseFileCertificateModal
+          courseFile={showCertificateFile}
+          onClose={() => setShowCertificateFile(null)}
+        />
+      )}
+
+      {/* ─── Full Course Dossier PDF Modal (STEP 21 & 22) ─── */}
+      {showDossierFile && (
+        <CourseFileDossierModal
+          courseFile={showDossierFile}
+          onClose={() => setShowDossierFile(null)}
+        />
       )}
     </div>
   );

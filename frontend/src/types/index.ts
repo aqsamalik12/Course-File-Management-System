@@ -10,6 +10,42 @@ export interface Campus {
   status?: 'Active' | 'Inactive';
 }
 
+export interface Section {
+  id: string;
+  departmentId: string;
+  departmentName?: string;
+  name: string; // e.g. 'BSCS-5A', 'BSCS-7A'
+  campusId?: string;
+  campusName?: string;
+  status: 'Active' | 'Inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TeacherAssignment {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string;
+  departmentId: string;
+  departmentName: string;
+  sectionId: string;
+  sectionName: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  credits?: number;
+  hodId: string;
+  hodName: string;
+  campusId?: string;
+  campusName?: string;
+  academicSession?: string;
+  active: boolean;
+  assignedBy?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface HODAssignment {
   id: string;
   hodId: string;
@@ -100,10 +136,13 @@ export interface User {
   profileFormSubmitted?: boolean; // gate: must fill form before course file
   profileFormData?: TeacherProfileFormData; // submitted form data visible to admin
   employeeId?: string;
-  gender?: 'Male' | 'Female' | 'Other';
+  gender?: 'Male' | 'Female' | 'Other' | string;
   academicSession?: string;
   loginCount?: number;
   deleted?: boolean;
+  hodId?: string;
+  hodName?: string;
+  courses?: any[];
   // Visiting Teacher specific fields
   contractStartDate?: string;
   contractEndDate?: string;
@@ -155,7 +194,7 @@ export interface TeacherEnrollmentRequest {
   selectedCourses: SelectedCourseItem[];
   totalCredits: number;
   creditLimit: number;
-  status: 'PendingHODApproval' | 'Approved' | 'Rejected' | 'NeedsUpdate';
+  status: 'Pending' | 'PendingHODApproval' | 'Approved' | 'Rejected' | 'NeedsUpdate';
   rejectionReason?: string;
   profileData?: any;
   submittedAt: string;
@@ -247,6 +286,7 @@ export interface SubmissionWindow {
   endDate: string;
   status: 'Submission Window Active' | 'Submission Closed' | 'Upcoming';
   allowLateSubmission: boolean;
+  allowLateSubmissions?: boolean;
 }
 
 export interface VersionItem {
@@ -274,6 +314,9 @@ export interface CourseFileItem {
   title: string;
   category: FileCategoryType;
   currentVersion: string;
+  version?: string | number;
+  updatedAt?: string;
+  submittedById?: string;
   fileType: 'PDF' | 'DOCX' | 'PPT' | 'ZIP' | 'XLSX';
   fileSize: string;
   fileUrl: string;
@@ -331,7 +374,7 @@ export interface DeadlineItem {
   departmentName: string;
   dueDate: string;
   gracePeriodDays: number;
-  status: 'Upcoming' | 'Completed' | 'Missed' | 'Extended';
+  status: 'Upcoming' | 'Completed' | 'Missed' | 'Extended' | 'Overdue';
   description: string;
   targetRole?: 'ALL' | 'REGULAR_TEACHER' | 'VISITING_TEACHER';
 }
@@ -339,12 +382,12 @@ export interface DeadlineItem {
 export interface AcademicSession {
   id: string;
   name: string;
-  term: 'Fall' | 'Spring' | 'Summer';
+  term?: 'Fall' | 'Spring' | 'Summer';
   year: number;
   startDate: string;
   endDate: string;
   isCurrent: boolean;
-  status: 'Active' | 'Locked' | 'Archived';
+  status: 'Active' | 'Locked' | 'Archived' | 'Upcoming' | 'Past';
   fileCount: number;
 }
 

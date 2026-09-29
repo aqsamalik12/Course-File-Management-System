@@ -22,8 +22,12 @@ import {
   Award,
   ListOrdered,
   FileCheck2,
-  BookmarkCheck
+  BookmarkCheck,
+  Download,
+  Printer
 } from 'lucide-react';
+import { CourseFileCertificateModal } from '../../common/CourseFileCertificateModal';
+import { CourseFileDossierModal } from '../../common/CourseFileDossierModal';
 
 interface SemesterFolder {
   name: string;
@@ -50,6 +54,7 @@ interface CourseFileItem {
   courseId: string;
   courseCode: string;
   courseTitle: string;
+  title?: string;
   credits?: number;
   batch?: string;
   session?: string;
@@ -89,15 +94,53 @@ export const HODCourseFiles: React.FC = () => {
 
   // Modals & Actions
   const [viewFile, setViewFile] = useState<CourseFileItem | null>(null);
+  const [reviewItems, setReviewItems] = useState<any[]>([]);
   const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null);
   const [returnModalFile, setReturnModalFile] = useState<CourseFileItem | null>(null);
   const [returnComment, setReturnComment] = useState('');
+  const [showCertificateFile, setShowCertificateFile] = useState<CourseFileItem | null>(null);
+  const [showDossierFile, setShowDossierFile] = useState<CourseFileItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  useEffect(() => {
+    if (viewFile?.templateData?.checklist && Array.isArray(viewFile.templateData.checklist)) {
+      setReviewItems(
+        viewFile.templateData.checklist.map((item: any) => ({
+          ...item,
+          status: item.status || (item.verified === 'Yes' ? 'Verified' : 'Needs Improvement'),
+          comment: item.comment || (item.verified === 'Yes' ? 'Verified and compliant.' : '')
+        }))
+      );
+    } else {
+      setReviewItems([]);
+    }
+  }, [viewFile]);
+
+  const updateItemStatus = (srNo: number, status: 'Verified' | 'Needs Improvement') => {
+    setReviewItems((prev) =>
+      prev.map((it) =>
+        it.srNo === srNo
+          ? {
+              ...it,
+              status,
+              verified: status === 'Verified' ? 'Yes' : 'None',
+              comment: it.comment || (status === 'Verified' ? 'Complete and verified.' : 'Needs improvement.')
+            }
+          : it
+      )
+    );
+  };
+
+  const updateItemComment = (srNo: number, comment: string) => {
+    setReviewItems((prev) =>
+      prev.map((it) => (it.srNo === srNo ? { ...it, comment } : it))
+    );
   };
 
   const getHeaders = () => {
@@ -175,14 +218,29 @@ export const HODCourseFiles: React.FC = () => {
     try {
       const res = await fetch(`/api/hod/course-files/${id}/approve`, {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
+        body: JSON.stringify({
+          checklist: reviewItems.length > 0 ? reviewItems : undefined,
+          remarks: 'Approved by HOD'
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast('Course file approved successfully! Teacher has been notified.');
+        showToast('Course file approved successfully! Certificate generated.');
         setApproveConfirmId(null);
         if (viewFile?.id === id) {
-          setViewFile((prev: any) => ({ ...prev, status: 'Approved' }));
+          const approvedObj = {
+            ...viewFile,
+            status: 'Approved',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: currentUser?.name,
+            templateData: {
+              ...viewFile.templateData,
+              checklist: reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist
+            }
+          };
+          setViewFile(null);
+          setShowCertificateFile(approvedObj);
         }
         await fetchFiles();
         await fetchHierarchy();
@@ -199,17 +257,17 @@ export const HODCourseFiles: React.FC = () => {
   // ─── Return Action ───────────────────────────────────────────────────────────
   const handleReturn = async () => {
     if (!returnModalFile) return;
-    if (!returnComment.trim()) {
-      showToast('A review comment or return reason is required.', 'error');
-      return;
-    }
+    const finalComment = returnComment.trim() || 'Returned for revision with individual item comments.';
 
     setActionLoading(true);
     try {
       const res = await fetch(`/api/hod/course-files/${returnModalFile.id}/return`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ reviewComment: returnComment.trim() })
+        body: JSON.stringify({
+          checklist: reviewItems.length > 0 ? reviewItems : undefined,
+          reviewComment: finalComment
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -217,7 +275,7 @@ export const HODCourseFiles: React.FC = () => {
         setReturnModalFile(null);
         setReturnComment('');
         if (viewFile?.id === returnModalFile.id) {
-          setViewFile((prev: any) => ({ ...prev, status: 'Returned', reviewComment: returnComment.trim() }));
+          setViewFile(null);
         }
         await fetchFiles();
         await fetchHierarchy();
@@ -480,7 +538,7 @@ export const HODCourseFiles: React.FC = () => {
 
       {/* ─── Level 4: Course Files Table (Requirement 18, 33) ─── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
           <div>
             <h2 className="text-sm font-extrabold text-slate-900 font-heading">
               {selectedSemester ? `${selectedSemester} Course Files` : 'All Semester Course Files'}
@@ -489,9 +547,45 @@ export const HODCourseFiles: React.FC = () => {
               Batch {selectedBatch} • Session {selectedSession} • Scoped to {currentUser?.departmentName}
             </p>
           </div>
-          <span className="text-xs font-bold text-slate-500">
-            Total: <strong className="text-slate-900">{files.length}</strong> Files
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const approvedInScope = files.filter(f => f.status === 'Approved');
+                if (approvedInScope.length === 0) {
+                  showToast('No approved course files available to download in this semester.', 'error');
+                  return;
+                }
+                setShowDossierFile(approvedInScope[0]);
+                showToast(`Preparing package for ${selectedSemester || 'Current Semester'} (${approvedInScope.length} course files)...`, 'success');
+              }}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+              title="Download all approved files in this semester"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Download Semester Files</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const approvedInScope = files.filter(f => f.status === 'Approved');
+                if (approvedInScope.length === 0) {
+                  showToast('No approved course files available in this batch.', 'error');
+                  return;
+                }
+                setShowDossierFile(approvedInScope[0]);
+                showToast(`Preparing batch folder package for Batch ${selectedBatch} (${approvedInScope.length} files)...`, 'success');
+              }}
+              className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+              title="Download complete batch course file folder package"
+            >
+              <Folder className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Download Batch Package</span>
+            </button>
+            <span className="text-xs font-bold text-slate-500 ml-2">
+              Total: <strong className="text-slate-900">{files.length}</strong>
+            </span>
+          </div>
         </div>
 
         {loadingFiles ? (
@@ -566,6 +660,27 @@ export const HODCourseFiles: React.FC = () => {
                           <Eye className="w-3.5 h-3.5 text-slate-600" />
                           <span>Review</span>
                         </button>
+
+                        {file.status === 'Approved' && (
+                          <>
+                            <button
+                              onClick={() => setShowDossierFile(file)}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="Download Course File PDF Dossier"
+                            >
+                              <Download className="w-3.5 h-3.5 text-slate-700" />
+                              <span>Download PDF</span>
+                            </button>
+                            <button
+                              onClick={() => setShowCertificateFile(file)}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="View & Download Official Certificate"
+                            >
+                              <Award className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Certificate</span>
+                            </button>
+                          </>
+                        )}
 
                         {(file.status === 'Submitted' || file.status === 'Under Review') && (
                           <>
@@ -679,7 +794,7 @@ export const HODCourseFiles: React.FC = () => {
               </h4>
 
               {/* Official 15-Item Verification Checklist Table */}
-              {viewFile.templateData?.checklist && Array.isArray(viewFile.templateData.checklist) && (
+              {(reviewItems.length > 0 || (viewFile.templateData?.checklist && Array.isArray(viewFile.templateData.checklist))) && (
                 <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between border-b pb-2">
                     <h5 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
@@ -687,46 +802,153 @@ export const HODCourseFiles: React.FC = () => {
                       <span>Official 15-Item Course File Verification Sheet</span>
                     </h5>
                     <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      {viewFile.templateData.checklist.filter((i: any) => i.verified === 'Yes').length} / 15 Verified (Yes)
+                      {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).filter((i: any) => i.status === 'Verified' || i.verified === 'Yes').length} / 15 Verified
                     </span>
                   </div>
 
-                  <div className="border border-slate-300 rounded-lg overflow-hidden">
+                  <div className="border border-slate-300 rounded-xl overflow-hidden shadow-xs">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-slate-100 border-b border-slate-300">
-                          <th className="py-2 px-3 font-bold text-slate-800 w-16 text-center border-r border-slate-300">Sr No.</th>
-                          <th className="py-2 px-3 font-bold text-slate-800 border-r border-slate-300">Content</th>
-                          <th className="py-2 px-3 font-bold text-slate-800 w-32 text-center">Verified(Yes/No)</th>
+                        <tr className="bg-slate-100/90 border-b border-slate-300 text-slate-700">
+                          <th className="py-2.5 px-3 font-bold w-12 text-center border-r border-slate-300">Sr.</th>
+                          <th className="py-2.5 px-3 font-bold w-1/3 border-r border-slate-300">Document / Section</th>
+                          <th className="py-2.5 px-3 font-bold w-48 text-center border-r border-slate-300">Review Decision</th>
+                          <th className="py-2.5 px-3 font-bold">Mandatory HOD Comment / Feedback</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 text-2xs">
-                        {viewFile.templateData.checklist.map((item: any) => (
-                          <tr key={item.srNo} className="hover:bg-slate-50">
-                            <td className="py-1.5 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300">
-                              {item.srNo}.
-                            </td>
-                            <td className="py-1.5 px-3 text-slate-800 border-r border-slate-300">
-                              <span className="font-semibold">{item.content}</span>
-                              {item.fileName && (
-                                <span className="block text-3xs text-slate-400 font-mono">
-                                  File: {item.fileName} ({item.fileSize})
+                        {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).map((item: any) => {
+                          const isNeedsImp = item.status === 'Needs Improvement';
+                          const isVer = item.status === 'Verified' || item.verified === 'Yes';
+                          const isEditable = viewFile.status === 'Submitted' || viewFile.status === 'Under Review';
+
+                          return (
+                            <tr
+                              key={item.srNo}
+                              className={`transition-colors ${
+                                isNeedsImp ? 'bg-rose-50/70' : isVer ? 'hover:bg-emerald-50/20' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <td className="py-2 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300 align-top pt-3">
+                                {item.srNo}.
+                              </td>
+
+                              <td className="py-2 px-3 border-r border-slate-300 align-top">
+                                <span className="font-extrabold text-slate-900 block text-xs">
+                                  {item.content || item.name}
                                 </span>
-                              )}
-                            </td>
-                            <td className="py-1.5 px-3 text-center font-bold">
-                              {item.verified === 'Yes' ? (
-                                <span className="text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-3xs">
-                                  Yes
-                                </span>
-                              ) : (
-                                <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded text-3xs">
-                                  None
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                                {item.fileName ? (
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-3xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                      <span>📄</span>
+                                      <span className="truncate max-w-[200px]">{item.fileName}</span>
+                                      <span>({item.fileSize || 'PDF'})</span>
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-3xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mt-1 inline-block">
+                                    No direct file attached
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Review Decision */}
+                              <td className="py-2 px-3 border-r border-slate-300 align-top text-center">
+                                {isEditable ? (
+                                  <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemStatus(item.srNo, 'Verified')}
+                                      className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                        isVer && !isNeedsImp
+                                          ? 'bg-emerald-600 text-white shadow-xs'
+                                          : 'text-slate-600 hover:text-emerald-700 hover:bg-white'
+                                      }`}
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      <span>Verified</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateItemStatus(item.srNo, 'Needs Improvement')}
+                                      className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                        isNeedsImp
+                                          ? 'bg-rose-600 text-white shadow-xs'
+                                          : 'text-slate-600 hover:text-rose-700 hover:bg-white'
+                                      }`}
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                      <span>Return</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded font-extrabold text-3xs border ${
+                                      isNeedsImp
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}
+                                  >
+                                    {isNeedsImp ? 'Needs Improvement' : 'Verified'}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Mandatory Individual Comment */}
+                              <td className="py-2 px-3 align-top space-y-1.5">
+                                {isEditable ? (
+                                  <>
+                                    <input
+                                      type="text"
+                                      value={item.comment || ''}
+                                      onChange={(e) => updateItemComment(item.srNo, e.target.value)}
+                                      placeholder="Enter specific mandatory comment for this document..."
+                                      className={`w-full px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                                        isNeedsImp
+                                          ? 'border-rose-400 bg-white text-rose-900 focus:ring-1 focus:ring-rose-500 font-semibold'
+                                          : 'border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500'
+                                      }`}
+                                    />
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => updateItemComment(item.srNo, 'Complete and verified.')}
+                                        className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                      >
+                                        + Complete & Verified
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateItemComment(item.srNo, 'CV mein required information missing hai.')}
+                                        className="text-[9px] font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 cursor-pointer"
+                                      >
+                                        + CV missing info
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateItemComment(item.srNo, 'Mid Term paper upload kar dein.')}
+                                        className="text-[9px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 cursor-pointer"
+                                      >
+                                        + Upload Midterm
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateItemComment(item.srNo, 'Final examination record complete hai.')}
+                                        className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                      >
+                                        + Final Exam Complete
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="p-2 rounded bg-slate-50 border border-slate-200 text-slate-700 italic">
+                                    {item.comment || 'No specific comment recorded.'}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -817,6 +1039,25 @@ export const HODCourseFiles: React.FC = () => {
               >
                 Close
               </button>
+
+              {viewFile.status === 'Approved' && (
+                <>
+                  <button
+                    onClick={() => setShowDossierFile(viewFile)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Download className="w-4 h-4 text-slate-700" />
+                    <span>Download PDF Dossier</span>
+                  </button>
+                  <button
+                    onClick={() => setShowCertificateFile(viewFile)}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Award className="w-4 h-4 text-emerald-700" />
+                    <span>View Certificate</span>
+                  </button>
+                </>
+              )}
 
               {(viewFile.status === 'Submitted' || viewFile.status === 'Under Review') && (
                 <>
@@ -929,6 +1170,22 @@ export const HODCourseFiles: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── Official Certificate Modal (Step 20, 23) ─── */}
+      {showCertificateFile && (
+        <CourseFileCertificateModal
+          courseFile={showCertificateFile}
+          onClose={() => setShowCertificateFile(null)}
+        />
+      )}
+
+      {/* ─── Printable Course Dossier Modal (Step 21, 22) ─── */}
+      {showDossierFile && (
+        <CourseFileDossierModal
+          courseFile={showDossierFile}
+          onClose={() => setShowDossierFile(null)}
+        />
       )}
     </div>
   );

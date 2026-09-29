@@ -1,13 +1,29 @@
 [
   {
+    "id": "dept-business-admin",
+    "code": "BBA",
+    "name": "Business Administration",
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "status": "Active",
+    "hodId": "usr-hod-business",
+    "hodName": "Dr. Tariq Mahmood",
+    "facultyCount": 0,
+    "courseCount": 0,
+    "submissionRate": 0,
+    "building": "Management Sciences Block",
+    "created_at": "2026-09-28T20:32:55.113855+00:00",
+    "updated_at": "2026-09-28T20:32:55.113855+00:00"
+  },
+  {
     "id": "dept-1790466035357",
     "code": "CS",
     "name": "Computer Science",
     "campusId": "camp-attock",
     "campusName": "Attock Campus",
     "status": "Active",
-    "hodId": "usr-hod-1790533114162",
-    "hodName": "Dr. Ahmed",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
     "facultyCount": 0,
     "courseCount": 0,
     "submissionRate": 0,
@@ -118,8 +134,8 @@
     "campusId": "camp-attock",
     "campusName": "Attock Campus",
     "status": "Active",
-    "hodId": "usr-hod-1790533108410",
-    "hodName": "Dr. Asif",
+    "hodId": "usr-hod-1790490221185",
+    "hodName": "Dr. Abu Zarr",
     "facultyCount": 0,
     "courseCount": 0,
     "submissionRate": 0,
@@ -172,5 +188,25 @@
     "status": "Active",
     "hodId": "usr-hod-1790533147680",
     "hodName": "Dr. Lahore HOD"
+  },
+  {
+    "id": "dept-1790623272150",
+    "name": "Software Engineering",
+    "code": "SE",
+    "campusId": "camp-1790623271255",
+    "campusName": "Rawalpindi Sub-Campus 1790623271042",
+    "status": "Active",
+    "hodId": "usr-hod-1790623274002",
+    "hodName": "Dr. Zeeshan"
+  },
+  {
+    "id": "dept-1790624662378",
+    "name": "Software Engineering",
+    "code": "SE",
+    "campusId": "camp-1790624661435",
+    "campusName": "Rawalpindi Sub-Campus 1790624661198",
+    "status": "Active",
+    "hodId": "usr-hod-1790624664248",
+    "hodName": "Dr. Zeeshan"
   }
 ]

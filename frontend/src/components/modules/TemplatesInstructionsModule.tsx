@@ -269,7 +269,9 @@ export const TemplatesInstructionsModule: React.FC<TemplatesInstructionsModulePr
     } else {
       const newSec: ChecklistItem = {
         id: `chk-${Date.now()}`,
+        srNo: checklistItems.length + 1,
         name: secName,
+        content: secName,
         description: secDesc,
         mandatory: true
       };

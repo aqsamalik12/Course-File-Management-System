@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCFMS } from '../../context/CFMSContext';
 import { useAuth } from '../../context/AuthContext';
 import { OFFICIAL_COURSE_FILE_CHECKLIST, OfficialChecklistItem } from '../../data/mockData';
+import { TeacherFormSetup } from './TeacherFormSetup';
 import {
   Upload,
   BookOpen,
@@ -30,6 +31,8 @@ import {
   Award,
   GraduationCap
 } from 'lucide-react';
+import { CourseFileCertificateModal } from '../common/CourseFileCertificateModal';
+import { CourseFileDossierModal } from '../common/CourseFileDossierModal';
 
 export interface SectionUploadState {
   srNo: number;
@@ -45,6 +48,8 @@ export interface SectionUploadState {
   fileSize?: string;
   uploadedAt?: string;
   verified: 'Yes' | 'None';
+  status?: 'Verified' | 'Needs Improvement' | 'Pending';
+  comment?: string;
 }
 
 // Bachelor Degree Batches starting from 2026 onwards (extensible to future cohorts)
@@ -90,8 +95,10 @@ interface CourseFileSubmissionModuleProps {
 }
 
 export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProps> = ({ onNavigate }) => {
-  const { courseFiles, courses, submissionWindow, uploadCourseFile } = useCFMS();
+  const { courseFiles, courses, submissionWindow, uploadCourseFile, activeTeacherSetup } = useCFMS();
   const { currentUser } = useAuth();
+
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   const teacherName = currentUser?.name || 'Faculty Member';
   const myCourses = courses.filter(
@@ -115,6 +122,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   // Modals
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showCourseFileDossierModal, setShowCourseFileDossierModal] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showDossierModal, setShowDossierModal] = useState(false);
   const [showIncompleteWarningModal, setShowIncompleteWarningModal] = useState(false);
   const [viewHistoryModal, setViewHistoryModal] = useState(false);
 
@@ -160,7 +169,9 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               fileSize: found.fileSize,
               uploadedAt: found.uploadedAt,
               isNA: found.isNA ?? (item.isApplicableOnly ? false : undefined),
-              verified: found.verified || 'None'
+              verified: found.verified || 'None',
+              status: found.status,
+              comment: found.comment
             };
           }
           return {
@@ -224,6 +235,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             fileSize: fileSizeStr,
             uploadedAt: nowStr,
             verified: 'Yes',
+            status: 'Verified',
+            comment: item.comment ? `Corrected file uploaded. (Previous note: "${item.comment}")` : undefined,
             isNA: false
           };
         }
@@ -301,7 +314,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   const progressPercent = Math.round(((verifiedYesCount + naCount) / 15) * 100);
 
   // Submission / Draft Handler
-  const handleSaveOrSubmit = (targetStatus: 'Draft' | 'Submitted') => {
+  const handleSaveOrSubmit = async (targetStatus: 'Draft' | 'Submitted') => {
     if (!selectedCourse) {
       showToast('Please select an assigned course first.', 'warning');
       return;
@@ -331,56 +344,129 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       verified: item.verified
     }));
 
-    uploadCourseFile({
-      courseId: selectedCourse.id,
-      courseCode: selectedCourse.code,
-      courseTitle: selectedCourse.title,
-      credits: selectedCourse.credits || 3,
-      departmentId: currentUser?.departmentId || 'dept-1',
-      departmentName: selectedCourse.departmentName || currentUser?.departmentName || 'Department of Computer Science',
-      campusId: currentUser?.campusId,
-      campusName: currentUser?.campus || currentUser?.campusName,
-      hodId: currentUser?.hodId,
-      hodName: currentUser?.hodName,
-      batch: submissionBatch,
-      session: submissionSession,
-      semester: submissionSemester,
-      teacherId: currentUser?.id || 'user-teacher',
-      teacherName: teacherName,
-      teacherRole: currentUser?.role || 'REGULAR_TEACHER',
-      title: `${selectedCourse.code} Complete Course File (${submissionSession} - ${submissionSemester})`,
-      category: 'Syllabus & Course Outline',
-      currentVersion: versionNumber,
-      fileType: 'PDF',
-      fileSize: `${(verifiedYesCount * 1.5).toFixed(1)} MB`,
-      fileUrl: '#',
-      status: targetStatus,
-      templateData: {
-        checklist: serializableChecklist,
-        totalItems: 15,
-        verifiedYesCount,
-        naCount,
-        allMandatoryVerified,
-        notes: uploadNotes,
-        submittedTimestamp: new Date().toISOString()
-      },
-      remarks: uploadNotes
-        ? `Faculty Changelog: ${uploadNotes}`
-        : targetStatus === 'Draft'
-        ? 'Draft saved by teacher with checklist.'
-        : 'Submitted complete course file with all 15 checklist items verified for HOD approval.'
-    });
+    const finalCourseId = activeTeacherSetup?.courseId || selectedCourse?.id || 'crs-1';
+    const finalCourseCode = activeTeacherSetup?.courseCode || selectedCourse?.code || 'CS-101';
+    const finalCourseTitle = activeTeacherSetup?.courseName || selectedCourse?.title || 'Course';
+    const finalDeptId = activeTeacherSetup?.departmentId || currentUser?.departmentId || 'dept-1';
+    const finalDeptName = activeTeacherSetup?.departmentName || selectedCourse?.departmentName || currentUser?.departmentName || 'Department of Computer Science';
+    const finalCampusId = activeTeacherSetup?.campusId || currentUser?.campusId;
+    const finalCampusName = activeTeacherSetup?.campusName || currentUser?.campus || currentUser?.campusName;
+    const finalHodId = activeTeacherSetup?.hodId || currentUser?.hodId;
+    const finalHodName = activeTeacherSetup?.hodName || currentUser?.hodName;
+    const finalSection = activeTeacherSetup?.sectionName || submissionBatch;
 
-    if (targetStatus === 'Draft') {
-      showToast(`Course file draft saved for ${selectedCourse.code} (${verifiedYesCount} of 15 documents uploaded).`, 'success');
-    } else {
-      showToast(`Course file for ${selectedCourse.code} successfully submitted to your HOD with full verification!`, 'success');
-      setShowCourseFileDossierModal(true);
+    try {
+      await uploadCourseFile({
+        courseId: finalCourseId,
+        courseCode: finalCourseCode,
+        courseTitle: finalCourseTitle,
+        credits: activeTeacherSetup?.credits || selectedCourse?.credits || 3,
+        departmentId: finalDeptId,
+        departmentName: finalDeptName,
+        campusId: finalCampusId,
+        campusName: finalCampusName,
+        hodId: finalHodId,
+        hodName: finalHodName,
+        section: finalSection,
+        batch: submissionBatch,
+        session: submissionSession,
+        semester: submissionSemester,
+        teacherId: currentUser?.id || 'user-teacher',
+        teacherName: teacherName,
+        teacherRole: currentUser?.role || 'REGULAR_TEACHER',
+        title: `${finalCourseCode} Complete Course File (${submissionSession} - ${submissionSemester})`,
+        category: 'Syllabus & Course Outline',
+        currentVersion: versionNumber,
+        fileType: 'PDF',
+        fileSize: `${(verifiedYesCount * 1.5).toFixed(1)} MB`,
+        fileUrl: '#',
+        status: targetStatus,
+        templateData: {
+          checklist: serializableChecklist,
+          totalItems: 15,
+          verifiedYesCount,
+          naCount,
+          allMandatoryVerified,
+          notes: uploadNotes,
+          submittedTimestamp: new Date().toISOString()
+        },
+        remarks: uploadNotes
+          ? `Faculty Changelog: ${uploadNotes}`
+          : targetStatus === 'Draft'
+          ? 'Draft saved by teacher with checklist.'
+          : 'Submitted complete course file with all 15 checklist items verified for HOD approval.'
+      });
+
+      if (targetStatus === 'Draft') {
+        showToast(`Course file draft saved for ${selectedCourse.code} (${verifiedYesCount} of 15 documents uploaded).`, 'success');
+      } else {
+        showToast(`Course file for ${selectedCourse.code} successfully submitted to your HOD with full verification!`, 'success');
+        setShowCourseFileDossierModal(true);
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Invalid selection or submission failed.', 'error');
     }
   };
 
+  if (!activeTeacherSetup) {
+    return (
+      <div className="py-6">
+        <TeacherFormSetup onContinue={() => {}} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16 font-sans">
+      {/* ─── Active Authorized Teacher Setup Banner ─── */}
+      <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <span className="p-2.5 bg-emerald-700 text-white rounded-xl font-bold shadow-xs">
+            <Layers className="w-5 h-5 text-emerald-200" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 border border-emerald-300">
+                Authorized Setup
+              </span>
+              <span className="text-xs font-bold text-slate-900">
+                Department: {activeTeacherSetup.departmentName}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                Section: {activeTeacherSetup.sectionName}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                Course: {activeTeacherSetup.courseCode} – {activeTeacherSetup.courseName}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1">
+              Supervising HOD: <strong className="text-emerald-800">{activeTeacherSetup.hodName}</strong> ({activeTeacherSetup.campusName || 'Attock Campus'})
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowSetupModal(true)}
+          className="px-3.5 py-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-100 text-emerald-800 font-bold text-xs cursor-pointer transition-all shrink-0 shadow-2xs"
+        >
+          Switch Setup
+        </button>
+      </div>
+
+      {showSetupModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-xl w-full">
+            <TeacherFormSetup
+              isModal
+              onContinue={() => setShowSetupModal(false)}
+              onCancel={() => setShowSetupModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ─── Hero Header & Quick Controls ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -644,8 +730,86 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           />
         </div>
 
-        {/* Dynamic Gate Notice */}
-        {allMandatoryVerified ? (
+        {/* Approved Course File Banner & PDF/Certificate Download Actions (Step 20, 21) */}
+        {currentCourseFile?.status === 'Approved' ? (
+          <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-800">
+                    Official Course File Approved by HOD
+                  </span>
+                  <span className="bg-emerald-200/80 text-emerald-900 text-3xs font-extrabold px-2 py-0.5 rounded-full">
+                    Approved
+                  </span>
+                </div>
+                <p className="text-2xs text-emerald-700 mt-0.5">
+                  Congratulations! This course dossier has been fully approved by the Head of Department. You can now download the complete dossier PDF and your official Certificate of Completion.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowDossierModal(true)}
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-300" />
+                <span>Download Course File PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCertificateModal(true)}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <Award className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Download Certificate PDF</span>
+              </button>
+            </div>
+          </div>
+        ) : currentCourseFile?.status === 'Returned' ? (
+          <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-rose-800">
+                    Course File Returned for Revision (Action Required)
+                  </span>
+                  <span className="bg-rose-200/80 text-rose-900 text-3xs font-extrabold px-2 py-0.5 rounded-full">
+                    Revision Requested
+                  </span>
+                </div>
+                <p className="text-2xs text-rose-700 mt-0.5">
+                  The HOD has reviewed your submission and flagged specific documents needing improvement below. Please update the affected files and re-submit to HOD.
+                </p>
+                {currentCourseFile.reviewComment && (
+                  <p className="text-xs text-rose-900 font-bold mt-1 bg-white/80 p-2 rounded-lg border border-rose-200 italic">
+                    Overall HOD Note: "{currentCourseFile.reviewComment}"
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSaveOrSubmit('Submitted')}
+                disabled={!allMandatoryVerified}
+                className="px-4 py-2 bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Re-Submit to HOD</span>
+              </button>
+            </div>
+          </div>
+        ) : allMandatoryVerified ? (
           <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
@@ -746,6 +910,27 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                     <p className="text-3xs text-slate-500 leading-relaxed font-normal">
                       {item.description}
                     </p>
+
+                    {/* Step 17 & 18: Prominent HOD Needs Improvement / Comment Display */}
+                    {(item.status === 'Needs Improvement' || (item.comment && currentCourseFile?.status === 'Returned')) && (
+                      <div className="mt-2 p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-900 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-black text-rose-800 uppercase text-3xs tracking-wider">
+                            Needs Improvement — HOD Feedback:
+                          </span>
+                          <p className="font-semibold text-rose-900 mt-0.5 italic">
+                            "{item.comment || 'Please update and re-upload this document according to HOD requirements.'}"
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.status === 'Verified' && item.comment && item.comment !== 'Needs Improvement' && (
+                      <div className="mt-1.5 p-1.5 px-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-3xs text-emerald-800 font-semibold inline-block">
+                        <strong>HOD Verification Note:</strong> {item.comment}
+                      </div>
+                    )}
 
                     {/* Optional Item Toggle: Theory Course N/A */}
                     {item.isApplicableOnly && (
@@ -1437,6 +1622,22 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             </div>
           </div>
         </div>
+      )}
+
+      {/* Official Certificate Modal (Step 20, 21) */}
+      {showCertificateModal && currentCourseFile && (
+        <CourseFileCertificateModal
+          courseFile={currentCourseFile}
+          onClose={() => setShowCertificateModal(false)}
+        />
+      )}
+
+      {/* Official Printable Course Dossier Modal (Step 21) */}
+      {showDossierModal && currentCourseFile && (
+        <CourseFileDossierModal
+          courseFile={currentCourseFile}
+          onClose={() => setShowDossierModal(false)}
+        />
       )}
     </div>
   );

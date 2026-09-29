@@ -18,16 +18,26 @@ import {
   ShieldCheck,
   Send,
   Lock,
-  ClipboardList
+  ClipboardList,
+  Award,
+  Download,
+  Layers
 } from 'lucide-react';
+import { CourseFileCertificateModal } from '../common/CourseFileCertificateModal';
+import { CourseFileDossierModal } from '../common/CourseFileDossierModal';
+import { TeacherFormSetup } from './TeacherFormSetup';
 
 interface TeacherDashboardProps {
   onNavigate: (moduleName: string) => void;
 }
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
-  const { courseFiles, courses, notifications, submissionWindow, markNotificationAsRead } = useCFMS();
+  const { courseFiles, courses, notifications, submissionWindow, markNotificationAsRead, activeTeacherSetup } = useCFMS();
   const { currentUser } = useAuth();
+
+  const [showCertificateFile, setShowCertificateFile] = React.useState<any | null>(null);
+  const [showDossierFile, setShowDossierFile] = React.useState<any | null>(null);
+  const [showSetupModal, setShowSetupModal] = React.useState(false);
 
   // Teacher Profile Info
   const teacherName = currentUser?.name || 'Faculty Member';
@@ -136,16 +146,83 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
+      {/* ─── Active Teacher Workflow Setup Card ─── */}
+      {activeTeacherSetup ? (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-2 border-emerald-300 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300">
+                  Active Authorized Selection
+                </span>
+                <span className="text-xs font-bold text-slate-800">
+                  Dept: {activeTeacherSetup.departmentName}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  Section: {activeTeacherSetup.sectionName}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  Course: {activeTeacherSetup.courseCode} – {activeTeacherSetup.courseName}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-1">
+                Submissions automatically route to Department HOD: <strong className="text-emerald-800">{activeTeacherSetup.hodName}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowSetupModal(true)}
+            className="px-4 py-2 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5"
+          >
+            <span>Switch Setup</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-amber-900">
+                Department, Section & Course Setup Required
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Before accessing your course file submission workflow, select your assigned Department, Section, and Course.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowSetupModal(true)}
+            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-md shrink-0 flex items-center gap-2"
+          >
+            <span>Configure Setup Now</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {showSetupModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-xl w-full">
+            <TeacherFormSetup
+              isModal
+              onContinue={() => setShowSetupModal(false)}
+              onCancel={() => setShowSetupModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Contract Banner if Visiting Faculty */}
       {isVisiting && (
-        <VisitingContractBanner
-          teacherName={teacherName}
-          departmentName={departmentName}
-          contractStatus="ACTIVE"
-          assignedSemester="Spring 2026"
-          expiryDate="2026-08-31"
-          daysRemaining={39}
-        />
+        <VisitingContractBanner />
       )}
 
       {/* 2. Pending Course File Deadline Banner */}
@@ -291,6 +368,39 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
                     </div>
                   </div>
 
+                  {statusPill === 'Approved' && courseFile && (
+                    <div className="pt-2 flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => setShowDossierFile(courseFile)}
+                        className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                        title="Download Course File PDF Dossier"
+                      >
+                        <Download className="w-3 h-3 text-slate-300" />
+                        <span>Download PDF</span>
+                      </button>
+                      <button
+                        onClick={() => setShowCertificateFile(courseFile)}
+                        className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-3xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                        title="Download Official Certificate"
+                      >
+                        <Award className="w-3 h-3 text-emerald-300" />
+                        <span>Certificate</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {courseFile && (courseFile.status === 'Returned' || courseFile.status === 'Returned for Revision' || courseFile.status === 'Revision Requested') && (
+                    <div className="pt-2">
+                      <button
+                        onClick={() => onNavigate('Course File Submission')}
+                        className="w-full px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-3xs font-extrabold flex items-center justify-between transition-all cursor-pointer"
+                      >
+                        <span>Needs Revision — View Feedback</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
                   <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-3xs">
                     <span className="text-slate-500 font-mono">
                       {courseFile ? `Version: ${courseFile.currentVersion}` : 'No file uploaded'}
@@ -309,6 +419,61 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
           </div>
         )}
       </div>
+
+      {/* Approved Course Files & Official Certificates (Step 20, 21) */}
+      {approvedCount > 0 && (
+        <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3">
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-emerald-700" />
+              <div>
+                <h2 className="text-sm font-extrabold text-emerald-950 font-heading">
+                  Approved Course Files & Official Certificates
+                </h2>
+                <p className="text-2xs text-emerald-800">
+                  Your approved course files are signed off by your HOD. You can download the complete PDF dossier and official institutional certificate.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {myFiles.filter(f => f.status === 'Approved').map(file => (
+              <div key={file.id} className="bg-white rounded-xl border border-emerald-200 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {file.courseCode}
+                    </span>
+                    <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      Approved
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 mt-2 line-clamp-1">{file.courseTitle || file.title}</h3>
+                  <p className="text-3xs text-slate-500 mt-0.5">{file.semester || 'Current Semester'} • Batch {file.batch || currentUser?.profileFormData?.batch || '2024'}</p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => setShowDossierFile(file)}
+                    className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-3xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Download className="w-3 h-3 text-slate-300" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    onClick={() => setShowCertificateFile(file)}
+                    className="flex-1 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-3xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Award className="w-3 h-3 text-emerald-200" />
+                    <span>Certificate</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 5. Recent Notifications */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
@@ -445,6 +610,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
           </button>
         </div>
       </div>
+
+      {/* Official Certificate Modal (Step 20, 21) */}
+      {showCertificateFile && (
+        <CourseFileCertificateModal
+          courseFile={showCertificateFile}
+          onClose={() => setShowCertificateFile(null)}
+        />
+      )}
+
+      {/* Official Printable Course Dossier Modal (Step 21) */}
+      {showDossierFile && (
+        <CourseFileDossierModal
+          courseFile={showDossierFile}
+          onClose={() => setShowDossierFile(null)}
+        />
+      )}
     </div>
   );
 };
