@@ -326,6 +326,7 @@ export interface CourseFileItem {
   semester?: string; // Semester e.g. "1st Semester", "2nd Semester", "3rd Semester", "4th Semester"
   campusId?: string;
   campusName?: string;
+  section?: string;
   hodId?: string;
   hodName?: string;
   credits?: number;

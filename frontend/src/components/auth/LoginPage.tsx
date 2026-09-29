@@ -1,98 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Mail, Lock, Eye, EyeOff, ArrowRight,
-  X, Building2, ShieldCheck, BookOpen, Briefcase,
-  Sparkles, Zap, Check, KeyRound, User
+  Mail, Lock, Eye, EyeOff, ArrowRight, User,
+  Building2, X, KeyRound, Sparkles
 } from 'lucide-react';
 
-interface DemoAccount {
-  id: string;
-  role: 'ADMIN' | 'HOD' | 'REGULAR_TEACHER' | 'VISITING_TEACHER';
-  roleTitle: string;
-  name: string;
-  email: string;
-  password: string;
-  badge: string;
-  badgeStyle: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tagline: string;
-}
 
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    id: 'demo-admin',
-    role: 'ADMIN',
-    roleTitle: 'Dean & Administrator',
-    name: 'Prof. Dr. Muhammad Aslam',
-    email: 'admin@ue.edu.pk',
-    password: 'admin123',
-    badge: 'Administrator / Dean',
-    badgeStyle: 'bg-amber-500/25 text-amber-200 border-amber-400/40',
-    icon: ShieldCheck,
-    tagline: 'System control, user permissions & audit logs'
-  },
-  {
-    id: 'demo-hod-cs',
-    role: 'HOD',
-    roleTitle: 'Head of Department (CS)',
-    name: 'Dr. Muhammad Asif',
-    email: 'asif.cs@ue.edu.pk',
-    password: 'hod123',
-    badge: 'HOD - Computer Science',
-    badgeStyle: 'bg-purple-500/25 text-purple-200 border-purple-400/40',
-    icon: Building2,
-    tagline: 'Attock Campus • CS Dept approvals & scope'
-  },
-  {
-    id: 'demo-hod-math',
-    role: 'HOD',
-    roleTitle: 'Head of Department (Math)',
-    name: 'Dr. Abu Zarr',
-    email: 'abuzarr.math@ue.edu.pk',
-    password: 'hod123',
-    badge: 'HOD - Mathematics',
-    badgeStyle: 'bg-blue-500/25 text-blue-200 border-blue-400/40',
-    icon: Building2,
-    tagline: 'Attock Campus • Math Dept approvals & scope'
-  },
-  {
-    id: 'demo-regular',
-    role: 'REGULAR_TEACHER',
-    roleTitle: 'Regular Teacher (CS)',
-    name: 'Dr. Tariq Mahmood',
-    email: 'tariq.mahmood@ue.edu.pk',
-    password: 'teacher123',
-    badge: 'Regular Teacher (CS)',
-    badgeStyle: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40',
-    icon: BookOpen,
-    tagline: 'Course syllabus, lecture notes & exam packages'
-  },
-  {
-    id: 'demo-visiting',
-    role: 'VISITING_TEACHER',
-    roleTitle: 'Visiting Teacher (CS)',
-    name: 'Engr. Bilal Khan',
-    email: 'bilal.visiting@ue.edu.pk',
-    password: 'visiting123',
-    badge: 'Visiting Faculty (CS)',
-    badgeStyle: 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40',
-    icon: Briefcase,
-    tagline: 'Contract tracking, course uploads & submissions'
-  },
-  {
-    id: 'demo-math-faculty',
-    role: 'REGULAR_TEACHER',
-    roleTitle: 'Regular Teacher (Math)',
-    name: 'Dr. Noman Ali',
-    email: 'noman.math@ue.edu.pk',
-    password: 'teacher123',
-    badge: 'Regular Teacher (Math)',
-    badgeStyle: 'bg-teal-500/25 text-teal-200 border-teal-400/40',
-    icon: BookOpen,
-    tagline: 'Attock Campus • Mathematics Faculty'
-  }
-];
 
 export const LoginPage: React.FC = () => {
   const { login, registerTeacher } = useAuth();
@@ -105,43 +18,9 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [directLoadingRole, setDirectLoadingRole] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [officialEmailAlert, setOfficialEmailAlert] = useState(false);
-  const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null);
-
-  const handleSelectDemo = (acc: DemoAccount) => {
-    setActiveTab('signin');
-    setEmail(acc.email);
-    setPassword(acc.password);
-    setSelectedDemoId(acc.id);
-    setErrorMessage('');
-    setOfficialEmailAlert(false);
-  };
-
-  const handleQuickLogin = async (acc: DemoAccount) => {
-    setActiveTab('signin');
-    setEmail(acc.email);
-    setPassword(acc.password);
-    setSelectedDemoId(acc.id);
-    setErrorMessage('');
-    setOfficialEmailAlert(false);
-    setDirectLoadingRole(acc.role);
-
-    const result = await login(acc.email, acc.password);
-    setDirectLoadingRole(null);
-
-    if (!result.success) {
-      if ((result as any).code === 'official_email') {
-        setOfficialEmailAlert(true);
-        setErrorMessage('');
-      } else {
-        setOfficialEmailAlert(false);
-        setErrorMessage(result.error || 'Login failed. Please try again.');
-      }
-    }
-  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +84,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const isAnyLoading = isLoading || directLoadingRole !== null;
+  const isAnyLoading = isLoading;
 
   return (
     <div className="min-h-screen w-full relative flex flex-col items-center justify-between p-4 sm:p-6 lg:p-8 overflow-y-auto font-sans select-none bg-[#051c12]">
@@ -287,7 +166,7 @@ export const LoginPage: React.FC = () => {
             </h2>
             <p className="text-xs text-white/75 font-medium">
               {activeTab === 'signin'
-                ? 'Enter university credentials or choose a quick demo account.'
+                ? 'Enter your university credentials to access the portal.'
                 : 'Register with any valid Gmail or official email to begin your enrollment.'}
             </p>
           </div>
@@ -457,7 +336,6 @@ export const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      setSelectedDemoId(null);
                     }}
                     placeholder="e.g. admin@ue.edu.pk or teacher@gmail.com"
                     required
@@ -477,7 +355,6 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      setSelectedDemoId(null);
                     }}
                     placeholder="••••••••••••"
                     required
@@ -551,104 +428,7 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* ── Demo Accounts Section ── */}
-          <div className="pt-2 space-y-3">
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-white/20 w-full" />
-              <span className="bg-[#072418] px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-200 rounded-full border border-emerald-500/30 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                Demo Accounts • Quick Access
-              </span>
-            </div>
 
-            <p className="text-[11px] text-center text-white/70 font-medium">
-              Click any role card to autofill, or hit <span className="text-amber-300 font-bold">1-Click Sign In</span> for instant access:
-            </p>
-
-            {/* Demo Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {DEMO_ACCOUNTS.map((acc) => {
-                const Icon = acc.icon;
-                const isSelected = selectedDemoId === acc.id;
-                const isDirectLoading = directLoadingRole === acc.role;
-
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => handleSelectDemo(acc)}
-                    className={`group relative text-left p-3 rounded-xl border transition-all duration-200 cursor-pointer backdrop-blur-md flex flex-col justify-between ${
-                      isSelected
-                        ? 'bg-emerald-950/70 border-emerald-400 ring-2 ring-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                        : 'bg-white/5 hover:bg-white/10 border-white/15 hover:border-white/35'
-                    }`}
-                  >
-                    <div>
-                      {/* Badge & Credential Hint */}
-                      <div className="flex items-center justify-between gap-1 mb-1.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${acc.badgeStyle}`}>
-                          <Icon className="w-3 h-3 shrink-0" />
-                          {acc.badge}
-                        </span>
-
-                        {isSelected ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-400/30">
-                            <Check className="w-3 h-3 text-emerald-300" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-mono text-white/50 flex items-center gap-1">
-                            <KeyRound className="w-2.5 h-2.5 text-white/40" />
-                            {acc.password}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Name & Email */}
-                      <div className="space-y-0.5 mb-2">
-                        <p className="text-xs font-bold text-white group-hover:text-emerald-200 transition-colors line-clamp-1">
-                          {acc.name}
-                        </p>
-                        <p className="text-[10.5px] text-white/70 font-mono truncate">
-                          {acc.email}
-                        </p>
-                        <p className="text-[9.5px] text-white/50 line-clamp-1">
-                          {acc.tagline}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Login Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleQuickLogin(acc);
-                      }}
-                      disabled={isAnyLoading}
-                      className={`w-full py-1.5 px-2 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1 ${
-                        isSelected
-                          ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-sm'
-                          : 'bg-white/10 hover:bg-emerald-600 text-white/90 hover:text-white border border-white/15 hover:border-emerald-400/40'
-                      }`}
-                    >
-                      {isDirectLoading ? (
-                        <>
-                          <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Signing in...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
-                          <span>1-Click Sign In</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-          </div>
 
         </div>
       </div>
