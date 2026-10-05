@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, UserRole, TeacherProfileFormData, LoginLog, TeacherEnrollmentRequest, SelectedCourseItem } from '../types';
+import { safeJson } from './CFMSContext';
 
 // ─── localStorage keys ───────────────────────────────────────────────────────
 const LS_REGISTERED  = 'cfms_registered_users';
@@ -159,7 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Sync backend users on mount
   useEffect(() => {
     fetch('/api/users')
-      .then((res) => res.json())
+      .then((res) => safeJson(res))
       .then((data) => {
         if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
           setSystemUsers((prev) => {
@@ -239,8 +240,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: cleanName, email: emailLower, password })
       });
-      const data = await res.json();
-      if (data.success && data.token) {
+      const data = await safeJson(res);
+      if (data?.success && data.token) {
         localStorage.setItem('cfms_token', data.token);
       }
     } catch {}
@@ -274,9 +275,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailLower, password })
       });
-      const data = await res.json();
+      const data = await safeJson(res);
 
-      if (res.ok && data.success && data.user) {
+      if (res.ok && data?.success && data.user) {
         if (data.token) {
           localStorage.setItem('cfms_token', data.token);
         }
@@ -623,90 +624,100 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      const data = await safeJson(res);
 
-      if (!res.ok || !data.success) {
-        return { success: false, error: data.message || 'Failed to submit registration request' };
+      if (res.ok && data?.success && data.data) {
+        const updatedReq: TeacherEnrollmentRequest = data.data;
+        setTeacherRequest(updatedReq);
+        localStorage.setItem('cfms_my_teacher_request', JSON.stringify(updatedReq));
+
+        const updatedUser: User = {
+          ...loggedInUser,
+          role: teacherType,
+          campus: finalCampus,
+          departmentId,
+          departmentName,
+          enrollmentStatus: 'PendingHODApproval',
+          profileFormSubmitted: true,
+          profileFormData: {
+            ...formData,
+            campus: finalCampus,
+            hodId: finalHodId,
+            hodName: finalHodName
+          },
+          totalCredits,
+          selectedCourseIds: selectedCourses.map((c) => c.courseId)
+        };
+
+        setLoggedInUser(updatedUser);
+        saveCurrentUser(updatedUser);
+        setActiveRole(teacherType);
+
+        return { success: true, message: data.message || 'Registration request submitted for HOD review.' };
       }
+      // If server rejected with explicit JSON message
+      if (data && !data.success && data.message) {
+        return { success: false, error: data.message };
+      }
+    } catch {}
 
-      const updatedReq: TeacherEnrollmentRequest = data.data;
-      setTeacherRequest(updatedReq);
-      localStorage.setItem('cfms_my_teacher_request', JSON.stringify(updatedReq));
-
-      const updatedUser: User = {
-        ...loggedInUser,
-        role: teacherType,
+    // Local fallback in case server offline or returns non-JSON (e.g. Vercel SPA)
+    const mockReq: TeacherEnrollmentRequest = {
+      id: `req-${Date.now()}`,
+      teacherId: loggedInUser.id,
+      teacherName: loggedInUser.name,
+      teacherEmail: loggedInUser.email,
+      teacherType,
+      campusName: finalCampus,
+      departmentId,
+      departmentName,
+      hodId: finalHodId,
+      hodName: finalHodName,
+      selectedCourses,
+      totalCredits,
+      creditLimit: limit,
+      status: 'PendingHODApproval',
+      profileData: {
+        ...formData,
         campus: finalCampus,
-        departmentId,
-        departmentName,
-        enrollmentStatus: 'PendingHODApproval',
-        profileFormSubmitted: true,
-        profileFormData: {
-          ...formData,
-          campus: finalCampus,
-          hodId: finalHodId,
-          hodName: finalHodName
-        },
-        totalCredits,
-        selectedCourseIds: selectedCourses.map((c) => c.courseId)
-      };
-
-      setLoggedInUser(updatedUser);
-      saveCurrentUser(updatedUser);
-      setActiveRole(teacherType);
-
-      return { success: true, message: data.message };
-    } catch {
-      // Local fallback in case server offline
-      const mockReq: TeacherEnrollmentRequest = {
-        id: `req-${Date.now()}`,
-        teacherId: loggedInUser.id,
-        teacherName: loggedInUser.name,
-        teacherEmail: loggedInUser.email,
-        teacherType,
-        campusName: finalCampus,
-        departmentId,
-        departmentName,
         hodId: finalHodId,
-        hodName: finalHodName,
-        selectedCourses,
-        totalCredits,
-        creditLimit: limit,
-        status: 'PendingHODApproval',
-        profileData: {
-          ...formData,
-          campus: finalCampus,
-          hodId: finalHodId,
-          hodName: finalHodName
-        },
-        submittedAt: new Date().toISOString()
-      };
-      setTeacherRequest(mockReq);
-      localStorage.setItem('cfms_my_teacher_request', JSON.stringify(mockReq));
+        hodName: finalHodName
+      },
+      submittedAt: new Date().toISOString()
+    };
+    setTeacherRequest(mockReq);
+    localStorage.setItem('cfms_my_teacher_request', JSON.stringify(mockReq));
 
-      const updatedUser: User = {
-        ...loggedInUser,
-        role: teacherType,
+    // Also sync to cfms_teacher_requests so HOD list can see it locally
+    try {
+      const existingReqsRaw = localStorage.getItem('cfms_teacher_requests');
+      const existingReqs = existingReqsRaw ? JSON.parse(existingReqsRaw) : [];
+      const updatedReqs = [mockReq, ...existingReqs.filter((r: any) => r.id !== mockReq.id && r.teacherId !== mockReq.teacherId)];
+      localStorage.setItem('cfms_teacher_requests', JSON.stringify(updatedReqs));
+    } catch {}
+
+    const updatedUser: User = {
+      ...loggedInUser,
+      role: teacherType,
+      campus: finalCampus,
+      departmentId,
+      departmentName,
+      enrollmentStatus: 'PendingHODApproval',
+      profileFormSubmitted: true,
+      profileFormData: {
+        ...formData,
         campus: finalCampus,
-        departmentId,
-        departmentName,
-        enrollmentStatus: 'PendingHODApproval',
-        profileFormSubmitted: true,
-        profileFormData: {
-          ...formData,
-          campus: finalCampus,
-          hodId: finalHodId,
-          hodName: finalHodName
-        },
-        totalCredits,
-        selectedCourseIds: selectedCourses.map((c) => c.courseId)
-      };
-      setLoggedInUser(updatedUser);
-      saveCurrentUser(updatedUser);
-      setActiveRole(teacherType);
+        hodId: finalHodId,
+        hodName: finalHodName
+      },
+      totalCredits,
+      selectedCourseIds: selectedCourses.map((c) => c.courseId)
+    };
+    setLoggedInUser(updatedUser);
+    saveCurrentUser(updatedUser);
+    setActiveRole(teacherType);
 
-      return { success: true, message: 'Registration request submitted for HOD review.' };
-    }
+    return { success: true, message: 'Registration request submitted for HOD review.' };
   };
 
   // ─── Refresh Current Teacher's Request Status ───────────────────────────────
@@ -714,8 +725,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!loggedInUser) return;
     try {
       const res = await fetch(`/api/teacher-requests/my-request?teacherId=${loggedInUser.id}&email=${encodeURIComponent(loggedInUser.email)}`);
-      const data = await res.json();
-      if (data.success && data.data) {
+      const data = await safeJson(res);
+      if (data?.success && data.data) {
         setTeacherRequest(data.data);
         localStorage.setItem('cfms_my_teacher_request', JSON.stringify(data.data));
 

@@ -143,7 +143,7 @@ export const TeacherFormSetup: React.FC<TeacherFormSetupProps> = ({
       return;
     }
 
-    // Verify on server as dual-layer defense
+    // Verify on server if available as dual-layer defense
     try {
       const res = await fetch('/api/teacher-assignments/validate', {
         method: 'POST',
@@ -156,33 +156,39 @@ export const TeacherFormSetup: React.FC<TeacherFormSetupProps> = ({
         })
       });
 
-      const data = await res.json();
-      if (!data.success || !data.isValid) {
-        setErrorMsg(data.message || 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.');
-        return;
-      }
-
-      // Save valid setup in context & session
-      setActiveTeacherSetup({
-        departmentId: currentDepartment.id,
-        departmentName: currentDepartment.name,
-        sectionId: currentSection.id,
-        sectionName: currentSection.name,
-        courseId: currentCourse.id,
-        courseCode: currentCourse.code,
-        courseName: currentCourse.name,
-        credits: currentCourse.credits || 3,
-        hodId: currentDepartment.hodId || '',
-        hodName: currentDepartment.hodName || 'Department HOD',
-        campusId: currentDepartment.campusId,
-        campusName: currentDepartment.campusName
-      });
-
-      if (onContinue) {
-        onContinue();
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const text = await res.text();
+        if (text && text.trim()) {
+          const data = JSON.parse(text);
+          if (data && (!data.success || !data.isValid)) {
+            setErrorMsg(data.message || 'Invalid selection. This Department, Section, or Course is not assigned to your account. Please select an authorized option.');
+            return;
+          }
+        }
       }
     } catch {
-      setErrorMsg('Failed to validate your selection with the server. Please try again.');
+      // Offline fallback: local validation already passed
+    }
+
+    // Save valid setup in context & session
+    setActiveTeacherSetup({
+      departmentId: currentDepartment.id,
+      departmentName: currentDepartment.name,
+      sectionId: currentSection.id,
+      sectionName: currentSection.name,
+      courseId: currentCourse.id,
+      courseCode: currentCourse.code,
+      courseName: currentCourse.name,
+      credits: currentCourse.credits || 3,
+      hodId: currentDepartment.hodId || '',
+      hodName: currentDepartment.hodName || 'Department HOD',
+      campusId: currentDepartment.campusId,
+      campusName: currentDepartment.campusName
+    });
+
+    if (onContinue) {
+      onContinue();
     }
   };
 

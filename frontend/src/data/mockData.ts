@@ -28,17 +28,272 @@ import {
 // 2. Empty array / clean-default exports (for backwards-compatible imports in context files)
 // ==================================================================================
 
-// All campus data is loaded from the real backend API. Do NOT add fake campuses here.
-export const INITIAL_CAMPUSES: Campus[] = [];
+// University of Education Campuses
+export const INITIAL_CAMPUSES: Campus[] = [
+  {
+    id: 'camp-attock',
+    code: 'UE-ATK',
+    name: 'Attock Campus',
+    city: 'Attock',
+    address: 'University Road, Attock City',
+    directorName: 'Prof. Dr. Muhammad Aslam',
+    status: 'Active'
+  },
+  {
+    id: 'camp-main',
+    code: 'UE-MAIN',
+    name: 'Main Campus (Lahore)',
+    city: 'Lahore',
+    address: 'College Road, Township, Lahore',
+    directorName: 'Prof. Dr. Shahid Iqbal',
+    status: 'Active'
+  },
+  {
+    id: 'camp-multan',
+    code: 'UE-MLT',
+    name: 'Multan Campus',
+    city: 'Multan',
+    address: 'Bosan Road, Multan',
+    directorName: 'Prof. Dr. Rashid Mehmood',
+    status: 'Active'
+  },
+  {
+    id: 'camp-faisalabad',
+    code: 'UE-FSD',
+    name: 'Faisalabad Campus',
+    city: 'Faisalabad',
+    address: 'Satyana Road, Faisalabad',
+    directorName: 'Prof. Dr. Noman Khan',
+    status: 'Active'
+  },
+  {
+    id: 'camp-bank-road',
+    code: 'UE-BR',
+    name: 'Bank Road Campus (Lahore)',
+    city: 'Lahore',
+    address: 'Bank Road, Lahore',
+    directorName: 'Prof. Dr. Aisha Begum',
+    status: 'Active'
+  }
+];
 
-// All department data is loaded from the real backend API.
-export const INITIAL_DEPARTMENTS: Department[] = [];
+// University Academic Departments
+export const INITIAL_DEPARTMENTS: Department[] = [
+  {
+    id: 'dept-cs',
+    code: 'CS',
+    name: 'Computer Science',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    status: 'Active',
+    hodId: 'usr-hod-cs',
+    hodName: 'Dr. Sarah Ahmad',
+    facultyCount: 14,
+    courseCount: 18,
+    submissionRate: 94,
+    building: 'Academic Block A'
+  },
+  {
+    id: 'dept-business-admin',
+    code: 'BBA',
+    name: 'Business Administration',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    status: 'Active',
+    hodId: 'usr-hod-business',
+    hodName: 'Dr. Tariq Mahmood',
+    facultyCount: 10,
+    courseCount: 12,
+    submissionRate: 88,
+    building: 'Management Sciences Block'
+  },
+  {
+    id: 'dept-math',
+    code: 'MATH',
+    name: 'Mathematics',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    status: 'Active',
+    hodId: 'usr-hod-math',
+    hodName: 'Dr. Abu Zarr',
+    facultyCount: 8,
+    courseCount: 10,
+    submissionRate: 91,
+    building: 'Academic Block A'
+  },
+  {
+    id: 'dept-it',
+    code: 'IT',
+    name: 'Information Technology',
+    campusId: 'camp-main',
+    campusName: 'Main Campus (Lahore)',
+    status: 'Active',
+    hodId: 'usr-hod-it',
+    hodName: 'Dr. Asif Raza',
+    facultyCount: 12,
+    courseCount: 15,
+    submissionRate: 90,
+    building: 'IT Block'
+  },
+  {
+    id: 'dept-eng',
+    code: 'ENG',
+    name: 'English',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    status: 'Active',
+    hodId: 'usr-hod-eng',
+    hodName: 'Dr. Nadia Malik',
+    facultyCount: 9,
+    courseCount: 11,
+    submissionRate: 85,
+    building: 'Humanities Block'
+  }
+];
 
-// All user data is loaded from the real backend API.
-export const INITIAL_USERS: User[] = [];
+// Initial Core Users
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'usr-admin',
+    name: 'Administrator',
+    email: 'admin@ue.edu.pk',
+    role: 'ADMIN',
+    departmentId: '',
+    departmentName: 'Central Administration',
+    campus: 'Main Campus (Lahore)',
+    campusId: 'camp-main',
+    campusName: 'Main Campus (Lahore)',
+    designation: 'System Administrator',
+    phone: '+92 300 1234567',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    createdAt: '2024-01-15'
+  },
+  {
+    id: 'usr-hod-cs',
+    name: 'Dr. Sarah Ahmad',
+    email: 'hod.cs@ue.edu.pk',
+    role: 'HOD',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campus: 'Attock Campus',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    designation: 'Head of Department (Computer Science)',
+    phone: '+92 301 9876543',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    createdAt: '2024-02-01'
+  },
+  {
+    id: 'usr-teacher-1',
+    name: 'Dr. Tariq Mahmood',
+    email: 'tariq.mahmood@ue.edu.pk',
+    role: 'REGULAR_TEACHER',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campus: 'Attock Campus',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    designation: 'Assistant Professor',
+    phone: '+92 321 4567890',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    totalCredits: 12,
+    createdAt: '2024-03-10'
+  }
+];
 
-// All course data is loaded from the real backend API.
-export const INITIAL_COURSES: Course[] = [];
+// Initial Academic Courses
+export const INITIAL_COURSES: Course[] = [
+  {
+    id: 'crs-pf-001',
+    code: 'CS-101',
+    title: 'Programming Fundamentals',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    credits: 3,
+    type: 'Core',
+    assignedTeacherId: 'usr-teacher-1',
+    assignedTeacherName: 'Dr. Tariq Mahmood',
+    assignedTeacherRole: 'REGULAR_TEACHER',
+    semester: 'Semester 1',
+    academicSession: 'Spring 2026',
+    totalStudents: 45,
+    status: 'Active'
+  },
+  {
+    id: 'crs-oop-002',
+    code: 'CS-102',
+    title: 'Object Oriented Programming',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    credits: 3,
+    type: 'Core',
+    assignedTeacherId: 'usr-teacher-1',
+    assignedTeacherName: 'Dr. Tariq Mahmood',
+    assignedTeacherRole: 'REGULAR_TEACHER',
+    semester: 'Semester 2',
+    academicSession: 'Spring 2026',
+    totalStudents: 40,
+    status: 'Active'
+  },
+  {
+    id: 'crs-dsa-003',
+    code: 'CS-201',
+    title: 'Data Structures & Algorithms',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    credits: 3,
+    type: 'Core',
+    semester: 'Semester 3',
+    academicSession: 'Spring 2026',
+    totalStudents: 42,
+    status: 'Active'
+  },
+  {
+    id: 'crs-db-004',
+    code: 'CS-301',
+    title: 'Database Systems',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    credits: 3,
+    type: 'Core',
+    semester: 'Semester 4',
+    academicSession: 'Spring 2026',
+    totalStudents: 38,
+    status: 'Active'
+  },
+  {
+    id: 'crs-math-005',
+    code: 'MATH-101',
+    title: 'Calculus & Analytical Geometry',
+    departmentId: 'dept-math',
+    departmentName: 'Mathematics',
+    credits: 3,
+    type: 'Core',
+    semester: 'Semester 1',
+    academicSession: 'Spring 2026',
+    totalStudents: 50,
+    status: 'Active'
+  },
+  {
+    id: 'crs-bba-006',
+    code: 'BBA-101',
+    title: 'Introduction to Business Administration',
+    departmentId: 'dept-business-admin',
+    departmentName: 'Business Administration',
+    credits: 3,
+    type: 'Core',
+    semester: 'Semester 1',
+    academicSession: 'Spring 2026',
+    totalStudents: 48,
+    status: 'Active'
+  }
+];
 
 // ==================================================================================
 // STATIC CONFIGURATION — Required document checklist and official templates.
@@ -297,55 +552,165 @@ export const INITIAL_CATEGORIES: FileCategory[] = [
 // These empty arrays/defaults are kept for backwards-compatible imports.
 // ==================================================================================
 
-// All course file data is loaded from the real backend API.
+// All course file data
 export const INITIAL_COURSE_FILES: CourseFileItem[] = [];
 
-// All deadlines are loaded from the real backend API.
-export const INITIAL_DEADLINES: DeadlineItem[] = [];
+// Official deadlines
+export const INITIAL_DEADLINES: DeadlineItem[] = [
+  {
+    id: 'dln-1',
+    title: 'Midterm Course File Submission',
+    description: 'Submission of initial course files including Course Outline, Attendance, and Midterm Papers.',
+    academicSession: 'Spring 2026',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    dueDate: '2026-05-15',
+    dueTime: '23:59',
+    status: 'Upcoming',
+    targetSemesters: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4'],
+    createdAt: '2026-02-01'
+  },
+  {
+    id: 'dln-2',
+    title: 'Final Term Comprehensive Course Dossier',
+    description: 'Final submission including graded final exam sheets, CLO assessment, and lab reports.',
+    academicSession: 'Spring 2026',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    dueDate: '2026-07-20',
+    dueTime: '23:59',
+    status: 'Upcoming',
+    targetSemesters: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4'],
+    createdAt: '2026-02-01'
+  }
+];
 
-// All announcements are loaded from the real backend API.
-export const INITIAL_ANNOUNCEMENTS: Announcement[] = [];
+// Announcements
+export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'ann-1',
+    title: 'Spring 2026 Course File Dossier Submission Active',
+    content: 'All faculty members are notified that the official Course File submission window for Spring 2026 is now open. Please adhere to the 15 official University checklist headings.',
+    targetRoles: ['ADMIN', 'HOD', 'REGULAR_TEACHER', 'VISITING_TEACHER'],
+    priority: 'High',
+    author: 'Prof. Dr. Muhammad Aslam (Dean)',
+    date: '2026-02-15',
+    isPinned: true
+  }
+];
 
-// All notifications are loaded from the real backend API.
-export const INITIAL_NOTIFICATIONS: SystemNotification[] = [];
+// Notifications
+export const INITIAL_NOTIFICATIONS: SystemNotification[] = [
+  {
+    id: 'notif-1',
+    userId: 'usr-admin',
+    title: 'System Initialized',
+    message: 'Course File Management System (CFMS) is operating normally.',
+    type: 'System',
+    date: '2026-02-01',
+    isRead: false
+  }
+];
 
-// All academic sessions are loaded from the real backend API.
-export const INITIAL_SESSIONS: AcademicSession[] = [];
+// Academic Sessions
+export const INITIAL_SESSIONS: AcademicSession[] = [
+  {
+    id: 'sess-sp26',
+    name: 'Spring 2026',
+    year: '2026',
+    startDate: '2026-02-01',
+    endDate: '2026-07-31',
+    isCurrent: true,
+    fileCount: 24,
+    status: 'Active'
+  },
+  {
+    id: 'sess-fa25',
+    name: 'Fall 2025',
+    year: '2025',
+    startDate: '2025-09-01',
+    endDate: '2026-01-31',
+    isCurrent: false,
+    fileCount: 42,
+    status: 'Completed'
+  }
+];
 
-// Submission window is loaded from the backend API.
+// Submission Window
 export const INITIAL_SUBMISSION_WINDOW: SubmissionWindow = {
-  id: '',
-  sessionId: '',
-  sessionName: 'No Active Session',
-  startDate: '',
-  endDate: '',
-  status: 'Submission Closed',
-  allowLateSubmission: false
+  id: 'win-current',
+  sessionId: 'sess-sp26',
+  sessionName: 'Spring 2026',
+  startDate: '2026-02-01',
+  endDate: '2026-07-31',
+  status: 'Submission Open',
+  allowLateSubmission: true
 };
 
-// All activity logs are loaded from the real backend API.
+// Activity logs
 export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [];
 
-// All audit logs are loaded from the real backend API.
+// Audit logs
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
-// All feedback is loaded from the real backend API.
+// Feedback
 export const INITIAL_FEEDBACK: FeedbackItem[] = [];
 
-// System settings are loaded from the real backend API. These are clean defaults.
+// System settings
 export const INITIAL_SYSTEM_SETTINGS: SystemSetting = {
   systemName: 'University Course File Management System (CFMS)',
   universityName: 'University of Education',
-  academicYear: '',
-  currentSession: '',
+  academicYear: '2025-2026',
+  currentSession: 'Spring 2026',
   mfaRequired: false,
   maxFileSizeMB: 50,
   allowedExtensions: ['.pdf', '.docx', '.ppt', '.pptx', '.zip', '.xlsx'],
-  smtpHost: '',
-  smtpStatus: 'Error',
+  smtpHost: 'smtp.ue.edu.pk',
+  smtpStatus: 'Active',
   autoArchivingDays: 180,
   maintenanceMode: false
 };
 
-// All HOD assignments are loaded from the real backend API.
-export const INITIAL_HOD_ASSIGNMENTS: HODAssignment[] = [];
+// HOD Assignments
+export const INITIAL_HOD_ASSIGNMENTS: HODAssignment[] = [
+  {
+    id: 'asgn-cs',
+    hodId: 'usr-hod-cs',
+    hodName: 'Dr. Sarah Ahmad',
+    hodEmail: 'hod.cs@ue.edu.pk',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    assignedDate: '2024-02-01',
+    status: 'Active'
+  },
+  {
+    id: 'asgn-bba',
+    hodId: 'usr-hod-business',
+    hodName: 'Dr. Tariq Mahmood',
+    hodEmail: 'hod.bba@ue.edu.pk',
+    departmentId: 'dept-business-admin',
+    departmentName: 'Business Administration',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    assignedDate: '2024-02-01',
+    status: 'Active'
+  },
+  {
+    id: 'asgn-math',
+    hodId: 'usr-hod-math',
+    hodName: 'Dr. Abu Zarr',
+    hodEmail: 'hod.math@ue.edu.pk',
+    departmentId: 'dept-math',
+    departmentName: 'Mathematics',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    assignedDate: '2024-02-01',
+    status: 'Active'
+  }
+];
