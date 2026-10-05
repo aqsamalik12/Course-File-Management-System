@@ -105,7 +105,11 @@ async function runProductionE2ETest() {
   if (await logoutBtn.count() > 0) {
     await logoutBtn.click();
   } else {
-    await page.evaluate(() => localStorage.removeItem('cfms_current_user'));
+    await page.evaluate(() => {
+      sessionStorage.clear();
+      localStorage.removeItem('cfms_current_user');
+      localStorage.removeItem('cfms_token');
+    });
     await page.goto(PROD_URL, { waitUntil: 'domcontentloaded' });
   }
   await page.waitForTimeout(2000);
@@ -129,6 +133,7 @@ async function runProductionE2ETest() {
   // Logout HOD
   console.log('   Logging out HOD...');
   await page.evaluate(() => {
+    sessionStorage.clear();
     localStorage.removeItem('cfms_current_user');
     localStorage.removeItem('cfms_token');
   });
@@ -205,7 +210,7 @@ async function runProductionE2ETest() {
     // Update local user state
     user.enrollmentStatus = 'PendingHODApproval';
     user.profileFormSubmitted = true;
-    localStorage.setItem('cfms_current_user', JSON.stringify(user));
+    sessionStorage.setItem('cfms_current_user', JSON.stringify(user));
     return data;
   }, uniqueEmail);
 
@@ -227,6 +232,7 @@ async function runProductionE2ETest() {
   console.log('\n▶ TEST 5: HOD Approval of Teacher Request');
   // Log out teacher
   await page.evaluate(() => {
+    sessionStorage.clear();
     localStorage.removeItem('cfms_current_user');
     localStorage.removeItem('cfms_token');
   });
@@ -256,6 +262,7 @@ async function runProductionE2ETest() {
 
   // Logout HOD
   await page.evaluate(() => {
+    sessionStorage.clear();
     localStorage.removeItem('cfms_current_user');
     localStorage.removeItem('cfms_token');
   });
@@ -283,6 +290,7 @@ async function runProductionE2ETest() {
   // ─────────────────────────────────────────────────────────────
   console.log('\n▶ TEST 7: Pre-Registered Core Accounts Verification');
   await page.evaluate(() => {
+    sessionStorage.clear();
     localStorage.removeItem('cfms_current_user');
     localStorage.removeItem('cfms_token');
   });

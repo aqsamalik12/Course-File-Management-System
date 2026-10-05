@@ -154,7 +154,11 @@ function saveRegistered(users: User[]) {
 
 function loadCurrentUser(): User | null {
   try {
-    const raw = localStorage.getItem(LS_CURRENT_USER);
+    // Session authentication: If no active session in current tab, purge any stale localStorage persistence
+    if (typeof window !== 'undefined' && localStorage.getItem(LS_CURRENT_USER)) {
+      localStorage.removeItem(LS_CURRENT_USER);
+    }
+    const raw = typeof window !== 'undefined' ? sessionStorage.getItem(LS_CURRENT_USER) : null;
     if (raw) {
       const u = JSON.parse(raw) as User;
       const em = (u.email || '').toLowerCase().trim();
@@ -174,8 +178,14 @@ function loadCurrentUser(): User | null {
 }
 
 function saveCurrentUser(u: User | null) {
-  if (u) localStorage.setItem(LS_CURRENT_USER, JSON.stringify(u));
-  else localStorage.removeItem(LS_CURRENT_USER);
+  if (typeof window !== 'undefined') {
+    if (u) {
+      sessionStorage.setItem(LS_CURRENT_USER, JSON.stringify(u));
+    } else {
+      sessionStorage.removeItem(LS_CURRENT_USER);
+      localStorage.removeItem(LS_CURRENT_USER);
+    }
+  }
 }
 
 function loadLoginLogs(): LoginLog[] {
@@ -236,7 +246,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(loadRegistered);
   const [activeRole, setActiveRole] = useState<UserRole>(() => {
     const current = loadCurrentUser();
-    return current?.role || 'ADMIN';
+    return current?.role || 'REGULAR_TEACHER';
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!loadCurrentUser());
   const [loggedInUser, setLoggedInUser] = useState<User | null>(loadCurrentUser);
@@ -279,8 +289,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .catch(() => {});
   }, []);
 
-  // Derive currentUser from loggedInUser (or fallback for dev role switcher)
-  const currentUser: User = loggedInUser || allUsers.find((u) => u.role === activeRole) || DEFAULT_SYSTEM_ADMIN;
+  // Derive currentUser from loggedInUser
+  const currentUser: User = loggedInUser || DEFAULT_SYSTEM_ADMIN;
 
   // ─── Register New Teacher (Any Gmail / Work email) ───────────────────────────
   const registerTeacher = async (
@@ -343,6 +353,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       const data = await safeJson(res);
       if (data?.success && data.token) {
+        sessionStorage.setItem('cfms_token', data.token);
         localStorage.setItem('cfms_token', data.token);
       }
     } catch {}
@@ -380,9 +391,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (res.ok && data?.success && data.user) {
         if (data.token) {
+          sessionStorage.setItem('cfms_token', data.token);
           localStorage.setItem('cfms_token', data.token);
         }
         if (data.refreshToken) {
+          sessionStorage.setItem('cfms_refresh_token', data.refreshToken);
           localStorage.setItem('cfms_refresh_token', data.refreshToken);
         }
 
@@ -608,12 +621,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {}
+    sessionStorage.removeItem('cfms_token');
+    sessionStorage.removeItem('cfms_refresh_token');
+    sessionStorage.removeItem(LS_CURRENT_USER);
     localStorage.removeItem('cfms_token');
     localStorage.removeItem('cfms_refresh_token');
+    localStorage.removeItem(LS_CURRENT_USER);
     saveCurrentUser(null);
     setLoggedInUser(null);
     setIsAuthenticated(false);
-    setActiveRole('ADMIN');
+    setActiveRole('REGULAR_TEACHER');
   };
 
   // ─── Update Profile ─────────────────────────────────────────────────────────
