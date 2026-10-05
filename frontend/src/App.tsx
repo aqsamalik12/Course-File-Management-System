@@ -95,15 +95,22 @@ const MainAppContent: React.FC = () => {
   const [isEditingApplication, setIsEditingApplication] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Reset module when role switches
+  // Dedicated role checks
+  const isAdmin = activeRole === 'ADMIN' || currentUser?.role === 'ADMIN';
+  const isTeacher = !isAdmin && (activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER');
+
+  // Reset module when role switches or when user logs in
   useEffect(() => {
-    if (activeRole === 'ADMIN') setActiveModule('Dashboard');
-    else if (activeRole === 'HOD') setActiveModule('HOD Dashboard');
-    else setActiveModule('Teacher Dashboard');
-  }, [activeRole]);
+    if (isAdmin) {
+      setActiveModule('Dashboard');
+    } else if (activeRole === 'HOD') {
+      setActiveModule('HOD Dashboard');
+    } else {
+      setActiveModule('Teacher Dashboard');
+    }
+  }, [activeRole, isAdmin, isAuthenticated]);
 
   // For teachers: check status
-  const isTeacher = activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER';
   const enrollmentStatus = currentUser?.enrollmentStatus || (currentUser?.profileFormSubmitted ? 'PendingHODApproval' : 'ProfileIncomplete');
   const isApproved = enrollmentStatus === 'Approved';
   const formSubmitted = isApproved || (currentUser?.profileFormSubmitted ?? false);
@@ -128,8 +135,8 @@ const MainAppContent: React.FC = () => {
     return <LoginPage />;
   }
 
-  // ─── Teachers Gate: Must be Approved by HOD to access Dashboard ─────────────
-  if (isTeacher && !isApproved) {
+  // ─── Teachers Gate: Must be Approved by HOD to access Dashboard (Never for Admin) ─────────────
+  if (!isAdmin && isTeacher && !isApproved) {
     // 1. Rejected State: Show Rejection reason and allow resubmission
     if (enrollmentStatus === 'Rejected' && !isEditingApplication) {
       return (
@@ -598,6 +605,7 @@ const MainAppContent: React.FC = () => {
         return <CourseFileSubmissionModule onNavigate={(m) => setActiveModule(m)} />;
       case 'My Profile Form':
       case 'Teacher Profile Form':
+        if (isAdmin) return <AdminDashboard onNavigate={(m) => setActiveModule(m)} />;
         return <TeacherProfileForm onNavigate={(m) => setActiveModule(m)} />;
       case 'Assigned Courses':
       case 'My Courses':

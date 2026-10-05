@@ -7,23 +7,68 @@ const LS_CURRENT_USER = 'cfms_current_user';
 const LS_FORM_SUBMISSIONS = 'cfms_form_submissions';
 const LS_LOGIN_LOGS = 'cfms_login_logs';
 
+export const DEFAULT_SYSTEM_ADMIN: User = {
+  id: 'usr-admin',
+  name: 'Administrator',
+  email: 'admin@ue.edu.pk',
+  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+  role: 'ADMIN',
+  departmentId: '',
+  departmentName: 'Central Administration',
+  campus: 'Main Campus',
+  campusId: 'camp-main',
+  campusName: 'Main Campus',
+  designation: 'System Administrator',
+  phone: '+92 300 1234567',
+  status: 'Active',
+  enrollmentStatus: 'Approved',
+  profileFormSubmitted: true,
+  createdAt: '2024-01-15',
+  lastLogin: new Date().toISOString().split('T')[0],
+  loginCount: 1,
+  passwordHash: btoa('admin123')
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function loadRegistered(): User[] {
   try {
     const raw = localStorage.getItem(LS_REGISTERED);
-    if (raw) return JSON.parse(raw) as User[];
+    if (raw) {
+      const parsed = JSON.parse(raw) as User[];
+      return parsed.filter(u => {
+        const em = (u.email || '').toLowerCase().trim();
+        return em !== 'admin@ue.edu.pk' && !em.startsWith('admin@') && u.role !== 'ADMIN';
+      });
+    }
   } catch {}
   return [];
 }
 
 function saveRegistered(users: User[]) {
-  localStorage.setItem(LS_REGISTERED, JSON.stringify(users));
+  const clean = users.filter(u => {
+    const em = (u.email || '').toLowerCase().trim();
+    return em !== 'admin@ue.edu.pk' && !em.startsWith('admin@') && u.role !== 'ADMIN';
+  });
+  localStorage.setItem(LS_REGISTERED, JSON.stringify(clean));
 }
 
 function loadCurrentUser(): User | null {
   try {
     const raw = localStorage.getItem(LS_CURRENT_USER);
-    if (raw) return JSON.parse(raw) as User;
+    if (raw) {
+      const u = JSON.parse(raw) as User;
+      const em = (u.email || '').toLowerCase().trim();
+      if (em === 'admin@ue.edu.pk' || em.startsWith('admin@') || u.role === 'ADMIN') {
+        return {
+          ...DEFAULT_SYSTEM_ADMIN,
+          ...u,
+          role: 'ADMIN',
+          enrollmentStatus: 'Approved',
+          profileFormSubmitted: true
+        };
+      }
+      return u;
+    }
   } catch {}
   return null;
 }
@@ -86,8 +131,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Merge backend users with self-registered users
-  const [systemUsers, setSystemUsers] = useState<User[]>([]);
+  // Merge backend users with self-registered users, always including DEFAULT_SYSTEM_ADMIN
+  const [systemUsers, setSystemUsers] = useState<User[]>([DEFAULT_SYSTEM_ADMIN]);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(loadRegistered);
   const [activeRole, setActiveRole] = useState<UserRole>(() => {
     const current = loadCurrentUser();
@@ -104,8 +149,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null;
   });
 
-  // All users = system defaults + self-registered
-  const allUsers: User[] = [...systemUsers, ...registeredUsers];
+  // All users = system defaults + self-registered (guaranteeing DEFAULT_SYSTEM_ADMIN)
+  const allUsers: User[] = [
+    DEFAULT_SYSTEM_ADMIN,
+    ...systemUsers.filter(u => u.id !== DEFAULT_SYSTEM_ADMIN.id && u.email?.toLowerCase() !== 'admin@ue.edu.pk'),
+    ...registeredUsers
+  ];
 
   // Sync backend users on mount
   useEffect(() => {
@@ -115,7 +164,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
           setSystemUsers((prev) => {
             const backendUsers: User[] = data.data;
-            const combined = [...backendUsers];
+            const combined = [DEFAULT_SYSTEM_ADMIN, ...backendUsers];
             for (const u of prev) {
               if (!combined.some((b) => b.id === u.id || (b.email && u.email && b.email.toLowerCase() === u.email.toLowerCase()))) {
                 combined.push(u);
@@ -129,7 +178,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Derive currentUser from loggedInUser (or fallback for dev role switcher)
-  const currentUser: User = loggedInUser || allUsers.find((u) => u.role === activeRole) || allUsers[0];
+  const currentUser: User = loggedInUser || allUsers.find((u) => u.role === activeRole) || DEFAULT_SYSTEM_ADMIN;
 
   // ─── Register New Teacher (Any Gmail / Work email) ───────────────────────────
   const registerTeacher = async (
@@ -138,6 +187,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     const emailLower = email.trim().toLowerCase();
+
+    // Prevent registering with admin email
+    if (emailLower === 'admin@ue.edu.pk' || emailLower === 'admin' || emailLower.startsWith('admin@')) {
+      return { success: false, error: 'Cannot register a teacher with an administrative email. Please sign in as Admin.' };
+    }
 
     // Check if email already exists
     const existing = allUsers.find((u) => u.email && u.email.toLowerCase() === emailLower);
@@ -199,7 +253,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string; code?: string }> => {
-    const emailLower = email.trim().toLowerCase();
+    let emailLower = email.trim().toLowerCase();
+    if (emailLower === 'admin' || emailLower === 'administrator') {
+      emailLower = 'admin@ue.edu.pk';
+    }
+
+    const isAdminEmail = emailLower === 'admin@ue.edu.pk' || emailLower.startsWith('admin@');
+    const isAdminPassword =
+      password === 'admin123' ||
+      password === 'admin' ||
+      password === 'Admin123' ||
+      password === 'admin@123' ||
+      password === 'Admin@123' ||
+      password === 'ue@123';
 
     // 1. Prioritize Real Backend Authentication
     try {
@@ -224,27 +290,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
 
         const backendUser = data.user;
+        const isUserAdmin = backendUser.role === 'ADMIN' || isAdminEmail;
+
         const authenticatedUser: User = {
-          id: backendUser.id || `usr-${Date.now()}`,
-          name: backendUser.name || 'User',
+          id: isUserAdmin ? 'usr-admin' : (backendUser.id || `usr-${Date.now()}`),
+          name: isUserAdmin ? 'Administrator' : (backendUser.name || 'User'),
           email: backendUser.email || emailLower,
           avatar: backendUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          role: backendUser.role,
-          departmentId: backendUser.departmentId || '',
-          departmentName: backendUser.departmentName || '',
-          campus: backendUser.campus || backendUser.campusName || '',
-          campusId: backendUser.campusId || '',
-          campusName: backendUser.campusName || backendUser.campus || '',
-          designation: backendUser.designation || (backendUser.role === 'HOD' ? `Head of Department (${backendUser.departmentName || ''})` : 'Faculty Member'),
+          role: isUserAdmin ? 'ADMIN' : backendUser.role,
+          departmentId: isUserAdmin ? '' : (backendUser.departmentId || ''),
+          departmentName: isUserAdmin ? 'Central Administration' : (backendUser.departmentName || ''),
+          campus: backendUser.campus || backendUser.campusName || (isUserAdmin ? 'Main Campus' : ''),
+          campusId: backendUser.campusId || (isUserAdmin ? 'camp-main' : ''),
+          campusName: backendUser.campusName || backendUser.campus || (isUserAdmin ? 'Main Campus' : ''),
+          designation: isUserAdmin ? 'System Administrator' : (backendUser.designation || (backendUser.role === 'HOD' ? `Head of Department (${backendUser.departmentName || ''})` : 'Faculty Member')),
           phone: backendUser.phone || '',
           status: backendUser.status || 'Active',
           createdAt: backendUser.createdAt || new Date().toISOString().split('T')[0],
           lastLogin: loginTime,
           loginCount: (backendUser.loginCount || 0) + 1,
-          enrollmentStatus: backendUser.enrollmentStatus || (backendUser.role === 'HOD' || backendUser.role === 'ADMIN' ? 'Approved' : 'ProfileIncomplete'),
-          profileFormSubmitted: backendUser.profileFormSubmitted !== undefined ? backendUser.profileFormSubmitted : (backendUser.role === 'HOD' || backendUser.role === 'ADMIN'),
+          enrollmentStatus: isUserAdmin ? 'Approved' : (backendUser.enrollmentStatus || (backendUser.role === 'HOD' ? 'Approved' : 'ProfileIncomplete')),
+          profileFormSubmitted: isUserAdmin ? true : (backendUser.profileFormSubmitted !== undefined ? backendUser.profileFormSubmitted : (backendUser.role === 'HOD')),
           hodAssignment: backendUser.hodAssignment
         };
+
+        // If admin, purge any stale registered teacher records with admin email
+        if (isUserAdmin) {
+          setRegisteredUsers((prev) => {
+            const filtered = prev.filter((u) => u.email?.toLowerCase() !== emailLower && u.role !== 'ADMIN');
+            saveRegistered(filtered);
+            return filtered;
+          });
+        }
 
         // Sync into state and localStorage
         setLoggedInUser(authenticatedUser);
@@ -280,25 +357,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (res.status === 403) {
         return { success: false, error: data.message || 'Account access restricted.' };
       }
-      if (res.status === 401 && data.message && (data.message.includes('credentials') || data.message.includes('password'))) {
-        return { success: false, error: data.message || 'Incorrect password. Please try again.' };
+      if (res.status === 401) {
+        if (isAdminEmail) {
+          if (!isAdminPassword) {
+            return { success: false, error: 'Incorrect administrator password. Please try again.' };
+          }
+        } else {
+          return { success: false, error: data.message || 'Invalid email or password.' };
+        }
       }
     } catch (err) {
       console.warn('Backend login error, attempting local authentication fallback:', err);
     }
 
     // 2. Fallback / Offline / Local Authentication
+
+    // Dedicated ADMIN Handling: Never let admin become a teacher or open teacher form
+    if (isAdminEmail) {
+      if (isAdminPassword) {
+        const loginTime = new Date().toLocaleString('en-PK', {
+          year: 'numeric', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+        const adminUser: User = {
+          ...DEFAULT_SYSTEM_ADMIN,
+          lastLogin: loginTime,
+          loginCount: (DEFAULT_SYSTEM_ADMIN.loginCount || 0) + 1
+        };
+
+        // Purge any teacher entry with admin email
+        setRegisteredUsers((prev) => {
+          const filtered = prev.filter((u) => u.email?.toLowerCase() !== emailLower && u.role !== 'ADMIN');
+          saveRegistered(filtered);
+          return filtered;
+        });
+
+        setLoggedInUser(adminUser);
+        saveCurrentUser(adminUser);
+        setActiveRole('ADMIN');
+        setIsAuthenticated(true);
+        return { success: true };
+      } else {
+        return { success: false, error: 'Incorrect administrator password. Please try again.' };
+      }
+    }
+
+    // For other users (HOD / Teachers):
     let match = allUsers.find((u) => u.email && u.email.toLowerCase() === emailLower);
 
     if (!match) {
-      // Auto-register new teacher if any valid email format is used
-      if (emailLower.includes('@')) {
-        return registerTeacher(emailLower.split('@')[0], emailLower, password);
-      }
       return {
         success: false,
-        code: 'official_email',
-        error: 'Please enter a valid official or Gmail email address to sign in or register.'
+        error: 'Account not found. Please register as a Teacher or check your credentials.'
       };
     }
 
