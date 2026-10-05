@@ -153,25 +153,12 @@ function saveRegistered(users: User[]) {
 }
 
 function loadCurrentUser(): User | null {
+  // Never auto-login on initial visit or refresh.
+  // A teacher, HOD, or Admin must explicitly sign in through the Login page.
   try {
-    // Session authentication: If no active session in current tab, purge any stale localStorage persistence
-    if (typeof window !== 'undefined' && localStorage.getItem(LS_CURRENT_USER)) {
+    if (typeof window !== 'undefined') {
       localStorage.removeItem(LS_CURRENT_USER);
-    }
-    const raw = typeof window !== 'undefined' ? sessionStorage.getItem(LS_CURRENT_USER) : null;
-    if (raw) {
-      const u = JSON.parse(raw) as User;
-      const em = (u.email || '').toLowerCase().trim();
-      if (em === 'admin@ue.edu.pk' || em.startsWith('admin@') || u.role === 'ADMIN') {
-        return {
-          ...DEFAULT_SYSTEM_ADMIN,
-          ...u,
-          role: 'ADMIN',
-          enrollmentStatus: 'Approved',
-          profileFormSubmitted: true
-        };
-      }
-      return u;
+      sessionStorage.removeItem(LS_CURRENT_USER);
     }
   } catch {}
   return null;
@@ -244,12 +231,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Merge backend users with self-registered users, always including DEFAULT_SYSTEM_ADMIN
   const [systemUsers, setSystemUsers] = useState<User[]>([DEFAULT_SYSTEM_ADMIN]);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(loadRegistered);
-  const [activeRole, setActiveRole] = useState<UserRole>(() => {
-    const current = loadCurrentUser();
-    return current?.role || 'REGULAR_TEACHER';
-  });
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!loadCurrentUser());
-  const [loggedInUser, setLoggedInUser] = useState<User | null>(loadCurrentUser);
+  const [activeRole, setActiveRole] = useState<UserRole>('REGULAR_TEACHER');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>(loadLoginLogs);
   const [teacherRequest, setTeacherRequest] = useState<TeacherEnrollmentRequest | null>(() => {
     try {
