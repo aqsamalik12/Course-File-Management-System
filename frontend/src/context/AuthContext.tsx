@@ -30,6 +30,105 @@ export const DEFAULT_SYSTEM_ADMIN: User = {
   passwordHash: btoa('admin123')
 };
 
+export const INITIAL_CORE_USERS: User[] = [
+  DEFAULT_SYSTEM_ADMIN,
+  {
+    id: 'usr-hod-cs',
+    name: 'Dr. Sarah Ahmad',
+    email: 'hod.cs@ue.edu.pk',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+    role: 'HOD',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campus: 'Attock Campus',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    designation: 'Head of Department (Computer Science)',
+    phone: '+92 301 9876543',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    createdAt: '2024-02-01',
+    passwordHash: btoa('hod123')
+  },
+  {
+    id: 'usr-teacher-1',
+    name: 'Dr. Tariq Mahmood',
+    email: 'tariq.mahmood@ue.edu.pk',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+    role: 'REGULAR_TEACHER',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campus: 'Attock Campus',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    designation: 'Assistant Professor',
+    phone: '+92 321 4567890',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    totalCredits: 12,
+    createdAt: '2024-03-10',
+    passwordHash: btoa('teacher123')
+  },
+  {
+    id: 'usr-visiting-1',
+    name: 'Engr. Bilal Khan',
+    email: 'bilal.visiting@ue.edu.pk',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    role: 'VISITING_TEACHER',
+    departmentId: 'dept-cs',
+    departmentName: 'Computer Science',
+    campus: 'Attock Campus',
+    campusId: 'camp-attock',
+    campusName: 'Attock Campus',
+    designation: 'Visiting Lecturer',
+    phone: '+92 333 7890123',
+    status: 'Active',
+    enrollmentStatus: 'Approved',
+    profileFormSubmitted: true,
+    totalCredits: 6,
+    createdAt: '2025-08-25',
+    passwordHash: btoa('visiting123')
+  }
+];
+
+function loadHODAssignmentsUsers(): User[] {
+  try {
+    const raw = localStorage.getItem('cfms_hod_assignments');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((a: any) => {
+          const email = (a.hodEmail || a.email || '').trim().toLowerCase();
+          const name = a.hodName || 'Head of Department';
+          const pass = a.password || 'hod123';
+          return {
+            id: a.hodId || a.id || `usr-hod-${Date.now()}`,
+            name,
+            email,
+            avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+            role: 'HOD' as UserRole,
+            departmentId: a.departmentId || '',
+            departmentName: a.departmentName || '',
+            campus: a.campusName || a.campus || 'Attock Campus',
+            campusId: a.campusId || 'camp-attock',
+            campusName: a.campusName || a.campus || 'Attock Campus',
+            designation: `Head of Department (${a.departmentName || ''})`,
+            phone: a.phone || '+92 300 1234567',
+            status: a.status || 'Active',
+            enrollmentStatus: 'Approved' as const,
+            profileFormSubmitted: true,
+            createdAt: a.assignedDate ? a.assignedDate.split('T')[0] : new Date().toISOString().split('T')[0],
+            passwordHash: btoa(pass)
+          };
+        }).filter(u => u.email && u.email.includes('@'));
+      }
+    }
+  } catch {}
+  return [];
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function loadRegistered(): User[] {
   try {
@@ -150,10 +249,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null;
   });
 
-  // All users = system defaults + self-registered (guaranteeing DEFAULT_SYSTEM_ADMIN)
+  // Merge core users, system users, admin-created HODs, and registered users
+  const hodUsers = loadHODAssignmentsUsers();
   const allUsers: User[] = [
-    DEFAULT_SYSTEM_ADMIN,
-    ...systemUsers.filter(u => u.id !== DEFAULT_SYSTEM_ADMIN.id && u.email?.toLowerCase() !== 'admin@ue.edu.pk'),
+    ...INITIAL_CORE_USERS,
+    ...systemUsers.filter(u => !INITIAL_CORE_USERS.some(cu => cu.id === u.id || (cu.email && u.email && cu.email.toLowerCase() === u.email.toLowerCase()))),
+    ...hodUsers.filter(h => !INITIAL_CORE_USERS.some(cu => cu.email?.toLowerCase() === h.email?.toLowerCase())),
     ...registeredUsers
   ];
 
@@ -356,22 +457,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // If backend explicitly rejected due to wrong password or inactive/locked account
       if (res.status === 403) {
-        return { success: false, error: data.message || 'Account access restricted.' };
+        return { success: false, error: data?.message || 'Your account access has been restricted by Administrator.' };
       }
       if (res.status === 401) {
         if (isAdminEmail) {
           if (!isAdminPassword) {
-            return { success: false, error: 'Incorrect administrator password. Please try again.' };
+            return { success: false, error: 'Invalid email or password.' };
           }
         } else {
-          return { success: false, error: data.message || 'Invalid email or password.' };
+          return { success: false, error: data?.message || 'Invalid email or password.' };
         }
       }
     } catch (err) {
-      console.warn('Backend login error, attempting local authentication fallback:', err);
+      console.warn('Backend login network error, attempting local authentication fallback:', err);
     }
 
-    // 2. Fallback / Offline / Local Authentication
+    // 2. Fallback / Offline / Local Authentication (only when network/server unreachable)
 
     // Dedicated ADMIN Handling: Never let admin become a teacher or open teacher form
     if (isAdminEmail) {
@@ -399,7 +500,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsAuthenticated(true);
         return { success: true };
       } else {
-        return { success: false, error: 'Incorrect administrator password. Please try again.' };
+        return { success: false, error: 'Invalid email or password.' };
       }
     }
 
@@ -409,14 +510,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!match) {
       return {
         success: false,
-        error: 'Account not found. Please register as a Teacher or check your credentials.'
+        error: 'Account not found. Please use a registered account.'
       };
     }
 
     // Check password for local fallback
-    const isSystemUser = systemUsers.some((u) => u.email && u.email.toLowerCase() === emailLower);
+    const isCoreUser = INITIAL_CORE_USERS.some((u) => u.email && u.email.toLowerCase() === emailLower) ||
+                       systemUsers.some((u) => u.email && u.email.toLowerCase() === emailLower);
 
-    if (isSystemUser) {
+    if (isCoreUser) {
       const devPasswords: Record<string, string> = {
         'ADMIN': 'admin123',
         'HOD': 'hod123',
@@ -434,17 +536,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const userHasHash = !!match.passwordHash;
       if (userHasHash) {
         if (match.passwordHash !== btoa(password) && !isAcceptedDevPass) {
-          return { success: false, error: 'Incorrect password. Please try again.' };
+          return { success: false, error: 'Invalid email or password.' };
         }
       } else if (!isAcceptedDevPass) {
-        return { success: false, error: 'Incorrect password. Please use the credentials provided.' };
+        return { success: false, error: 'Invalid email or password.' };
       }
     } else {
       if (!match.passwordHash) {
-        return { success: false, error: 'Account password not set. Contact administrator.' };
+        return { success: false, error: 'Invalid email or password.' };
       }
       if (match.passwordHash !== btoa(password)) {
-        return { success: false, error: 'Incorrect password. Please try again.' };
+        return { success: false, error: 'Invalid email or password.' };
       }
     }
 
