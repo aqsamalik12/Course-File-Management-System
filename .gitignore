@@ -40,3 +40,5 @@ sample_test_doc.pdf
 
 # Vercel
 .vercel/
+.vercel
+.env*
