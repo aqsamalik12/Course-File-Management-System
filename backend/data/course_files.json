@@ -80,8 +80,8 @@
     "updated_at": "2026-09-26T17:57:31.70179+00:00"
   },
   {
-    "id": "file-1790624967207",
-    "courseId": "course-1790624968174",
+    "id": "file-1791145874321",
+    "courseId": "course-1791145875318",
     "courseCode": "CS-301",
     "courseTitle": "Database Systems",
     "credits": 4,
@@ -93,6 +93,3394 @@
     "hodName": "Dr. Asif",
     "batch": "2023",
     "session": "2023–2027",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1791145865316",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1791145864849@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-04T20:31:18.315Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791145875318",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "verified": "Yes",
+          "fileName": "Course_Description_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable)",
+          "verified": "Yes",
+          "isApplicableOnly": true,
+          "isNA": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "verified": "Yes",
+          "fileName": "Lab_Practical_CS301.pdf",
+          "fileSize": "5.0 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "verified": "Yes",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "verified": "Yes",
+          "fileName": "Course_Completion_Certificate.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-04T20:31:19.494Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1791143367167",
+    "courseId": "asgn-1791143364727-971",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791143354320",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1791143353712@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-04T19:49:32.243Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791143368266",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Full course file satisfies all departmental criteria.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline_Revised.pdf",
+          "status": "Verified",
+          "comment": "Verified and approved.",
+          "reviewedAt": "2026-10-04T19:49:33.594Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-04T19:49:34.686Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1791139828024",
+    "courseId": "asgn-1791139825521-248",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791139815177",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1791139814732@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-04T18:50:33.149Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791139829110",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Full course file satisfies all departmental criteria.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline_Revised.pdf",
+          "status": "Verified",
+          "comment": "Verified and approved.",
+          "reviewedAt": "2026-10-04T18:50:34.463Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-04T18:50:35.529Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1791139725539",
+    "courseId": "asgn-1791139723083-488",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791139712409",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1791139711793@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Submitted",
+    "submittedAt": "2026-10-04T18:48:46.681Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791139726681",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline.pdf",
+          "status": "Uploaded"
+        }
+      ]
+    },
+    "approvalStage": "HOD Review"
+  },
+  {
+    "id": "file-1791077183591",
+    "courseId": "course-1791077184371",
+    "courseCode": "CS-541",
+    "courseTitle": "Advanced Distributed Systems",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "",
+    "hodName": "",
+    "batch": "BSCS 2024–27",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-hod-1790490218261",
+    "teacherName": "Dr. Asif",
+    "teacherEmail": "hod.cs.asif@ue.edu.pk",
+    "teacherRole": "HOD",
+    "title": "CS-541 Course File (7th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Submitted",
+    "submittedAt": "2026-10-04T01:26:24.371Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791077184371",
+        "versionNumber": "v1.0",
+        "fileName": "CS-541_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Asif",
+        "uploadedByRole": "HOD",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "CV",
+          "verified": "Yes",
+          "status": "Verified"
+        }
+      ]
+    },
+    "approvalStage": "HOD Review"
+  },
+  {
+    "id": "file-1791077174566",
+    "courseId": "crs-1791077171379-702",
+    "courseCode": "CS-456",
+    "courseTitle": "Cloud Computing Architecture",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "",
+    "batch": "BSCS 2024–27",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1791051241628",
+    "teacherName": "Dr. Zeeshan Ali",
+    "teacherEmail": "teacher.live.1791051239054@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "CS-456 Course File (7th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-04T01:26:15.860Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791077175859",
+        "versionNumber": "v1.0",
+        "fileName": "CS-456_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Zeeshan Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "All sections verified.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "mandatory": true,
+          "fileName": "CV.pdf",
+          "verified": "Yes",
+          "status": "Verified",
+          "comment": "CV now compliant.",
+          "reviewedAt": "2026-10-04T01:26:18.892Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "mandatory": true,
+          "fileName": "Outline.pdf",
+          "verified": "Yes",
+          "status": "Verified"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-04T01:26:20.209Z",
+    "reviewedBy": "Dr. Asif"
+  },
+  {
+    "id": "file-1791077101905",
+    "courseId": "crs-1791077099669-273",
+    "courseCode": "CS-356",
+    "courseTitle": "Web Engineering 7180",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "",
+    "batch": "BSCS 2024–27",
+    "session": "Spring",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791051241628",
+    "teacherName": "Dr. Zeeshan Ali",
+    "teacherEmail": "teacher.live.1791051239054@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "CS-356 Course File (5th Semester, Spring)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-04T01:25:03.149Z",
+    "uploadDate": "2026-10-04",
+    "lastModified": "2026-10-04",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791077103149",
+        "versionNumber": "v1.0",
+        "fileName": "CS-356_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Zeeshan Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-04 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Attempt approval",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "mandatory": true,
+          "fileName": "Zeeshan_CV.pdf",
+          "fileSize": "1.2 MB",
+          "uploadedAt": "2026-10-04T01:25:00.881Z",
+          "verified": "Yes",
+          "status": "Verified",
+          "comment": "Updated CV verified and compliant.",
+          "reviewedAt": "2026-10-04T01:25:10.173Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline",
+          "mandatory": true,
+          "fileName": "Course_Outline.pdf",
+          "fileSize": "850 KB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form",
+          "content": "Course Description Form",
+          "mandatory": true,
+          "fileName": "Course_Desc.pdf",
+          "fileSize": "520 KB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Register",
+          "content": "Attendance Register",
+          "mandatory": true,
+          "fileName": "Attendance.pdf",
+          "fileSize": "2.1 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments (Best/Avg/Worst)",
+          "mandatory": true,
+          "fileName": "Assignments.pdf",
+          "fileSize": "4.5 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes (Best/Avg/Worst)",
+          "mandatory": true,
+          "fileName": "Quizzes.pdf",
+          "fileSize": "3.1 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Exam Paper & Scripts",
+          "content": "Mid Term Exam Paper",
+          "mandatory": true,
+          "fileName": "Midterm.pdf",
+          "fileSize": "2.8 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term Exam Paper & Scripts",
+          "content": "Final Term Exam Paper",
+          "mandatory": true,
+          "fileName": "FinalExam.pdf",
+          "fileSize": "5.2 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 9,
+          "name": "Semester Project",
+          "content": "Semester Project",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": true,
+          "verified": "N/A",
+          "status": "N/A"
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals",
+          "content": "Lab Manuals",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": true,
+          "verified": "N/A",
+          "status": "N/A"
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical",
+          "content": "Lab Practical",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": true,
+          "verified": "N/A",
+          "status": "N/A"
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes",
+          "content": "Lecture Notes",
+          "mandatory": true,
+          "fileName": "LectureNotes.pdf",
+          "fileSize": "8.4 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result Sheet",
+          "content": "Complete Result Sheet",
+          "mandatory": true,
+          "fileName": "AwardList.pdf",
+          "fileSize": "1.4 MB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "mandatory": true,
+          "fileName": "Draft_Cert.pdf",
+          "fileSize": "320 KB",
+          "uploadedAt": "2026-10-04T01:25:00.885Z",
+          "verified": "Yes",
+          "status": "Uploaded"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-04T01:25:07.392Z",
+    "reviewedBy": "Dr. Asif"
+  },
+  {
+    "id": "file-bscs2023-spring-sem1-db",
+    "courseId": "crs-db-cs301",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Spring",
+    "semester": "1st Semester",
+    "teacherId": "usr-teacher-1791051241628",
+    "teacherName": "Dr. Zeeshan Ali",
+    "teacherEmail": "teacher.live.1791051239054@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems Course Dossier",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "3.2 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-01T10:00:00.000Z",
+    "uploadDate": "2026-10-01",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-db-1",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Database_Systems_Course_File.pdf",
+        "fileSize": "3.2 MB",
+        "uploadedBy": "Dr. Zeeshan Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-01 10:00 AM",
+        "changeLog": "Initial submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Approved by HOD. All sections verified.",
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T12:00:00.000Z",
+    "reviewedBy": "Dr. Asif",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "title": "Course Outline & Schedule",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Compliant with HEC guidelines"
+        },
+        {
+          "srNo": 2,
+          "title": "Lecture Notes / Slides",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Complete 16 weeks covered"
+        },
+        {
+          "srNo": 3,
+          "title": "Assignments & Solutions",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "All 4 assignments uploaded"
+        },
+        {
+          "srNo": 4,
+          "title": "Midterm Exam Paper & Grading",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Rubrics attached"
+        },
+        {
+          "srNo": 5,
+          "title": "Final Exam Paper & Result",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Results verified and uploaded"
+        }
+      ]
+    }
+  },
+  {
+    "id": "file-1791049737455",
+    "courseId": "asgn-1791049734368-387",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791049723468",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1791049723047@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T17:49:03.376Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791049738494",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Full course file satisfies all departmental criteria.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline_Revised.pdf",
+          "status": "Verified",
+          "comment": "Verified and approved.",
+          "reviewedAt": "2026-10-03T17:49:04.852Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T17:49:06.642Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1791049541070",
+    "courseId": "course-1791049543279",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1791049528572",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1791049528143@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T17:45:47.710Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1791049543279",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "verified": "Yes",
+          "fileName": "Course_Description_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable)",
+          "verified": "Yes",
+          "isApplicableOnly": true,
+          "isNA": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "verified": "Yes",
+          "fileName": "Lab_Practical_CS301.pdf",
+          "fileSize": "5.0 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "verified": "Yes",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "verified": "Yes",
+          "fileName": "Course_Completion_Certificate.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T17:45:50.008Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790988834331",
+    "courseId": "asgn-1790988831181-205",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1790988818970",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1790988818492@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T00:54:00.938Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790988835598",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Full course file satisfies all departmental criteria.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline_Revised.pdf",
+          "status": "Verified",
+          "comment": "Verified and approved.",
+          "reviewedAt": "2026-10-03T00:54:02.890Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T00:54:04.409Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790988217275",
+    "courseId": "asgn-1790988214752-426",
+    "courseCode": "SE-501",
+    "courseTitle": "Software Engineering",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–27",
+    "session": "Fall",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1790988204758",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1790988204329@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "SE-501 Course File (5th Semester, Fall)",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T00:43:43.346Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790988218415",
+        "versionNumber": "v1.0",
+        "fileName": "SE-501_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Full course file satisfies all departmental criteria.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Course Outline",
+          "content": "Course Outline & Weekly Lecture Plan",
+          "verified": "Yes",
+          "fileName": "CS301_Course_Outline_Revised.pdf",
+          "status": "Verified",
+          "comment": "Verified and approved.",
+          "reviewedAt": "2026-10-03T00:43:44.900Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T00:43:46.336Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790985927446",
+    "courseId": "course-1790985928315",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790985918645",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790985918209@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T00:05:31.855Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790985928315",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "verified": "Yes",
+          "fileName": "Course_Description_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable)",
+          "verified": "Yes",
+          "isApplicableOnly": true,
+          "isNA": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "verified": "Yes",
+          "fileName": "Lab_Practical_CS301.pdf",
+          "fileSize": "5.0 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "verified": "Yes",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "verified": "Yes",
+          "fileName": "Course_Completion_Certificate.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T00:05:33.378Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790985881352",
+    "courseId": "course-1790985882354",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790985873022",
+    "teacherName": "Dr. Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790985872135@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "CS-301 Database Systems - Complete Course File",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-03T00:04:49.551Z",
+    "uploadDate": "2026-10-03",
+    "lastModified": "2026-10-03",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790985882355",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Dr. Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-03 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "All 14 items verified and approved for university accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, SQL, Normalization and Transaction management.",
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "mandatory": true,
+          "fileName": "Instructor_CV_Dr_Ali_Updated.pdf",
+          "fileSize": "1.3 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "comment": "Verified and compliant.",
+          "reviewedAt": "2026-10-03T00:04:45.850Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Course_Outlines_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Plan",
+          "content": "Course Plan",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Course_Plan_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Attendance_Record_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper",
+          "content": "Mid Term Paper",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Midterm_CS301_With_Sample_Sheets.pdf",
+          "fileSize": "2.4 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant.",
+          "reviewedAt": "2026-10-03T00:04:47.144Z",
+          "reviewedBy": "Dr. Asif",
+          "hodId": "usr-hod-1790490218261"
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper",
+          "content": "Final Term paper",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Final_Term_paper_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable)",
+          "content": "Semester project (If applicable)",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "verified": "N/A",
+          "isNA": true,
+          "status": "N/A"
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable)",
+          "content": "Lab Manuals (If applicable)",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "verified": "N/A",
+          "isNA": true,
+          "status": "N/A"
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical (If applicable)",
+          "content": "Lab Practical (If applicable)",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "verified": "N/A",
+          "isNA": true,
+          "status": "N/A"
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes",
+          "content": "Lecture Notes",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Complete_Result_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "mandatory": true,
+          "verified": "Yes",
+          "status": "Verified",
+          "fileName": "Course_Completion_Certificate_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "uploadedAt": "2026-10-03",
+          "uploaded": true,
+          "isUploaded": true,
+          "comment": "Verified and compliant."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-03T00:04:51.099Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790983980430",
+    "courseId": "user-crs-0",
+    "courseCode": "CS44",
+    "courseTitle": "Data",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Spring",
+    "semester": "1st Semester",
+    "teacherId": "usr-teacher-1",
+    "teacherName": "Dr. Tariq Mahmood",
+    "teacherEmail": "tariq.mahmood@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "CS44 Complete Course File (2026–2030 - 1st Semester)",
+    "category": "Syllabus & Course Outline",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "3.0 MB",
+    "fileUrl": "#",
+    "status": "Draft",
+    "submittedAt": null,
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790983981714",
+        "versionNumber": "v1.0",
+        "fileName": "CS44_Compiled_Course_File.pdf",
+        "fileSize": "3.0 MB",
+        "uploadedBy": "Dr. Tariq Mahmood",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Draft Created",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Draft saved by teacher with checklist.",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "description": "Updated academic Curriculum Vitae of the assigned course instructor.",
+          "mandatory": true,
+          "isNA": false,
+          "fileName": "2453990.pdf",
+          "fileSize": "0.01 MB",
+          "uploadedAt": "2 Oct 2026",
+          "verified": "No",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "description": "Approved official course outline, weekly lecture schedule, and reference textbooks.",
+          "mandatory": true,
+          "isNA": false,
+          "fileName": "assignment_01_Algorithms_and_C_Programs.docx...pdf",
+          "fileSize": "0.11 MB",
+          "uploadedAt": "2 Oct 2026",
+          "verified": "No",
+          "status": "Uploaded"
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "description": "Structured course description with weekly topic-wise breakdown and CLO alignments.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "description": "Complete student attendance sheet signed by the instructor.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "description": "All assignment question sheets, step-marking solution keys, and audited student samples (best, average, worst).",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "description": "All quiz papers, marking keys, and graded samples across performance bands (best, average, worst).",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "description": "Midterm exam question paper, standard solution key, and photocopies of best, average, worst answer sheets.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "description": "Terminal exam paper, official marking scheme, and photocopies of best, average, worst answer sheets.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable) (Best, worst, average)",
+          "description": "Project statement, evaluation rubric, and audited project reports (best, average, worst) if applicable.",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": false,
+          "verified": "N/A",
+          "status": "Pending"
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "description": "Lab experiment outlines, structured laboratory manual, and solution code/sheets in soft form if course has lab.",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": false,
+          "verified": "N/A",
+          "status": "Pending"
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "description": "Practical exam paper, assessment rubric/solution, and photocopied student answer sheets if applicable.",
+          "mandatory": false,
+          "isApplicableOnly": true,
+          "isNA": false,
+          "verified": "N/A",
+          "status": "Pending"
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "description": "Complete lecture slides, reading packages, or typed lecture notes in soft PDF format.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "description": "Final grade roster, award list, and overall mark distribution sheet.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "description": "Official signed Course Completion Certificate affirming curriculum coverage.",
+          "mandatory": true,
+          "verified": "No",
+          "status": "Pending"
+        }
+      ],
+      "totalItems": 14,
+      "uploadedCount": 2,
+      "verifiedYesCount": 0,
+      "naCount": 0,
+      "allRequiredUploaded": false,
+      "notes": "",
+      "submittedTimestamp": "2026-10-02T23:32:58.611Z"
+    },
+    "approvalStage": "Draft"
+  },
+  {
+    "id": "file-1790982168052",
+    "courseId": "course-1790982168898",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790982159472",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790982159035@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T23:02:52.330Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790982168898",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "verified": "Yes",
+          "fileName": "Course_Description_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable)",
+          "verified": "Yes",
+          "isApplicableOnly": true,
+          "isNA": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "verified": "Yes",
+          "fileName": "Lab_Practical_CS301.pdf",
+          "fileSize": "5.0 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "verified": "Yes",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "verified": "Yes",
+          "fileName": "Course_Completion_Certificate.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T23:02:53.798Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790981110982",
+    "courseId": "course-1790981111803",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790981102039",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790981101495@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T22:45:15.247Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790981111803",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Instructor CV",
+          "content": "Instructor CV",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outlines",
+          "content": "Course Outlines",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Course Description Form ( Containing weekly course plan)",
+          "content": "Course Description Form ( Containing weekly course plan)",
+          "verified": "Yes",
+          "fileName": "Course_Description_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Attendance Record",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Assignments",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)",
+          "content": "Quizzes",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Mid Term Paper",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )",
+          "content": "Final Term paper",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Semester project (If applicable) (Best, worst, average)",
+          "content": "Semester project (If applicable)",
+          "verified": "Yes",
+          "isApplicableOnly": true,
+          "isNA": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )",
+          "content": "Lab Manuals (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "content": "Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)",
+          "verified": "Yes",
+          "fileName": "Lab_Practical_CS301.pdf",
+          "fileSize": "5.0 MB",
+          "isApplicableOnly": true,
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Lecture Notes ( Only in soft form)",
+          "content": "Lecture Notes ( Only in soft form)",
+          "verified": "Yes",
+          "fileName": "Lecture_Notes_CS301.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Complete Result",
+          "content": "Complete Result",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Course Completion Certificate",
+          "content": "Course Completion Certificate",
+          "verified": "Yes",
+          "fileName": "Course_Completion_Certificate.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T22:45:16.735Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790980170502",
+    "courseId": "course-1790980171440",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790980160727",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790980160286@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T22:29:35.589Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790980171440",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Faculty CV",
+          "content": "Faculty CV / Profile",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline & Objectives",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Weekly Lecture Plan",
+          "content": "16-Week Lecture Plan",
+          "verified": "Yes",
+          "fileName": "Lecture_Plan_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Student Attendance Sheet",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments & Rubrics",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes & Solutions",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Midterm Exam",
+          "content": "Mid Term Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Exam",
+          "content": "Final Examination Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Grading Rubric",
+          "content": "Assessment & Grading Rubric",
+          "verified": "Yes",
+          "fileName": "Grading_Rubric.pdf",
+          "fileSize": "0.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manual",
+          "content": "Lab Manual & Experiments (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Reports",
+          "content": "Student Sample Lab Reports (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Reports_Samples.pdf",
+          "fileSize": "5.0 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Project Guidelines",
+          "content": "Semester Project Guidelines (If applicable)",
+          "verified": "Yes",
+          "fileName": "Project_Guidelines.pdf",
+          "fileSize": "1.3 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Sample Work",
+          "content": "Sample Graded Work (Best, Average, Worst)",
+          "verified": "Yes",
+          "fileName": "Student_Samples.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Result Sheet",
+          "content": "Consolidated Result & Award List",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 15,
+          "name": "Teacher Evaluation",
+          "content": "Course Evaluation & Teacher Feedback",
+          "verified": "Yes",
+          "fileName": "Course_Feedback.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T22:29:37.238Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790978940036",
+    "courseId": "course-1790978940939",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790978931198",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790978930783@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T22:09:04.960Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790978940939",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Faculty CV",
+          "content": "Faculty CV / Profile",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline & Objectives",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Weekly Lecture Plan",
+          "content": "16-Week Lecture Plan",
+          "verified": "Yes",
+          "fileName": "Lecture_Plan_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Student Attendance Sheet",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments & Rubrics",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes & Solutions",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Midterm Exam",
+          "content": "Mid Term Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Exam",
+          "content": "Final Examination Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Grading Rubric",
+          "content": "Assessment & Grading Rubric",
+          "verified": "Yes",
+          "fileName": "Grading_Rubric.pdf",
+          "fileSize": "0.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manual",
+          "content": "Lab Manual & Experiments (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Reports",
+          "content": "Student Sample Lab Reports (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Reports_Samples.pdf",
+          "fileSize": "5.0 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Project Guidelines",
+          "content": "Semester Project Guidelines (If applicable)",
+          "verified": "Yes",
+          "fileName": "Project_Guidelines.pdf",
+          "fileSize": "1.3 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Sample Work",
+          "content": "Sample Graded Work (Best, Average, Worst)",
+          "verified": "Yes",
+          "fileName": "Student_Samples.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Result Sheet",
+          "content": "Consolidated Result & Award List",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 15,
+          "name": "Teacher Evaluation",
+          "content": "Course Evaluation & Teacher Feedback",
+          "verified": "Yes",
+          "fileName": "Course_Feedback.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T22:09:06.570Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790977465808",
+    "courseId": "course-1790977466940",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790977456635",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790977456164@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T21:44:30.737Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790977466940",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Faculty CV",
+          "content": "Faculty CV / Profile",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline & Objectives",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Weekly Lecture Plan",
+          "content": "16-Week Lecture Plan",
+          "verified": "Yes",
+          "fileName": "Lecture_Plan_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Student Attendance Sheet",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments & Rubrics",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes & Solutions",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Midterm Exam",
+          "content": "Mid Term Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Exam",
+          "content": "Final Examination Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Grading Rubric",
+          "content": "Assessment & Grading Rubric",
+          "verified": "Yes",
+          "fileName": "Grading_Rubric.pdf",
+          "fileSize": "0.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manual",
+          "content": "Lab Manual & Experiments (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Reports",
+          "content": "Student Sample Lab Reports (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Reports_Samples.pdf",
+          "fileSize": "5.0 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Project Guidelines",
+          "content": "Semester Project Guidelines (If applicable)",
+          "verified": "Yes",
+          "fileName": "Project_Guidelines.pdf",
+          "fileSize": "1.3 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Sample Work",
+          "content": "Sample Graded Work (Best, Average, Worst)",
+          "verified": "Yes",
+          "fileName": "Student_Samples.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Result Sheet",
+          "content": "Consolidated Result & Award List",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 15,
+          "name": "Teacher Evaluation",
+          "content": "Course Evaluation & Teacher Feedback",
+          "verified": "Yes",
+          "fileName": "Course_Feedback.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T21:44:32.610Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790976126582",
+    "courseId": "course-1790976127395",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790976117942",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790976117528@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T21:22:11.034Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790976127396",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Faculty CV",
+          "content": "Faculty CV / Profile",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline & Objectives",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Weekly Lecture Plan",
+          "content": "16-Week Lecture Plan",
+          "verified": "Yes",
+          "fileName": "Lecture_Plan_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Student Attendance Sheet",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments & Rubrics",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes & Solutions",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Midterm Exam",
+          "content": "Mid Term Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Exam",
+          "content": "Final Examination Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Grading Rubric",
+          "content": "Assessment & Grading Rubric",
+          "verified": "Yes",
+          "fileName": "Grading_Rubric.pdf",
+          "fileSize": "0.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manual",
+          "content": "Lab Manual & Experiments (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Reports",
+          "content": "Student Sample Lab Reports (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Reports_Samples.pdf",
+          "fileSize": "5.0 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Project Guidelines",
+          "content": "Semester Project Guidelines (If applicable)",
+          "verified": "Yes",
+          "fileName": "Project_Guidelines.pdf",
+          "fileSize": "1.3 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Sample Work",
+          "content": "Sample Graded Work (Best, Average, Worst)",
+          "verified": "Yes",
+          "fileName": "Student_Samples.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Result Sheet",
+          "content": "Consolidated Result & Award List",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 15,
+          "name": "Teacher Evaluation",
+          "content": "Course Evaluation & Teacher Feedback",
+          "verified": "Yes",
+          "fileName": "Course_Feedback.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T21:22:12.517Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790975174194",
+    "courseId": "course-1790975175044",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "7th Semester",
+    "teacherId": "usr-teacher-1790975165614",
+    "teacherName": "Muhammad Ali",
+    "teacherEmail": "teacher.ali.1790975165197@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Database Systems - BSCS 2023 - 7th Semester",
+    "category": "Course File",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.5 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T21:06:18.471Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-1790975175044",
+        "versionNumber": "v1.0",
+        "fileName": "CS-301_Compiled_Course_File.pdf",
+        "fileSize": "2.5 MB",
+        "uploadedBy": "Muhammad Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 09:00 AM",
+        "changeLog": "Initial Course File Submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Fully verified and signed off for University of Education accreditation.",
+    "templateData": {
+      "courseDescription": "Principles of relational database systems, indexing, normalization and SQL optimization.",
+      "clos": [
+        {
+          "code": "CLO-1",
+          "description": "Design relational database schemas",
+          "plo": "PLO-1"
+        },
+        {
+          "code": "CLO-2",
+          "description": "Write complex SQL queries",
+          "plo": "PLO-2"
+        }
+      ],
+      "checklist": [
+        {
+          "srNo": 1,
+          "name": "Faculty CV",
+          "content": "Faculty CV / Profile",
+          "verified": "Yes",
+          "fileName": "CV_Muhammad_Ali_Updated.pdf",
+          "fileSize": "1.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 2,
+          "name": "Course Outline",
+          "content": "Course Outline & Objectives",
+          "verified": "Yes",
+          "fileName": "Course_Outline_CS301.pdf",
+          "fileSize": "0.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 3,
+          "name": "Weekly Lecture Plan",
+          "content": "16-Week Lecture Plan",
+          "verified": "Yes",
+          "fileName": "Lecture_Plan_CS301.pdf",
+          "fileSize": "0.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 4,
+          "name": "Attendance Record",
+          "content": "Student Attendance Sheet",
+          "verified": "Yes",
+          "fileName": "Attendance_BSCS2023.pdf",
+          "fileSize": "2.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 5,
+          "name": "Assignments",
+          "content": "Assignments & Rubrics",
+          "verified": "Yes",
+          "fileName": "Assignments_CS301.pdf",
+          "fileSize": "3.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 6,
+          "name": "Quizzes",
+          "content": "Quizzes & Solutions",
+          "verified": "Yes",
+          "fileName": "Quizzes_CS301.pdf",
+          "fileSize": "1.5 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 7,
+          "name": "Midterm Exam",
+          "content": "Mid Term Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Midterm_CS301_With_Key.pdf",
+          "fileSize": "1.6 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 8,
+          "name": "Final Exam",
+          "content": "Final Examination Question Paper & Key",
+          "verified": "Yes",
+          "fileName": "Final_Exam_CS301.pdf",
+          "fileSize": "1.8 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 9,
+          "name": "Grading Rubric",
+          "content": "Assessment & Grading Rubric",
+          "verified": "Yes",
+          "fileName": "Grading_Rubric.pdf",
+          "fileSize": "0.4 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 10,
+          "name": "Lab Manual",
+          "content": "Lab Manual & Experiments (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Manual_CS301.pdf",
+          "fileSize": "4.2 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 11,
+          "name": "Lab Reports",
+          "content": "Student Sample Lab Reports (If applicable)",
+          "verified": "Yes",
+          "fileName": "Lab_Reports_Samples.pdf",
+          "fileSize": "5.0 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 12,
+          "name": "Project Guidelines",
+          "content": "Semester Project Guidelines (If applicable)",
+          "verified": "Yes",
+          "fileName": "Project_Guidelines.pdf",
+          "fileSize": "1.3 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 13,
+          "name": "Sample Work",
+          "content": "Sample Graded Work (Best, Average, Worst)",
+          "verified": "Yes",
+          "fileName": "Student_Samples.pdf",
+          "fileSize": "6.1 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 14,
+          "name": "Result Sheet",
+          "content": "Consolidated Result & Award List",
+          "verified": "Yes",
+          "fileName": "Result_Sheet_CS301.pdf",
+          "fileSize": "1.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        },
+        {
+          "srNo": 15,
+          "name": "Teacher Evaluation",
+          "content": "Course Evaluation & Teacher Feedback",
+          "verified": "Yes",
+          "fileName": "Course_Feedback.pdf",
+          "fileSize": "0.9 MB",
+          "status": "Verified",
+          "comment": "All verified and approved for academic accreditation."
+        }
+      ]
+    },
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T21:06:19.955Z",
+    "reviewedBy": "Dr. Asif",
+    "reviewComment": null
+  },
+  {
+    "id": "file-1790624967207",
+    "courseId": "course-1790624968174",
+    "courseCode": "CS-301",
+    "courseTitle": "Database Systems",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
     "semester": "7th Semester",
     "teacherId": "usr-teacher-1790624957535",
     "teacherName": "Muhammad Ali",
@@ -308,8 +3696,8 @@
     "departmentName": "Computer Science",
     "hodId": "usr-hod-1790490218261",
     "hodName": "Dr. Asif",
-    "batch": "2024",
-    "session": "2024–2025",
+    "batch": "BSCS 2024–28",
+    "session": "Spring",
     "semester": "1st Semester",
     "teacherId": "usr-teacher-cs-1790624644352",
     "teacherName": "Faculty Member",
@@ -356,8 +3744,8 @@
     "departmentName": "Computer Science",
     "hodId": "usr-hod-1790490218261",
     "hodName": "Dr. Asif",
-    "batch": "2024",
-    "session": "2024–2025",
+    "batch": "BSCS 2024–28",
+    "session": "Spring",
     "semester": "1st Semester",
     "teacherId": "usr-teacher-cs-1790623255033",
     "teacherName": "Faculty Member",
@@ -402,10 +3790,10 @@
     "campusName": "Attock Campus",
     "departmentId": "dept-1790466035357",
     "departmentName": "Computer Science",
-    "hodId": "usr-hod-1790533114162",
-    "hodName": "Dr. Ahmed",
-    "batch": "2024",
-    "session": "2024–2025",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2024–28",
+    "session": "Spring",
     "semester": "1st Semester",
     "teacherId": "usr-test-teacher-1790537326071",
     "teacherName": "Engr. QA Test Teacher",
@@ -451,10 +3839,10 @@
     "campusName": "Attock Campus",
     "departmentId": "dept-1790466035357",
     "departmentName": "Computer Science",
-    "hodId": "usr-hod-1790533114162",
-    "hodName": "Dr. Ahmed",
-    "batch": "2024",
-    "session": "2024–2025",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2024–28",
+    "session": "Spring",
     "semester": "1st Semester",
     "teacherId": "teacher-test-1790534806984",
     "teacherName": "Dr. Test Assistant Professor",
@@ -491,5 +3879,248 @@
     "reviewedAt": "2026-09-27T18:47:05.008Z",
     "reviewedBy": "Dr. Ahmed",
     "reviewComment": null
+  },
+  {
+    "id": "file-bscs2023-fall-sem2-oop",
+    "courseId": "crs-oop-cs202",
+    "courseCode": "CS-202",
+    "courseTitle": "Object Oriented Programming",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Fall",
+    "semester": "2nd Semester",
+    "teacherId": "usr-teacher-1791049723468",
+    "teacherName": "Dr. Muhammad Tariq",
+    "teacherEmail": "teacher.1791049723047@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "OOP Course Dossier",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "2.8 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-01T11:00:00.000Z",
+    "uploadDate": "2026-10-01",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-oop-1",
+        "versionNumber": "v1.0",
+        "fileName": "CS-202_OOP_Course_File.pdf",
+        "fileSize": "2.8 MB",
+        "uploadedBy": "Dr. Muhammad Tariq",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-01 11:00 AM",
+        "changeLog": "Initial submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Approved by HOD.",
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T14:00:00.000Z",
+    "reviewedBy": "Dr. Asif",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "title": "Course Outline & Schedule",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Verified"
+        },
+        {
+          "srNo": 2,
+          "title": "Lecture Notes / Slides",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Verified"
+        }
+      ]
+    }
+  },
+  {
+    "id": "file-bscs2023-spring-sem3-dsa",
+    "courseId": "crs-dsa-cs202",
+    "courseCode": "CS-202",
+    "courseTitle": "Data Structures & Algorithms",
+    "credits": 4,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Spring",
+    "semester": "3rd Semester",
+    "teacherId": "usr-teacher-1791051241628",
+    "teacherName": "Dr. Zeeshan Ali",
+    "teacherEmail": "teacher.live.1791051239054@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Data Structures & Algorithms Course Dossier",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "3.8 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T10:00:00.000Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-dsa-1",
+        "versionNumber": "v1.0",
+        "fileName": "CS-202_DSA_Course_File.pdf",
+        "fileSize": "3.8 MB",
+        "uploadedBy": "Dr. Zeeshan Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 10:00 AM",
+        "changeLog": "Initial submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Approved by HOD. Complete course dossier verified.",
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T14:00:00.000Z",
+    "reviewedBy": "Dr. Asif",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "title": "Course Outline & Schedule",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Compliant with HEC guidelines"
+        },
+        {
+          "srNo": 2,
+          "title": "Lecture Notes / Slides",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Complete 16 weeks covered"
+        },
+        {
+          "srNo": 3,
+          "title": "Assignments & Solutions",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "4 assignments and rubrics verified"
+        },
+        {
+          "srNo": 4,
+          "title": "Midterm Exam Paper & Grading",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Midterm evaluated properly"
+        },
+        {
+          "srNo": 5,
+          "title": "Final Exam Paper & Result",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Final exam results attached"
+        }
+      ]
+    }
+  },
+  {
+    "id": "file-bscs2023-spring-sem5-se",
+    "courseId": "crs-se-cs304",
+    "courseCode": "CS-304",
+    "courseTitle": "Software Engineering",
+    "credits": 3,
+    "campusId": "camp-attock",
+    "campusName": "Attock Campus",
+    "departmentId": "dept-1790466035357",
+    "departmentName": "Computer Science",
+    "hodId": "usr-hod-1790490218261",
+    "hodName": "Dr. Asif",
+    "batch": "BSCS 2023–26",
+    "session": "Spring",
+    "semester": "5th Semester",
+    "teacherId": "usr-teacher-1791051241628",
+    "teacherName": "Dr. Zeeshan Ali",
+    "teacherEmail": "teacher.live.1791051239054@ue.edu.pk",
+    "teacherRole": "REGULAR_TEACHER",
+    "title": "Software Engineering Course Dossier",
+    "category": "Complete Course Dossier",
+    "currentVersion": "v1.0",
+    "fileType": "PDF",
+    "fileSize": "4.1 MB",
+    "fileUrl": "#",
+    "status": "Approved",
+    "submittedAt": "2026-10-02T11:00:00.000Z",
+    "uploadDate": "2026-10-02",
+    "lastModified": "2026-10-02",
+    "archived": false,
+    "deleted": false,
+    "versionHistory": [
+      {
+        "id": "ver-se-1",
+        "versionNumber": "v1.0",
+        "fileName": "CS-304_Software_Engineering_Course_File.pdf",
+        "fileSize": "4.1 MB",
+        "uploadedBy": "Dr. Zeeshan Ali",
+        "uploadedByRole": "REGULAR_TEACHER",
+        "uploadedAt": "2026-10-02 11:00 AM",
+        "changeLog": "Initial submission",
+        "fileUrl": "#"
+      }
+    ],
+    "remarks": "Approved by HOD. Complete course dossier verified.",
+    "approvalStage": "Approved",
+    "reviewedAt": "2026-10-02T15:00:00.000Z",
+    "reviewedBy": "Dr. Asif",
+    "templateData": {
+      "checklist": [
+        {
+          "srNo": 1,
+          "title": "Course Outline & Schedule",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Compliant with HEC guidelines"
+        },
+        {
+          "srNo": 2,
+          "title": "Lecture Notes / Slides",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Complete 16 weeks covered"
+        },
+        {
+          "srNo": 3,
+          "title": "Assignments & Solutions",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Assignments verified"
+        },
+        {
+          "srNo": 4,
+          "title": "Midterm Exam Paper & Grading",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Midterm exam paper attached"
+        },
+        {
+          "srNo": 5,
+          "title": "Final Exam Paper & Result",
+          "status": "Verified",
+          "verified": "Yes",
+          "comment": "Final exam results attached"
+        }
+      ]
+    }
   }
 ]

@@ -32,3 +32,11 @@ Thumbs.db
 # Uploads runtime files
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Testing artifacts
+frontend/test-results/
+test-results/
+sample_test_doc.pdf
+
+# Vercel
+.vercel/

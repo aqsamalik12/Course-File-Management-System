@@ -68,7 +68,7 @@ export const ArchiveModule: React.FC = () => {
           <div>
             <span className="font-bold text-slate-900 text-xs block">{f.title}</span>
             <span className="text-3xs text-slate-500 font-mono">
-              {f.courseCode} • Version {f.currentVersion} • {f.departmentName.replace('Department of ', '')}
+              {f.courseCode} • Version {f.currentVersion} • {(f.departmentName || '').replace('Department of ', '')}
             </span>
           </div>
         </div>

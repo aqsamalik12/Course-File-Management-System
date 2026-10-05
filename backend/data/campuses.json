@@ -27,12 +27,12 @@
     "status": "Active"
   },
   {
-    "id": "camp-1790624661435",
-    "name": "Rawalpindi Sub-Campus 1790624661198",
-    "code": "UE-RWP-201",
-    "city": "Rawalpindi",
-    "address": "",
-    "directorName": "",
+    "id": "camp-1791141549101",
+    "name": "Lahore",
+    "code": "LHR",
+    "city": "Lahore",
+    "address": "Main Roard",
+    "directorName": "Dr Ahmad",
     "status": "Active"
   }
 ]

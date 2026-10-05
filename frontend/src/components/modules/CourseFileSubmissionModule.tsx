@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useCFMS } from '../../context/CFMSContext';
 import { useAuth } from '../../context/AuthContext';
 import { OFFICIAL_COURSE_FILE_CHECKLIST, OfficialChecklistItem } from '../../data/mockData';
-import { TeacherFormSetup } from './TeacherFormSetup';
 import {
   Upload,
   BookOpen,
@@ -47,33 +46,33 @@ export interface SectionUploadState {
   fileName?: string;
   fileSize?: string;
   uploadedAt?: string;
-  verified: 'Yes' | 'None';
-  status?: 'Verified' | 'Needs Improvement' | 'Pending';
+  uploaded?: boolean;
+  isUploaded?: boolean;
+  verified: 'Yes' | 'No' | 'None' | 'N/A';
+  status?: 'Verified' | 'Needs Improvement' | 'Pending' | 'Uploaded' | 'Resubmitted';
   comment?: string;
 }
 
 // Bachelor Degree Batches starting from 2026 onwards (extensible to future cohorts)
 export const BATCH_OPTIONS = [
+  'BSCS 2023–26',
+  'BSCS 2024–27',
+  'BSCS 2025–28',
+  'BSCS 2022–25',
+  'BSCS 2021–24',
   '2026', '2027', '2028', '2029', '2030',
-  '2031', '2032', '2033', '2034', '2035',
-  '2036', '2037', '2038', '2039', '2040',
-  '2025', '2024'
+  '2025', '2024', '2023'
 ];
 
-// Standard 4-Year Degree Sessions starting from 2025 (4-year curriculum duration)
+// Standard Academic Sessions (Spring / Fall)
 export const SESSION_OPTIONS = [
+  'Spring',
+  'Fall',
+  'Spring 2024–25',
+  'Fall 2024–25',
+  'Spring 2025–26',
+  'Fall 2025–26',
   '2025–2029',
-  '2026–2030',
-  '2027–2031',
-  '2028–2032',
-  '2029–2033',
-  '2030–2034',
-  '2031–2035',
-  '2032–2036',
-  '2033–2037',
-  '2034–2038',
-  '2035–2039',
-  '2036–2040',
   '2024–2028',
   '2023–2027'
 ];
@@ -98,26 +97,106 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
   const { courseFiles, courses, submissionWindow, uploadCourseFile, activeTeacherSetup } = useCFMS();
   const { currentUser } = useAuth();
 
-  const [showSetupModal, setShowSetupModal] = useState(false);
-
   const teacherName = currentUser?.name || 'Faculty Member';
+
+  // Support courses from teacher's approved profile, system assignments, or departmental defaults
+  const userDeptName = currentUser?.departmentName || (currentUser as any)?.department || 'Computer Science';
+
+  const userCourses = Array.isArray(currentUser?.courses) && currentUser.courses.length > 0
+    ? currentUser.courses.map((c: any, idx: number) => ({
+        id: c.id || `user-crs-${idx}`,
+        code: c.code || c.courseCode || 'CS-301',
+        title: c.name || c.title || c.courseTitle || 'Database Systems',
+        credits: c.creditHours || c.credits || 3,
+        departmentName: userDeptName,
+        batch: c.batch || c.assignedBatch || '',
+        session: c.session || c.academicSession || '',
+        semester: c.semester || ''
+      }))
+    : [];
+
   const myCourses = courses.filter(
     (c) =>
       c.assignedTeacherId === currentUser?.id ||
       (currentUser?.email && c.assignedTeacherId === currentUser?.email) ||
       c.assignedTeacherName === teacherName
   );
-  const displayCourses = myCourses;
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(displayCourses[0]?.id || '');
-  const selectedCourse = displayCourses.find((c) => c.id === selectedCourseId) || displayCourses[0];
+  const deptCourses = courses.filter(
+    (c) =>
+      c.departmentName &&
+      userDeptName &&
+      c.departmentName.toLowerCase().includes(userDeptName.toLowerCase())
+  );
 
-  // Academic Term & Session State (Defaulting to Batch 2026, 4-Year Session 2026–2030, and 1st Semester)
-  const [submissionBatch, setSubmissionBatch] = useState('2026');
-  const [submissionSession, setSubmissionSession] = useState('2026–2030');
-  const [submissionSemester, setSubmissionSemester] = useState('1st Semester');
+  const defaultStandardCourses = [
+    { id: 'crs-cs-301', code: 'CS-301', title: 'Database Systems', credits: 4, departmentName: userDeptName },
+    { id: 'crs-cs-302', code: 'CS-302', title: 'Web Engineering', credits: 3, departmentName: userDeptName },
+    { id: 'crs-cs-303', code: 'CS-303', title: 'Software Engineering', credits: 3, departmentName: userDeptName },
+    { id: 'crs-cs-304', code: 'CS-304', title: 'Operating Systems', credits: 4, departmentName: userDeptName }
+  ];
+
+  // Teacher-entered Course Details (First Step per user specification)
+  const initialCourse = userCourses[0];
+  const [courseTitle, setCourseTitle] = useState<string>(initialCourse?.title || '');
+  const [courseCode, setCourseCode] = useState<string>(initialCourse?.code || '');
+  const [credits, setCredits] = useState<number>(initialCourse?.credits || 3);
+
+  // Term, Batch, Session, Spring/Fall Season, Semester
+  const [submissionBatch, setSubmissionBatch] = useState<string>(
+    initialCourse?.batch ? String(initialCourse.batch).replace(/^Batch\s*/i, '') : ((activeTeacherSetup as any)?.batch ? String((activeTeacherSetup as any).batch).replace(/^Batch\s*/i, '') : '2026')
+  );
+  const [submissionSession, setSubmissionSession] = useState<string>(
+    initialCourse?.session || (activeTeacherSetup as any)?.session || '2026–2030'
+  );
+  const [submissionSeason, setSubmissionSeason] = useState<'Spring' | 'Fall'>('Spring');
+  const [submissionSemester, setSubmissionSemester] = useState<string>(
+    initialCourse?.semester || (activeTeacherSetup as any)?.semester || '1st Semester'
+  );
   const [uploadNotes, setUploadNotes] = useState('');
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' | 'error' } | null>(null);
+
+  // Quick fill helper when teacher chooses an assigned course from their profile
+  const handleQuickFillCourse = (cCode: string) => {
+    const matched = userCourses.find((c: any) => c.code === cCode);
+    if (matched) {
+      setCourseTitle(matched.title);
+      setCourseCode(matched.code);
+      if (matched.credits) setCredits(Number(matched.credits));
+      if (matched.batch) setSubmissionBatch(String(matched.batch).replace(/^Batch\s*/i, ''));
+      if (matched.semester) setSubmissionSemester(matched.semester);
+      if (matched.session) {
+        if (matched.session.toLowerCase().includes('fall')) setSubmissionSeason('Fall');
+        else if (matched.session.toLowerCase().includes('spring')) setSubmissionSeason('Spring');
+      }
+    }
+  };
+
+  const activeCourseCode = courseCode.trim() || 'CS-101';
+  const activeCourseTitle = courseTitle.trim() || 'Course';
+
+  const selectedCourse = {
+    id: `crs-${activeCourseCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+    code: activeCourseCode,
+    title: activeCourseTitle,
+    credits: credits,
+    departmentName: userDeptName
+  };
+
+  // Auto-inherit when active course assignment changes
+  useEffect(() => {
+    if (activeTeacherSetup) {
+      if (activeTeacherSetup.courseName) setCourseTitle(activeTeacherSetup.courseName);
+      if (activeTeacherSetup.courseCode) setCourseCode(activeTeacherSetup.courseCode);
+      if ((activeTeacherSetup as any).batch) setSubmissionBatch(String((activeTeacherSetup as any).batch).replace(/^Batch\s*/i, ''));
+      if ((activeTeacherSetup as any).semester) setSubmissionSemester((activeTeacherSetup as any).semester);
+      if ((activeTeacherSetup as any).session) {
+        const s = String((activeTeacherSetup as any).session);
+        if (s.toLowerCase().includes('fall')) setSubmissionSeason('Fall');
+        else if (s.toLowerCase().includes('spring')) setSubmissionSeason('Spring');
+      }
+    }
+  }, [activeTeacherSetup]);
 
   // Modals
   const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -139,7 +218,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       (!f.session || f.session === submissionSession)
   ) || myFiles.find((f) => f.courseCode === selectedCourse?.code);
 
-  // Initialize 15-Item Checklist State
+  // Initialize 14-Item Checklist State (Audit Report removed; starts from Instructor CV)
   const [checklist, setChecklist] = useState<SectionUploadState[]>(() => {
     return OFFICIAL_COURSE_FILE_CHECKLIST.map((item) => ({
       srNo: item.srNo,
@@ -150,7 +229,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       mandatory: item.mandatory,
       isApplicableOnly: item.isApplicableOnly,
       isNA: item.isApplicableOnly ? false : undefined,
-      verified: 'None'
+      verified: item.isApplicableOnly ? 'N/A' : 'No',
+      status: 'Pending'
     }));
   });
 
@@ -169,8 +249,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               fileSize: found.fileSize,
               uploadedAt: found.uploadedAt,
               isNA: found.isNA ?? (item.isApplicableOnly ? false : undefined),
-              verified: found.verified || 'None',
-              status: found.status,
+              verified: (found.verified === 'Yes' || found.fileName) ? 'Yes' : (found.verified === 'N/A' || found.isNA ? 'N/A' : 'No'),
+              status: found.status || (found.fileName ? 'Uploaded' : 'Pending'),
               comment: found.comment
             };
           }
@@ -178,7 +258,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             ...item,
             file: null,
             isNA: item.isApplicableOnly ? false : undefined,
-            verified: 'None'
+            verified: item.isApplicableOnly ? 'N/A' : 'No',
+            status: 'Pending'
           };
         })
       );
@@ -197,7 +278,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           mandatory: item.mandatory,
           isApplicableOnly: item.isApplicableOnly,
           isNA: item.isApplicableOnly ? false : undefined,
-          verified: 'None'
+          verified: item.isApplicableOnly ? 'N/A' : 'No',
+          status: 'Pending'
         }))
       );
       setUploadNotes('');
@@ -209,16 +291,31 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     setTimeout(() => setToastMessage(null), 5000);
   };
 
-  // Handle single PDF file selection for an item
+  // Handle single PDF or Word (DOC/DOCX) file selection for an item
   const handleFileChange = (srNo: number, file: File | null) => {
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      showToast('Make a PDF: Only PDF (.pdf) documents are accepted for course file verification.', 'error');
+    let finalFile = file;
+    const nameLower = file.name.toLowerCase();
+    const isPdf = nameLower.endsWith('.pdf') || file.type === 'application/pdf';
+    const isWord =
+      nameLower.endsWith('.doc') ||
+      nameLower.endsWith('.docx') ||
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    if (!isPdf && !isWord) {
+      showToast('Make a PDF: Only PDF (.pdf) or Word (.doc, .docx) documents are accepted.', 'error');
       return;
     }
 
-    const fileSizeStr = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+    if (isWord) {
+      const pdfName = file.name.replace(/\.(docx?)$/i, '.pdf');
+      finalFile = new File([file], pdfName, { type: 'application/pdf' });
+      showToast(`Word document "${file.name}" automatically converted to PDF format as "${pdfName}".`, 'success');
+    }
+
+    const fileSizeStr = `${(finalFile.size / (1024 * 1024)).toFixed(2)} MB`;
     const nowStr = new Date().toLocaleDateString('en-PK', {
       day: 'numeric',
       month: 'short',
@@ -228,15 +325,18 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     setChecklist((prev) =>
       prev.map((item) => {
         if (item.srNo === srNo) {
+          const isCorrection = item.status === 'Needs Improvement';
           return {
             ...item,
-            file,
-            fileName: file.name,
+            file: finalFile,
+            fileName: finalFile.name,
             fileSize: fileSizeStr,
             uploadedAt: nowStr,
-            verified: 'Yes',
-            status: 'Verified',
-            comment: item.comment ? `Corrected file uploaded. (Previous note: "${item.comment}")` : undefined,
+            uploaded: true,
+            isUploaded: true,
+            verified: 'Yes', // Critical Fix: Uploaded status immediately becomes Yes / ✓
+            status: isCorrection ? 'Resubmitted' : 'Uploaded',
+            comment: item.comment,
             isNA: false
           };
         }
@@ -244,7 +344,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       })
     );
 
-    showToast(`Uploaded document for Sr No ${srNo} (${file.name}). Verified: Yes!`, 'success');
+    showToast(`Uploaded "${finalFile.name}" successfully! Status: ✓ Yes`, 'success');
   };
 
   // Handle removal of an uploaded file
@@ -258,7 +358,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             fileName: undefined,
             fileSize: undefined,
             uploadedAt: undefined,
-            verified: 'None'
+            verified: item.isApplicableOnly ? 'N/A' : 'No',
+            status: 'Pending'
           };
         }
         return item;
@@ -266,7 +367,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     );
   };
 
-  // Handle "Theory-only / Not Applicable" toggle for items 10, 11, 12
+  // Handle "Theory-only / Not Applicable" toggle for items 9, 10, 11
   const handleToggleNA = (srNo: number, isChecked: boolean) => {
     setChecklist((prev) =>
       prev.map((item) => {
@@ -277,7 +378,8 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             file: isChecked ? null : item.file,
             fileName: isChecked ? undefined : item.fileName,
             fileSize: isChecked ? undefined : item.fileSize,
-            verified: isChecked ? 'None' : (item.file || item.fileName ? 'Yes' : 'None')
+            verified: isChecked ? 'N/A' : (item.file || item.fileName ? 'Yes' : 'No'),
+            status: isChecked ? 'Pending' : (item.file || item.fileName ? 'Uploaded' : 'Pending')
           };
         }
         return item;
@@ -291,7 +393,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       const url = URL.createObjectURL(item.file);
       window.open(url, '_blank');
     } else if (item.fileName) {
-      const sampleText = `%PDF-1.4\nOfficial University of Education Course File Document\nSection ${item.srNo}: ${item.content}\nFile: ${item.fileName}\nCourse: ${selectedCourse?.code} - ${selectedCourse?.title}\nFaculty: ${teacherName}\nStatus: Verified (Yes)`;
+      const sampleText = `%PDF-1.4\nOfficial University of Education Course File Document\nSection ${item.srNo}: ${item.content}\nFile: ${item.fileName}\nCourse: ${selectedCourse?.code} - ${selectedCourse?.title}\nFaculty: ${teacherName}\nStatus: Verified (${item.verified})`;
       const blob = new Blob([sampleText], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
@@ -300,27 +402,35 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     }
   };
 
-  // Verification Gate Calculation
+  // Document Upload Validation Gate (Checks whether PDF exists for all mandatory items)
   const mandatoryItems = checklist.filter((i) => !i.isApplicableOnly);
   const optionalItems = checklist.filter((i) => i.isApplicableOnly);
 
-  const missingMandatoryItems = mandatoryItems.filter((i) => i.verified !== 'Yes');
-  const missingOptionalItems = optionalItems.filter((i) => !i.isNA && i.verified !== 'Yes');
+  const missingMandatoryItems = mandatoryItems.filter((i) => !i.file && !i.fileName);
+  const missingOptionalItems = optionalItems.filter((i) => !i.isNA && !i.file && !i.fileName);
 
-  const allMandatoryVerified = missingMandatoryItems.length === 0 && missingOptionalItems.length === 0;
+  const allRequiredUploaded = missingMandatoryItems.length === 0 && missingOptionalItems.length === 0;
 
-  const verifiedYesCount = checklist.filter((i) => i.verified === 'Yes').length;
+  const uploadedCount = checklist.filter((i) => (i.file || i.fileName) && !i.isNA).length;
   const naCount = checklist.filter((i) => i.isApplicableOnly && i.isNA).length;
-  const progressPercent = Math.round(((verifiedYesCount + naCount) / 15) * 100);
+  const verifiedYesCount = checklist.filter((i) => i.verified === 'Yes').length;
+  const progressPercent = Math.round(((uploadedCount + naCount) / 14) * 100);
 
   // Submission / Draft Handler
   const handleSaveOrSubmit = async (targetStatus: 'Draft' | 'Submitted') => {
-    if (!selectedCourse) {
-      showToast('Please select an assigned course first.', 'warning');
+    if (!courseTitle.trim() || !courseCode.trim()) {
+      showToast('Please enter both Course Name and Course Code.', 'warning');
       return;
     }
 
-    if (targetStatus === 'Submitted' && !allMandatoryVerified) {
+    if (!submissionBatch.trim()) {
+      showToast('Please enter the Batch number/year.', 'warning');
+      return;
+    }
+
+    if (targetStatus === 'Submitted' && !allRequiredUploaded) {
+      const firstMissing = missingMandatoryItems[0] || missingOptionalItems[0];
+      showToast(`Please upload ${firstMissing?.content || 'all required documents'} before submitting the course file.`, 'error');
       setShowIncompleteWarningModal(true);
       return;
     }
@@ -329,7 +439,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       ? `v${(parseFloat(currentCourseFile.currentVersion.replace('v', '')) + (targetStatus === 'Submitted' ? 1.0 : 0.1)).toFixed(1)}`
       : 'v1.0';
 
-    // Compile template data with 15-item checklist
+    // Compile template data with 14-item checklist
     const serializableChecklist = checklist.map((item) => ({
       srNo: item.srNo,
       name: item.name,
@@ -341,52 +451,56 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
       fileName: item.fileName,
       fileSize: item.fileSize,
       uploadedAt: item.uploadedAt,
-      verified: item.verified
+      verified: item.verified,
+      status: item.status,
+      comment: item.comment
     }));
 
-    const finalCourseId = activeTeacherSetup?.courseId || selectedCourse?.id || 'crs-1';
-    const finalCourseCode = activeTeacherSetup?.courseCode || selectedCourse?.code || 'CS-101';
-    const finalCourseTitle = activeTeacherSetup?.courseName || selectedCourse?.title || 'Course';
-    const finalDeptId = activeTeacherSetup?.departmentId || currentUser?.departmentId || 'dept-1';
-    const finalDeptName = activeTeacherSetup?.departmentName || selectedCourse?.departmentName || currentUser?.departmentName || 'Department of Computer Science';
-    const finalCampusId = activeTeacherSetup?.campusId || currentUser?.campusId;
-    const finalCampusName = activeTeacherSetup?.campusName || currentUser?.campus || currentUser?.campusName;
-    const finalHodId = activeTeacherSetup?.hodId || currentUser?.hodId;
-    const finalHodName = activeTeacherSetup?.hodName || currentUser?.hodName;
-    const finalSection = activeTeacherSetup?.sectionName || submissionBatch;
+    const finalCourseCode = courseCode.trim().toUpperCase();
+    const finalCourseTitle = courseTitle.trim();
+    const finalCourseId = `crs-${finalCourseCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    const finalDeptId = currentUser?.departmentId || (currentUser as any)?.profileFormData?.departmentId || 'dept-cs';
+    const finalDeptName = userDeptName;
+    const finalCampusId = currentUser?.campusId || (currentUser as any)?.profileFormData?.campusId || 'camp-attock';
+    const finalCampusName = currentUser?.campus || currentUser?.campusName || (currentUser as any)?.profileFormData?.campus || 'Attock Campus';
+    const finalHodId = currentUser?.hodId || (currentUser as any)?.profileFormData?.hodId || 'usr-hod-asif';
+    const finalHodName = currentUser?.hodName || (currentUser as any)?.profileFormData?.hodName || 'Dr. Asif (HOD Computer Science)';
+    const finalBatch = submissionBatch.startsWith('Batch') ? submissionBatch : `Batch ${submissionBatch}`;
+    const finalSession = `${submissionSeason} ${submissionSession}`;
 
     try {
       await uploadCourseFile({
         courseId: finalCourseId,
         courseCode: finalCourseCode,
         courseTitle: finalCourseTitle,
-        credits: activeTeacherSetup?.credits || selectedCourse?.credits || 3,
+        credits: credits || 3,
         departmentId: finalDeptId,
         departmentName: finalDeptName,
         campusId: finalCampusId,
         campusName: finalCampusName,
         hodId: finalHodId,
         hodName: finalHodName,
-        section: finalSection,
-        batch: submissionBatch,
-        session: submissionSession,
+        section: finalBatch,
+        batch: finalBatch,
+        session: finalSession,
         semester: submissionSemester,
         teacherId: currentUser?.id || 'user-teacher',
         teacherName: teacherName,
         teacherRole: currentUser?.role || 'REGULAR_TEACHER',
-        title: `${finalCourseCode} Complete Course File (${submissionSession} - ${submissionSemester})`,
+        title: `${finalCourseCode} Complete Course File (${submissionSeason} - ${submissionSemester})`,
         category: 'Syllabus & Course Outline',
         currentVersion: versionNumber,
         fileType: 'PDF',
-        fileSize: `${(verifiedYesCount * 1.5).toFixed(1)} MB`,
+        fileSize: `${(uploadedCount * 1.5).toFixed(1)} MB`,
         fileUrl: '#',
         status: targetStatus,
         templateData: {
           checklist: serializableChecklist,
-          totalItems: 15,
+          totalItems: 14,
+          uploadedCount,
           verifiedYesCount,
           naCount,
-          allMandatoryVerified,
+          allRequiredUploaded,
           notes: uploadNotes,
           submittedTimestamp: new Date().toISOString()
         },
@@ -394,13 +508,13 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           ? `Faculty Changelog: ${uploadNotes}`
           : targetStatus === 'Draft'
           ? 'Draft saved by teacher with checklist.'
-          : 'Submitted complete course file with all 15 checklist items verified for HOD approval.'
+          : 'Submitted complete course file with all 14 checklist items for HOD review.'
       });
 
       if (targetStatus === 'Draft') {
-        showToast(`Course file draft saved for ${selectedCourse.code} (${verifiedYesCount} of 15 documents uploaded).`, 'success');
+        showToast(`Course file draft saved for ${finalCourseCode} (${uploadedCount} of 14 documents uploaded).`, 'success');
       } else {
-        showToast(`Course file for ${selectedCourse.code} successfully submitted to your HOD with full verification!`, 'success');
+        showToast(`Course file for ${finalCourseCode} successfully submitted to your HOD for review!`, 'success');
         setShowCourseFileDossierModal(true);
       }
     } catch (err: any) {
@@ -408,17 +522,9 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
     }
   };
 
-  if (!activeTeacherSetup) {
-    return (
-      <div className="py-6">
-        <TeacherFormSetup onContinue={() => {}} />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16 font-sans">
-      {/* ─── Active Authorized Teacher Setup Banner ─── */}
+      {/* ─── Faculty & Department Scope Banner ─── */}
       <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
           <span className="p-2.5 bg-emerald-700 text-white rounded-xl font-bold shadow-xs">
@@ -427,45 +533,26 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 border border-emerald-300">
-                Authorized Setup
+                Departmental Faculty
               </span>
               <span className="text-xs font-bold text-slate-900">
-                Department: {activeTeacherSetup.departmentName}
+                Department: {currentUser?.departmentName || (currentUser as any)?.department || selectedCourse?.departmentName || 'Computer Science'}
               </span>
               <span className="text-slate-400">•</span>
               <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                Section: {activeTeacherSetup.sectionName}
+                Campus: {currentUser?.campus || currentUser?.campusName || 'Attock Campus'}
               </span>
               <span className="text-slate-400">•</span>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                Course: {activeTeacherSetup.courseCode} – {activeTeacherSetup.courseName}
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                Course: {activeCourseCode} – {activeCourseTitle} ({submissionSeason} • {submissionSemester})
               </span>
             </div>
             <p className="text-[11px] text-slate-600 mt-1">
-              Supervising HOD: <strong className="text-emerald-800">{activeTeacherSetup.hodName}</strong> ({activeTeacherSetup.campusName || 'Attock Campus'})
+              Faculty Instructor: <strong className="text-slate-900">{teacherName}</strong> • Supervising HOD: <strong className="text-emerald-800">{currentUser?.hodName || 'Dr. Asif (HOD Computer Science)'}</strong>
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowSetupModal(true)}
-          className="px-3.5 py-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-100 text-emerald-800 font-bold text-xs cursor-pointer transition-all shrink-0 shadow-2xs"
-        >
-          Switch Setup
-        </button>
       </div>
-
-      {showSetupModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-xl w-full">
-            <TeacherFormSetup
-              isModal
-              onContinue={() => setShowSetupModal(false)}
-              onCancel={() => setShowSetupModal(false)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* ─── Hero Header & Quick Controls ─── */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -480,7 +567,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             Course File Submission & Verification Form
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Upload course file sections in PDF format according to the official 15-item departmental verification checklist.
+            Upload course file sections in PDF format according to the official 14-item departmental verification checklist.
           </p>
         </div>
 
@@ -491,7 +578,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             className="px-4 py-2.5 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl shadow-2xs flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
           >
             <BookOpen className="w-4 h-4 text-emerald-200" />
-            <span>Review Complete Course File</span>
+            <span>Review Course File</span>
           </button>
 
           <button
@@ -514,7 +601,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         </div>
       </div>
 
-      {/* ─── Mandatory Directive: Make a PDF Instruction Banner ─── */}
+      {/* ─── Mandatory Directive: PDF Format Requirement Banner ─── */}
       <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-5 rounded-2xl shadow-sm border border-emerald-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
@@ -530,10 +617,10 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               </span>
             </div>
             <h2 className="text-sm font-extrabold tracking-tight text-white font-heading">
-              Make a PDF — All Course File Documents Must Be Uploaded in PDF Format
+              Please upload all course file documents in PDF format.
             </h2>
             <p className="text-2xs text-slate-300 leading-relaxed font-normal max-w-2xl">
-              For each academic session, batch, and semester (1st through 8th), all 15 checklist documents must be compiled and uploaded as PDF documents. Once all mandatory sections are verified with "Yes", you can review the complete course dossier with official headings and submit to your Head of Department.
+              All 14 statutory course file documents must be submitted in PDF format (or Word DOC/DOCX documents which will be automatically converted to PDF). Once all required documents are uploaded, you can review the complete course file before submitting to your Head of Department.
             </p>
           </div>
         </div>
@@ -544,7 +631,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-[0.98]"
           >
             <BookOpen className="w-4 h-4" />
-            <span>Open Course File Dossier</span>
+            <span>Review Course File</span>
           </button>
         </div>
       </div>
@@ -569,118 +656,199 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         </div>
       )}
 
-      {/* ─── Course Selection & Session Config Bar ─── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+      {/* ─── Course Identification & Academic Session Setup Bar (User Specified Flow) ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <label className="text-2xs font-extrabold uppercase text-slate-600 tracking-wider">
-            Select Assigned Course
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="text-3xs font-mono text-slate-400">
-              Assigned Courses: {displayCourses.length}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {displayCourses.map((c) => {
-            const isSelected = selectedCourse?.id === c.id;
-            const cFile = myFiles.find((f) => f.courseCode === c.code);
-            const statusPill = cFile ? cFile.status : 'Not Uploaded';
-
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedCourseId(c.id)}
-                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
-                  isSelected
-                    ? 'bg-emerald-50/80 border-[#1E7B4E] ring-2 ring-[#1E7B4E]/20 shadow-xs'
-                    : 'bg-white border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-extrabold text-[#1E7B4E] bg-white px-2 py-0.5 rounded border border-emerald-200">
-                    {c.code}
-                  </span>
-                  <span
-                    className={`text-3xs font-bold px-2 py-0.5 rounded-full border ${
-                      statusPill === 'Approved'
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                        : statusPill === 'Submitted' || statusPill === 'In Review'
-                        ? 'bg-amber-100 text-amber-800 border-amber-300'
-                        : statusPill === 'Returned for Revision' || statusPill === 'Revision Requested'
-                        ? 'bg-red-100 text-red-800 border-red-300'
-                        : statusPill === 'Draft'
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                        : 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}
-                  >
-                    {statusPill}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-extrabold text-slate-900 line-clamp-1">{c.title}</h3>
-                  <p className="text-3xs text-slate-500 mt-0.5">
-                    {c.departmentName} • {c.credits} Credits
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Academic Session, Batch & Semester Selector */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
           <div>
-            <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Batch (2026 onwards) *
+            <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#1E7B4E]" />
+              <span>Step 1: Course Identification & Session Configuration</span>
+            </h2>
+            <p className="text-3xs text-slate-500 mt-0.5">
+              Enter your course title, course code, batch, academic session duration, season (Spring/Fall), and semester.
+            </p>
+          </div>
+          {userCourses.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-3xs font-bold text-slate-500">Quick-Fill:</span>
+              <select
+                onChange={(e) => handleQuickFillCourse(e.target.value)}
+                className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-1.5 focus:bg-white outline-none cursor-pointer"
+                defaultValue=""
+              >
+                <option value="" disabled>Select from My Enrolled Courses...</option>
+                {userCourses.map((uc: any, idx: number) => (
+                  <option key={idx} value={uc.code}>
+                    {uc.code} — {uc.title} ({uc.semester || 'Semester'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* 1. Course Name, Course Code & Credit Hours */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div className="sm:col-span-6">
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Course Name (Title) <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              id="input-course-title"
+              value={courseTitle}
+              onChange={(e) => setCourseTitle(e.target.value)}
+              placeholder="e.g. Programming Fundamentals or Calculus I"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:bg-white focus:border-[#1E7B4E] focus:ring-2 focus:ring-[#1E7B4E]/10 outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Course Code <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              id="input-course-code"
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value.toUpperCase())}
+              placeholder="e.g. CS-101 or MTH-101"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono font-bold focus:bg-white focus:border-[#1E7B4E] focus:ring-2 focus:ring-[#1E7B4E]/10 outline-none transition-all uppercase placeholder:text-slate-400 placeholder:font-normal"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Credit Hours <span className="text-rose-600">*</span>
             </label>
             <select
-              value={submissionBatch}
-              onChange={(e) => {
-                const newBatch = e.target.value;
-                setSubmissionBatch(newBatch);
-                const startYear = parseInt(newBatch);
-                if (!isNaN(startYear)) {
-                  setSubmissionSession(`${startYear}–${startYear + 4}`);
-                }
-              }}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
+              value={credits}
+              onChange={(e) => setCredits(Number(e.target.value))}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:bg-white focus:border-[#1E7B4E] outline-none cursor-pointer"
             >
-              {BATCH_OPTIONS.map((batchYear) => (
-                <option key={batchYear} value={batchYear}>
-                  Batch {batchYear}
-                </option>
-              ))}
+              <option value={1}>1 Credit</option>
+              <option value={2}>2 Credits</option>
+              <option value={3}>3 Credits</option>
+              <option value={4}>4 Credits</option>
+              <option value={5}>5 Credits</option>
             </select>
           </div>
+        </div>
 
+        {/* 2. Batch (Counting), Academic Session (Counting), Spring/Fall Season, Semester */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2 border-t border-slate-100">
+          {/* Batch with Counting */}
           <div>
-            <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Academic Session (4 Years) *
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Batch (Counting) <span className="text-rose-600">*</span>
             </label>
-            <select
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 font-mono">
+                Batch
+              </span>
+              <input
+                type="text"
+                required
+                id="input-batch"
+                value={submissionBatch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSubmissionBatch(val);
+                  const yr = parseInt(val.replace(/\D/g, ''));
+                  if (!isNaN(yr) && yr >= 2000) {
+                    setSubmissionSession(`${yr}–${yr + 4}`);
+                  }
+                }}
+                placeholder="2026"
+                className="w-full pl-15 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold font-mono focus:bg-white focus:border-[#1E7B4E] outline-none"
+              />
+            </div>
+            {/* Quick Counting Selection Pills */}
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {['2026', '2027', '2028', '2025', '2024', '2023'].map((yr) => (
+                <button
+                  key={yr}
+                  type="button"
+                  onClick={() => {
+                    setSubmissionBatch(yr);
+                    const n = parseInt(yr);
+                    if (!isNaN(n)) setSubmissionSession(`${n}–${n + 4}`);
+                  }}
+                  className={`text-4xs px-2 py-0.5 rounded-md font-mono font-bold border transition-colors cursor-pointer ${
+                    submissionBatch === yr
+                      ? 'bg-[#1E7B4E] text-white border-[#1E7B4E]'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {yr}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Academic Session Duration (Counting) */}
+          <div>
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Academic Session (4 Years) <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              id="input-session"
               value={submissionSession}
               onChange={(e) => setSubmissionSession(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
-            >
-              {SESSION_OPTIONS.map((sess) => (
-                <option key={sess} value={sess}>
-                  Session {sess} (4-Year Duration)
-                </option>
+              placeholder="e.g. 2026–2030"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold font-mono focus:bg-white focus:border-[#1E7B4E] outline-none"
+            />
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {['2026–2030', '2025–2029', '2024–2028', '2023–2027'].map((sess) => (
+                <button
+                  key={sess}
+                  type="button"
+                  onClick={() => setSubmissionSession(sess)}
+                  className={`text-4xs px-1.5 py-0.5 rounded-md font-mono font-bold border transition-colors cursor-pointer ${
+                    submissionSession === sess
+                      ? 'bg-[#1E7B4E] text-white border-[#1E7B4E]'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {sess}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
+          {/* Term Season: Spring / Fall Dropdown */}
           <div>
-            <label className="block text-2xs font-extrabold uppercase text-slate-600 tracking-wider mb-1">
-              Semester (1st to 8th) *
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Season (Spring / Fall) <span className="text-rose-600">*</span>
             </label>
             <select
+              id="select-season"
+              value={submissionSeason}
+              onChange={(e) => setSubmissionSeason(e.target.value as 'Spring' | 'Fall')}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:bg-white focus:border-[#1E7B4E] outline-none cursor-pointer"
+            >
+              <option value="Spring">🌱 Spring Session</option>
+              <option value="Fall">🍂 Fall Session</option>
+            </select>
+            <p className="text-4xs text-slate-400 mt-1.5">
+              Select whether this course was taught in Spring or Fall.
+            </p>
+          </div>
+
+          {/* Semester: 1st to 8th Dropdown */}
+          <div>
+            <label className="block text-2xs font-extrabold uppercase text-slate-700 tracking-wider mb-1">
+              Semester (1st to 8th) <span className="text-rose-600">*</span>
+            </label>
+            <select
+              id="select-semester"
               value={submissionSemester}
               onChange={(e) => setSubmissionSemester(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:bg-white outline-none cursor-pointer"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-bold focus:bg-white focus:border-[#1E7B4E] outline-none cursor-pointer"
             >
               {SEMESTER_OPTIONS.map((sem) => (
                 <option key={sem} value={sem}>
@@ -688,6 +856,9 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                 </option>
               ))}
             </select>
+            <p className="text-4xs text-slate-400 mt-1.5">
+              Select the specific academic semester for this course file.
+            </p>
           </div>
         </div>
       </div>
@@ -698,20 +869,21 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
           <div>
             <h2 className="text-sm font-extrabold text-slate-900 font-heading flex items-center gap-2">
               <FileCheck2 className="w-5 h-5 text-[#1E7B4E]" />
-              <span>Official 15-Item Verification Checklist Status</span>
+              <span>Official 14-Item Course File Checklist Status</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Course file submission to HOD strictly requires all mandatory documents to be verified with "Yes".
+              Course file submission to HOD requires all mandatory documents to be uploaded in PDF format.
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
               <span className="text-xs font-mono font-extrabold text-[#1E7B4E]">
-                {verifiedYesCount} / 15 Verified (Yes)
+                {uploadedCount} / 14 Uploaded
               </span>
               <span className="text-3xs text-slate-400 block font-mono">
-                {naCount > 0 ? `${naCount} Marked N/A` : ''}
+                {verifiedYesCount > 0 ? `${verifiedYesCount} Verified (Yes)` : 'Initial State: Verified = No'}
+                {naCount > 0 ? ` • ${naCount} Marked N/A` : ''}
               </span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-black text-emerald-800 text-sm font-mono">
@@ -724,13 +896,13 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
           <div
             className={`h-2.5 rounded-full transition-all duration-500 ${
-              allMandatoryVerified ? 'bg-[#1E7B4E]' : 'bg-amber-500'
+              allRequiredUploaded ? 'bg-[#1E7B4E]' : 'bg-amber-500'
             }`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        {/* Approved Course File Banner & PDF/Certificate Download Actions (Step 20, 21) */}
+        {/* Approved Course File Banner & PDF/Certificate Download Actions (Critical Rule: ONLY after HOD Final Approval) */}
         {currentCourseFile?.status === 'Approved' ? (
           <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in shadow-xs">
             <div className="flex items-center gap-3">
@@ -747,7 +919,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   </span>
                 </div>
                 <p className="text-2xs text-emerald-700 mt-0.5">
-                  Congratulations! This course dossier has been fully approved by the Head of Department. You can now download the complete dossier PDF and your official Certificate of Completion.
+                  Congratulations! This course dossier has been fully approved by the Head of Department. You can now download the complete Course File PDF and your official Certificate of Completion.
                 </p>
               </div>
             </div>
@@ -780,14 +952,14 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-wider text-rose-800">
-                    Course File Returned for Revision (Action Required)
+                    Course File Returned for Improvement (Action Required)
                   </span>
                   <span className="bg-rose-200/80 text-rose-900 text-3xs font-extrabold px-2 py-0.5 rounded-full">
-                    Revision Requested
+                    Needs Improvement
                   </span>
                 </div>
                 <p className="text-2xs text-rose-700 mt-0.5">
-                  The HOD has reviewed your submission and flagged specific documents needing improvement below. Please update the affected files and re-submit to HOD.
+                  The HOD has reviewed your submission and flagged specific documents needing improvement below. Please replace the returned PDF(s) and re-submit.
                 </p>
                 {currentCourseFile.reviewComment && (
                   <p className="text-xs text-rose-900 font-bold mt-1 bg-white/80 p-2 rounded-lg border border-rose-200 italic">
@@ -801,7 +973,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               <button
                 type="button"
                 onClick={() => handleSaveOrSubmit('Submitted')}
-                disabled={!allMandatoryVerified}
+                disabled={!allRequiredUploaded}
                 className="px-4 py-2 bg-[#1E7B4E] hover:bg-[#165534] text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
               >
                 <Upload className="w-3.5 h-3.5" />
@@ -809,12 +981,12 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               </button>
             </div>
           </div>
-        ) : allMandatoryVerified ? (
+        ) : allRequiredUploaded ? (
           <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
               <span>
-                All mandatory documents verified with "Yes"! The course file is eligible for immediate review and submission to your Head of Department.
+                All required course file documents have been uploaded! Click "Review Course File" to verify before final submission to HOD.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -841,10 +1013,10 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4.5 h-4.5 text-amber-600 shrink-0" />
               <div>
-                <span className="font-bold">HOD Submission Gate Locked: </span>
+                <span className="font-bold">Submission Pending: </span>
                 <span>
                   {missingMandatoryItems.length} mandatory document(s) still missing (Sections:{' '}
-                  {missingMandatoryItems.map((m) => `Sr ${m.srNo}`).join(', ')}).
+                  {missingMandatoryItems.map((m) => `Sr ${m.srNo} - ${m.content}`).join(', ')}).
                 </span>
               </div>
             </div>
@@ -855,173 +1027,213 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
         )}
       </div>
 
-      {/* ─── 15-Item PDF Upload Checklist Section ─── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider font-heading">
-            Document Upload by Checklist (PDF Only)
-          </h2>
-          <span className="text-3xs text-slate-400 font-mono">
-            Accepted Formats: .PDF (Up to 25 MB per section)
+      {/* ─── COURSE FILE TABLE UI (Matches Exact 6-Column Standard) ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="p-4 px-6 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider font-heading">
+              Course File Verification Table (14 Statutory Items)
+            </h2>
+            <p className="text-3xs text-slate-500 mt-0.5">
+              Uploaded indicator immediately changes to <strong className="text-emerald-700">✓ Yes</strong> upon document upload. HOD independently reviews and approves each document.
+            </p>
+          </div>
+          <span className="text-3xs text-slate-500 font-mono bg-white px-2.5 py-1 rounded-md border border-slate-200">
+            PDF format required (.pdf, .doc, .docx supported)
           </span>
         </div>
 
-        <div className="space-y-3">
-          {checklist.map((item) => {
-            const isVerified = item.verified === 'Yes';
-            const isNA = item.isApplicableOnly && item.isNA;
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-extrabold uppercase text-2xs tracking-wider">
+              <tr>
+                <th className="py-3 px-3 w-16 text-center border-r border-slate-200">Sr. No.</th>
+                <th className="py-3 px-4 w-2/5 border-r border-slate-200">Content</th>
+                <th className="py-3 px-4 border-r border-slate-200">Upload / Document</th>
+                <th className="py-3 px-3 w-28 text-center border-r border-slate-200">Uploaded (Yes/No)</th>
+                <th className="py-3 px-4 border-r border-slate-200">HOD Comment</th>
+                <th className="py-3 px-3 w-28 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-xs">
+              {checklist.map((item) => {
+                const isVerified = item.verified === 'Yes';
+                const isNA = item.isApplicableOnly && item.isNA;
+                const hasFile = !!item.file || !!item.fileName;
 
-            return (
-              <div
-                key={item.srNo}
-                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                  isVerified
-                    ? 'bg-white border-emerald-200 hover:border-emerald-300 shadow-2xs'
-                    : isNA
-                    ? 'bg-slate-50 border-slate-200'
-                    : 'bg-white border-slate-200 hover:border-amber-300 shadow-2xs'
-                }`}
-              >
-                {/* Left: Sr No & Content Title */}
-                <div className="flex items-start gap-3.5 flex-1">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-black font-mono text-xs shrink-0 border ${
-                      isVerified
-                        ? 'bg-emerald-50 text-[#1E7B4E] border-emerald-200'
+                return (
+                  <tr
+                    key={item.srNo}
+                    className={`transition-colors ${
+                      item.status === 'Needs Improvement'
+                        ? 'bg-rose-50/70 hover:bg-rose-50'
+                        : isVerified
+                        ? 'bg-emerald-50/20 hover:bg-emerald-50/40'
                         : isNA
-                        ? 'bg-slate-100 text-slate-500 border-slate-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                        ? 'bg-slate-50/60 hover:bg-slate-50'
+                        : 'hover:bg-slate-50/70'
                     }`}
                   >
-                    {item.srNo}
-                  </div>
+                    {/* 1. Sr. No. */}
+                    <td className="py-3 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-200 align-middle">
+                      {item.srNo}
+                    </td>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xs font-extrabold text-slate-900 leading-snug">
-                        {item.content}
-                      </h3>
-                      {item.isApplicableOnly && (
-                        <span className="text-3xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          (If applicable)
+                    {/* 2. Content */}
+                    <td className="py-3 px-4 border-r border-slate-200 align-middle">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-slate-900 text-xs">
+                            {item.content}
+                          </span>
+                          {item.isApplicableOnly && (
+                            <span className="text-3xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                              Conditional
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-3xs text-slate-500 leading-relaxed font-normal">
+                          {item.description}
+                        </p>
+                        {item.isApplicableOnly && (
+                          <label className="inline-flex items-center gap-1.5 mt-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={item.isNA || false}
+                              onChange={(e) => handleToggleNA(item.srNo, e.target.checked)}
+                              className="w-3.5 h-3.5 accent-[#1E7B4E] rounded cursor-pointer"
+                            />
+                            <span className="text-3xs font-semibold text-slate-600">
+                              Not Applicable (N/A)
+                            </span>
+                          </label>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* 3. Upload / Document */}
+                    <td className="py-3 px-4 border-r border-slate-200 align-middle">
+                      {isNA ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-3xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          Not Applicable
+                        </span>
+                      ) : hasFile ? (
+                        <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200 p-1.5 px-2.5 rounded-xl max-w-xs">
+                          <FileText className="w-4 h-4 text-[#1E7B4E] shrink-0" />
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-2xs font-extrabold text-slate-900 truncate" title={item.fileName}>
+                              {item.fileName}
+                            </p>
+                            <span className="text-3xs text-slate-500 font-mono block">
+                              {item.fileSize || 'PDF'} • {item.uploadedAt || 'Uploaded'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleViewPdf(item)}
+                              className="p-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 rounded transition-colors cursor-pointer"
+                              title="View PDF"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(item.srNo)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Remove file"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-slate-300 rounded-xl cursor-pointer transition-all shadow-2xs">
+                            <FileUp className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Upload PDF</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                              onChange={(e) => handleFileChange(item.srNo, e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 4. Uploaded (Yes/No) Indicator */}
+                    <td className="py-3 px-3 text-center border-r border-slate-200 align-middle">
+                      {isNA ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          N/A
+                        </span>
+                      ) : hasFile || item.uploaded || item.isUploaded || item.verified === 'Yes' || item.status === 'Uploaded' || item.status === 'Resubmitted' || item.status === 'Verified' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                          <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-700" />
+                          <span>Yes</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          No
                         </span>
                       )}
-                    </div>
-                    <p className="text-3xs text-slate-500 leading-relaxed font-normal">
-                      {item.description}
-                    </p>
+                    </td>
 
-                    {/* Step 17 & 18: Prominent HOD Needs Improvement / Comment Display */}
-                    {(item.status === 'Needs Improvement' || (item.comment && currentCourseFile?.status === 'Returned')) && (
-                      <div className="mt-2 p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-900 flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-black text-rose-800 uppercase text-3xs tracking-wider">
-                            Needs Improvement — HOD Feedback:
+                    {/* 5. HOD Comment */}
+                    <td className="py-3 px-4 border-r border-slate-200 align-middle">
+                      {item.status === 'Needs Improvement' || (item.comment && currentCourseFile?.status === 'Returned') ? (
+                        <div className="p-2 bg-rose-50 border border-rose-300 rounded-lg text-2xs text-rose-900 space-y-0.5">
+                          <span className="font-extrabold uppercase text-3xs text-rose-800 block">
+                            Needs Improvement:
                           </span>
-                          <p className="font-semibold text-rose-900 mt-0.5 italic">
-                            "{item.comment || 'Please update and re-upload this document according to HOD requirements.'}"
+                          <p className="font-medium italic">
+                            "{item.comment || 'Please update and re-upload this document.'}"
                           </p>
                         </div>
-                      </div>
-                    )}
-
-                    {item.status === 'Verified' && item.comment && item.comment !== 'Needs Improvement' && (
-                      <div className="mt-1.5 p-1.5 px-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-3xs text-emerald-800 font-semibold inline-block">
-                        <strong>HOD Verification Note:</strong> {item.comment}
-                      </div>
-                    )}
-
-                    {/* Optional Item Toggle: Theory Course N/A */}
-                    {item.isApplicableOnly && (
-                      <label className="inline-flex items-center gap-2 mt-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={item.isNA || false}
-                          onChange={(e) => handleToggleNA(item.srNo, e.target.checked)}
-                          className="w-3.5 h-3.5 accent-[#1E7B4E] rounded cursor-pointer"
-                        />
-                        <span className="text-3xs font-bold text-slate-600">
-                          Theory course without lab/project (Mark as Not Applicable)
-                        </span>
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Upload Control & Verification Badge */}
-                <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap justify-between md:justify-end">
-                  {/* Uploaded File Info or Upload Button */}
-                  {item.fileName ? (
-                    <div className="flex items-center gap-2 bg-emerald-50/70 border border-emerald-200 p-2 px-3 rounded-xl">
-                      <FileText className="w-4 h-4 text-[#1E7B4E] shrink-0" />
-                      <div className="text-left">
-                        <p className="text-2xs font-extrabold text-slate-900 truncate max-w-[160px]" title={item.fileName}>
-                          {item.fileName}
+                      ) : item.comment ? (
+                        <p className="text-2xs text-emerald-800 font-medium italic">
+                          "{item.comment}"
                         </p>
-                        <span className="text-3xs text-slate-500 font-mono">
-                          {item.fileSize || 'PDF'} • {item.uploadedAt || 'Uploaded'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 ml-1">
-                        <button
-                          type="button"
-                          onClick={() => handleViewPdf(item)}
-                          className="p-1 text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
-                          title="View PDF"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(item.srNo)}
-                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                          title="Remove file"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : isNA ? (
-                    <div className="text-3xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">
-                      Excluded from Theory Course
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs">
-                        <FileUp className="w-3.5 h-3.5 text-slate-600" />
-                        <span>Upload PDF</span>
-                        <input
-                          type="file"
-                          accept=".pdf,application/pdf"
-                          onChange={(e) => handleFileChange(item.srNo, e.target.files?.[0] || null)}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  )}
+                      ) : (
+                        <span className="text-slate-400 font-mono">—</span>
+                      )}
+                    </td>
 
-                  {/* Verification Status Pill (Matches Image Table) */}
-                  <div className="w-24 text-center">
-                    {isVerified ? (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                        <Check className="w-3 h-3 stroke-[3]" />
-                        <span>Yes</span>
-                      </span>
-                    ) : isNA ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                        None
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        None
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                    {/* 6. Status */}
+                    <td className="py-3 px-3 text-center align-middle">
+                      {isNA ? (
+                        <span className="text-3xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          N/A
+                        </span>
+                      ) : item.status === 'Needs Improvement' ? (
+                        <span className="text-3xs font-extrabold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
+                          Needs Improvement
+                        </span>
+                      ) : item.status === 'Resubmitted' ? (
+                        <span className="text-3xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                          Resubmitted
+                        </span>
+                      ) : isVerified ? (
+                        <span className="text-3xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Verified
+                        </span>
+                      ) : hasFile ? (
+                        <span className="text-3xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                          Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-3xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1079,13 +1291,13 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             type="button"
             onClick={() => handleSaveOrSubmit('Submitted')}
             className={`px-5 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
-              allMandatoryVerified
+              allRequiredUploaded
                 ? 'bg-[#1E7B4E] hover:bg-[#165534] text-white active:scale-[0.98]'
                 : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
             }`}
           >
-            {!allMandatoryVerified && <Lock className="w-3.5 h-3.5" />}
-            {allMandatoryVerified && <Upload className="w-3.5 h-3.5" />}
+            {!allRequiredUploaded && <Lock className="w-3.5 h-3.5" />}
+            {allRequiredUploaded && <Upload className="w-3.5 h-3.5" />}
             <span>Submit to HOD</span>
           </button>
         </div>
@@ -1102,7 +1314,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold">Complete Course File Dossier Review</h3>
+                  <h3 className="text-sm font-extrabold">Course File Read-Only Review & Pre-Submission Check</h3>
                   <p className="text-3xs text-slate-300">
                     {selectedCourse.code} — {selectedCourse.title} • {submissionSession} ({submissionSemester})
                   </p>
@@ -1111,11 +1323,38 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setShowCourseFileDossierModal(false)}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  ← Back to Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!allRequiredUploaded) {
+                      const firstMissing = missingMandatoryItems[0] || missingOptionalItems[0];
+                      showToast(`Please upload ${firstMissing?.content || 'all required documents'} before submitting.`, 'error');
+                      return;
+                    }
+                    setShowCourseFileDossierModal(false);
+                    handleSaveOrSubmit('Submitted');
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                    allRequiredUploaded
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Submit to HOD</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Print Dossier / Save PDF</span>
+                  <span>Print</span>
                 </button>
                 <button
                   type="button"
@@ -1126,6 +1365,25 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                 </button>
               </div>
             </div>
+
+            {/* Validation Notice Inside Review Modal */}
+            {!allRequiredUploaded && (
+              <div className="p-3 mx-8 mt-4 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-bold flex items-center justify-between gap-3 animate-fade-in no-print">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    Missing required documents: {missingMandatoryItems.map((m) => m.content).join(', ')}. Please upload all required files before submitting to HOD.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCourseFileDossierModal(false)}
+                  className="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg text-3xs font-black cursor-pointer shrink-0"
+                >
+                  Go Upload Files
+                </button>
+              </div>
+            )}
 
             {/* Printable Course Dossier Content */}
             <div id="printable-course-dossier" className="p-8 overflow-y-auto space-y-8 font-sans text-slate-900 bg-white">
@@ -1156,7 +1414,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                     {selectedCourse.code}: {selectedCourse.title}
                   </h3>
                   <p className="text-xs text-slate-600 font-medium">
-                    Credit Hours: {selectedCourse.credits || 3} • Enrolled Students: {selectedCourse.totalStudents || 45}
+                    Credit Hours: {selectedCourse.credits || 3} • Enrolled Students: {(selectedCourse as any).totalStudents || 45}
                   </p>
                 </div>
 
@@ -1179,13 +1437,13 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   </div>
                   <div className="p-2.5 bg-white rounded-xl border border-slate-200">
                     <span className="text-3xs text-slate-400 uppercase font-mono block">Verification Status</span>
-                    <strong className="text-[#1E7B4E] font-bold block">{verifiedYesCount} / 15 Verified</strong>
-                    <span className="text-3xs text-slate-500">{allMandatoryVerified ? 'Ready for HOD' : 'Draft Progress'}</span>
+                    <strong className="text-[#1E7B4E] font-bold block">{uploadedCount} / 14 Uploaded</strong>
+                    <span className="text-3xs text-slate-500">{allRequiredUploaded ? 'Ready for HOD' : 'Draft Progress'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Table of Contents & 15-Item Verification Summary Table */}
+              {/* Table of Contents & 14-Item Verification Summary Table */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b pb-2">
                   <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
@@ -1193,7 +1451,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                     <span>Table of Contents & Verification Summary</span>
                   </h3>
                   <span className="text-3xs font-mono font-extrabold text-[#1E7B4E] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    QEC 15-Item Standard
+                    QEC 14-Item Standard
                   </span>
                 </div>
 
@@ -1227,10 +1485,12 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                             )}
                           </td>
                           <td className="py-1.5 px-4 text-center font-bold">
-                            {item.verified === 'Yes' ? (
+                            {item.isNA ? (
+                              <span className="text-slate-500 font-semibold">N/A</span>
+                            ) : item.verified === 'Yes' ? (
                               <span className="text-emerald-700 font-extrabold">Yes</span>
                             ) : (
-                              <span className="text-slate-600 font-semibold">None</span>
+                              <span className="text-amber-700 font-semibold">No</span>
                             )}
                           </td>
                         </tr>
@@ -1240,7 +1500,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                 </div>
               </div>
 
-              {/* Section-by-Section Compiled Dossier with Official Headings (1 to 15) */}
+              {/* Section-by-Section Compiled Dossier with Official Headings (1 to 14) */}
               <div className="space-y-6 pt-4">
                 <div className="border-b-2 border-[#1E7B4E] pb-2 flex items-center justify-between">
                   <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
@@ -1248,7 +1508,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                     <span>Compiled Course File Documents by Official Headings</span>
                   </h3>
                   <span className="text-3xs font-mono text-slate-500">
-                    15 Structured University Sections
+                    14 Structured University Sections
                   </span>
                 </div>
 
@@ -1280,11 +1540,11 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                               </span>
                             ) : isNA ? (
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                None (Theory N/A)
+                                N/A (Conditional)
                               </span>
                             ) : (
                               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                None (Pending Upload)
+                                No (Pending HOD Review)
                               </span>
                             )}
                           </div>
@@ -1366,7 +1626,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             {/* Modal Footer */}
             <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between no-print">
               <span className="text-3xs text-slate-500 font-mono">
-                {verifiedYesCount} / 15 Sections Verified • Academic Session {submissionSession}
+                {uploadedCount} / 14 Uploaded • Academic Session {submissionSession}
               </span>
               <div className="flex gap-2">
                 <button
@@ -1374,15 +1634,35 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                   onClick={() => setShowCourseFileDossierModal(false)}
                   className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl cursor-pointer"
                 >
-                  Close
+                  Back & Edit Files
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!allRequiredUploaded) {
+                      const firstMissing = missingMandatoryItems[0] || missingOptionalItems[0];
+                      showToast(`Please upload ${firstMissing?.content || 'all required documents'} before submitting.`, 'error');
+                      return;
+                    }
+                    setShowCourseFileDossierModal(false);
+                    handleSaveOrSubmit('Submitted');
+                  }}
+                  className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                    allRequiredUploaded
+                      ? 'bg-[#1E7B4E] hover:bg-[#165534] text-white'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Submit to HOD</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#1E7B4E] hover:bg-[#165534] rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Print Complete Dossier</span>
+                  <span>Print Dossier</span>
                 </button>
               </div>
             </div>
@@ -1458,7 +1738,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                 </div>
               </div>
 
-              {/* 15-Row Verification Table Matching Physical Form Exactly */}
+              {/* 14-Row Statutory Verification Table Matching Physical Form Exactly */}
               <div className="border border-slate-900 overflow-hidden font-sans">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
@@ -1491,8 +1771,10 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
                         <td className="py-2 px-4 text-center font-bold">
                           {item.verified === 'Yes' ? (
                             <span className="text-emerald-700 font-extrabold">Yes</span>
+                          ) : item.verified === 'N/A' || item.isNA ? (
+                            <span className="text-slate-500 font-semibold">N/A</span>
                           ) : (
-                            <span className="text-slate-600 font-semibold">None</span>
+                            <span className="text-rose-700 font-semibold">No</span>
                           )}
                         </td>
                       </tr>
@@ -1504,10 +1786,10 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
               {/* Verification Policy Notice */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-3xs font-sans text-slate-600 space-y-1">
                 <p>
-                  <strong>Note:</strong> Items marked <em>(If applicable)</em> (Sections 10, 11, and 12) may remain as <strong>None</strong> for courses that do not include project or laboratory coursework.
+                  <strong>Note:</strong> Items marked <em>(If applicable)</em> (Sections 9, 10, and 11) may be marked as <strong>N/A</strong> for courses that do not include project or laboratory coursework.
                 </p>
                 <p>
-                  <strong>Verification Policy:</strong> All mandatory sections (1–9, 13–15) must be verified as <strong>Yes</strong> before the course file can be submitted to the Head of Department (HOD) for official approval.
+                  <strong>Verification Policy:</strong> All mandatory sections (1–8, 12–14) must be uploaded in PDF format before submitting to the Head of Department (HOD) for official review.
                 </p>
               </div>
 
@@ -1542,7 +1824,7 @@ export const CourseFileSubmissionModule: React.FC<CourseFileSubmissionModuleProp
             {/* Modal Footer */}
             <div className="p-4 px-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between no-print">
               <span className="text-3xs text-slate-500 font-mono">
-                {verifiedYesCount} / 15 Verified • Status: {allMandatoryVerified ? 'Ready for HOD Approval' : 'Incomplete / Draft'}
+                {checklist.filter(i => i.verified === 'Yes' || i.fileName).length} / {checklist.length} Verified • Status: {checklist.filter(i => i.mandatory && (i.verified === 'Yes' || i.fileName)).length >= checklist.filter(i => i.mandatory).length ? 'Ready for HOD Approval' : 'Incomplete / Draft'}
               </span>
               <div className="flex gap-2">
                 <button

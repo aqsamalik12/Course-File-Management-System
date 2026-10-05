@@ -267,97 +267,81 @@ export const CFMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch {}
   };
 
-  // Sync initial state from backend APIs
+  // Optimized data loading: Core tier first, deferred non-critical data after initial paint
   useEffect(() => {
-    fetch('/api/campuses')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setCampuses(res.data); })
-      .catch(() => {});
+    let isMounted = true;
+    const authHeaders = getAuthHeaders();
 
-    fetch('/api/hod-assignments')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setHodAssignments(res.data); })
-      .catch(() => {});
+    // Tier 1: Core academic entities required immediately for UI layout & dropdowns
+    const loadCoreData = async () => {
+      try {
+        const [campRes, deptRes, crsRes, hodRes, cfRes, reqRes] = await Promise.all([
+          fetch('/api/campuses', { headers: authHeaders }),
+          fetch('/api/departments', { headers: authHeaders }),
+          fetch('/api/courses', { headers: authHeaders }),
+          fetch('/api/hod-assignments', { headers: authHeaders }),
+          fetch('/api/course-files', { headers: authHeaders }),
+          fetch('/api/teacher-requests', { headers: authHeaders })
+        ]);
 
-    fetch('/api/teacher-requests')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setTeacherRequests(res.data); })
-      .catch(() => {});
+        const [campData, deptData, crsData, hodData, cfData, reqData] = await Promise.all([
+          campRes.json().catch(() => null),
+          deptRes.json().catch(() => null),
+          crsRes.json().catch(() => null),
+          hodRes.json().catch(() => null),
+          cfRes.json().catch(() => null),
+          reqRes.json().catch(() => null)
+        ]);
 
-    fetch('/api/course-files')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setCourseFiles(res.data); })
-      .catch(() => {});
+        if (!isMounted) return;
+        if (campData?.success && Array.isArray(campData.data)) setCampuses(campData.data);
+        if (deptData?.success && Array.isArray(deptData.data)) setDepartments(deptData.data);
+        if (crsData?.success && Array.isArray(crsData.data)) setCourses(crsData.data);
+        if (hodData?.success && Array.isArray(hodData.data)) setHodAssignments(hodData.data);
+        if (cfData?.success && Array.isArray(cfData.data)) setCourseFiles(cfData.data);
+        if (reqData?.success && Array.isArray(reqData.data)) setTeacherRequests(reqData.data);
+      } catch (err) {
+        console.warn('[CFMS] Core load non-fatal error:', err);
+      }
+    };
 
-    fetch('/api/departments')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setDepartments(res.data); })
-      .catch(() => {});
+    // Tier 2: Ancillary info loaded slightly deferred so main layout is interactive immediately
+    const loadSecondaryData = () => {
+      setTimeout(async () => {
+        if (!isMounted) return;
+        try {
+          const [notifRes, winRes, dlnRes, annRes, usrRes] = await Promise.all([
+            fetch('/api/notifications', { headers: authHeaders }),
+            fetch('/api/system/submission-window', { headers: authHeaders }),
+            fetch('/api/deadlines', { headers: authHeaders }),
+            fetch('/api/announcements', { headers: authHeaders }),
+            fetch('/api/users', { headers: authHeaders })
+          ]);
 
-    fetch('/api/courses')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setCourses(res.data); })
-      .catch(() => {});
+          const [notifData, winData, dlnData, annData, usrData] = await Promise.all([
+            notifRes.json().catch(() => null),
+            winRes.json().catch(() => null),
+            dlnRes.json().catch(() => null),
+            annRes.json().catch(() => null),
+            usrRes.json().catch(() => null)
+          ]);
 
-    fetch('/api/deadlines')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setDeadlines(res.data); })
-      .catch(() => {});
+          if (!isMounted) return;
+          if (notifData?.success && Array.isArray(notifData.data)) setNotifications(notifData.data);
+          if (winData?.success && winData.data) setSubmissionWindow(winData.data);
+          if (dlnData?.success && Array.isArray(dlnData.data)) setDeadlines(dlnData.data);
+          if (annData?.success && Array.isArray(annData.data)) setAnnouncements(annData.data);
+          if (usrData?.success && Array.isArray(usrData.data)) setUsersList(usrData.data);
+        } catch {}
+      }, 300);
+    };
 
-    fetch('/api/announcements')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setAnnouncements(res.data); })
-      .catch(() => {});
+    loadCoreData();
+    loadSecondaryData();
 
-    fetch('/api/users')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setUsersList(res.data); })
-      .catch(() => {});
-
-    fetch('/api/system/submission-window')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && res.data) setSubmissionWindow(res.data); })
-      .catch(() => {});
-
-    fetch('/api/notifications')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setNotifications(res.data); })
-      .catch(() => {});
-
-    fetch('/api/audit-logs')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setAuditLogs(res.data); })
-      .catch(() => {});
-
-    fetch('/api/feedback')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setFeedbackList(res.data); })
-      .catch(() => {});
-
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && res.data) setSystemSettings(res.data); })
-      .catch(() => {});
-
-    fetch('/api/campuses')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setCampuses(res.data); })
-      .catch(() => {});
-
-    fetch('/api/hod-assignments', { headers: getAuthHeaders() })
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setHodAssignments(res.data); })
-      .catch(() => {});
-
-    fetch('/api/sections')
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setSections(res.data); })
-      .catch(() => {});
-
-    fetch('/api/teacher-assignments', { headers: getAuthHeaders() })
-      .then((res) => res.json())
-      .then((res) => { if (res.success && Array.isArray(res.data)) setTeacherAssignments(res.data); })
-      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const addActivityLog = async (

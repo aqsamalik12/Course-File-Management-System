@@ -1,10 +1,27 @@
 import { Response } from 'express';
+import { createRequire } from 'module';
+import fs from 'fs';
+import path from 'path';
+
+const require = createRequire(import.meta.url);
+const archiver = require('archiver');
+
+const createZipArchive = (options: any = { zlib: { level: 9 } }) => {
+  if (typeof archiver === 'function') {
+    return (archiver as any)('zip', options);
+  }
+  if (archiver.ZipArchive) {
+    return new archiver.ZipArchive(options);
+  }
+  throw new Error('Zip archive engine not available');
+};
 import { HODRequest } from '../middlewares/hodAuthMiddleware';
 import {
   TeacherRequestService,
   UserService,
   CourseService,
   CourseFileService,
+  TeacherAssignmentService,
   NotificationService,
   AuditService
 } from '../services/supabaseService';
@@ -62,22 +79,43 @@ export const getHODDashboard = async (req: HODRequest, res: Response) => {
       return matchDept && matchCampus && matchHod;
     });
 
-    const pendingCourseFiles = scopedFiles.filter((f: any) => f.status === 'Submitted' || f.status === 'Under Review').length;
+    const submittedCourseFiles = scopedFiles.filter((f: any) => f.status === 'Submitted').length;
+    const underReviewCourseFiles = scopedFiles.filter((f: any) => f.status === 'Under Review' || f.status === 'In Review').length;
+    const needsImprovementCourseFiles = scopedFiles.filter((f: any) => f.status === 'Needs Improvement' || f.status === 'Returned' || f.status === 'Returned for Revision').length;
     const approvedCourseFiles = scopedFiles.filter((f: any) => f.status === 'Approved').length;
-    const returnedCourseFiles = scopedFiles.filter((f: any) => f.status === 'Returned' || f.status === 'Rejected').length;
+    const draftCourseFiles = scopedFiles.filter((f: any) => f.status === 'Draft' || f.status === 'Pending' || f.status === 'Not Submitted').length;
+    const pendingIncompleteCourseFiles = draftCourseFiles + submittedCourseFiles + underReviewCourseFiles + needsImprovementCourseFiles;
+    const certificatesAvailable = approvedCourseFiles;
     const totalCourseFiles = scopedFiles.length;
+    const totalRegisteredTeachers = approvedTeachers.length + pendingRequests;
 
-    // 4. Build standard 4-semester overview for available batches
+    // 4. Build dynamic batch and semester overview strictly from real database records
+    const deptAssignments = await TeacherAssignmentService.getAll({
+      departmentId: scope.departmentId
+    });
+
     const batchSet = new Set<string>();
-    scopedFiles.forEach((f: any) => { if (f.batch) batchSet.add(f.batch.trim()); });
-    ['2024', '2025'].forEach(b => batchSet.add(b));
+    scopedFiles.forEach((f: any) => { if (f.batch && f.batch.trim()) batchSet.add(f.batch.trim()); });
+    deptAssignments.forEach((a: any) => { if (a.batch && a.batch.trim()) batchSet.add(a.batch.trim()); });
     const batches = Array.from(batchSet).sort((a, b) => b.localeCompare(a));
 
-    const standardSemesters = ['1st Semester', '2nd Semester', '3rd Semester', '4th Semester'];
+    const semOrder = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
     const batchesOverview = batches.map(b => {
-      const session = b === '2024' ? '2024–2025' : `${b}–${parseInt(b) + 1}`;
-      const semesters = standardSemesters.map(sem => {
+      const session = b.includes('–') ? b : `${b}–${parseInt(b) ? parseInt(b) + 1 : 'Session'}`;
+      const semesterSet = new Set<string>();
+      scopedFiles.filter((f: any) => f.batch === b).forEach((f: any) => {
+        if (f.semester && f.semester.trim()) semesterSet.add(f.semester.trim());
+      });
+      deptAssignments.filter((a: any) => a.batch === b).forEach((a: any) => {
+        if (a.semester && a.semester.trim()) semesterSet.add(a.semester.trim());
+      });
+
+      const semesters = Array.from(semesterSet).sort((a, b) => {
+        const idxA = semOrder.findIndex(s => a.toLowerCase().includes(s.toLowerCase()));
+        const idxB = semOrder.findIndex(s => b.toLowerCase().includes(s.toLowerCase()));
+        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+      }).map(sem => {
         const count = scopedFiles.filter((f: any) => f.batch === b && (f.semester === sem)).length;
         const pending = scopedFiles.filter((f: any) => f.batch === b && (f.semester === sem) && (f.status === 'Submitted' || f.status === 'Under Review')).length;
         return {
@@ -86,6 +124,7 @@ export const getHODDashboard = async (req: HODRequest, res: Response) => {
           pendingCount: pending
         };
       });
+
       return {
         batch: b,
         session,
@@ -103,6 +142,31 @@ export const getHODDashboard = async (req: HODRequest, res: Response) => {
       .sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
       .slice(0, 5);
 
+    // Real Chart Data
+    const charts = {
+      teacherRegistrationOverview: [
+        { name: 'Approved', count: approvedTeachers.length, fill: '#10b981' },
+        { name: 'Pending', count: pendingRequests, fill: '#f59e0b' },
+        { name: 'Rejected', count: rejectedRequests, fill: '#f43f5e' }
+      ],
+      courseFileOverview: [
+        { status: 'Submitted', count: submittedCourseFiles, fill: '#3b82f6' },
+        { status: 'Under Review', count: underReviewCourseFiles, fill: '#06b6d4' },
+        { status: 'Needs Improvement', count: needsImprovementCourseFiles, fill: '#f59e0b' },
+        { status: 'Approved', count: approvedCourseFiles, fill: '#10b981' }
+      ],
+      courseFileCompletion: [
+        { name: 'Approved', count: approvedCourseFiles, fill: '#10b981' },
+        { name: 'Under Review', count: underReviewCourseFiles, fill: '#06b6d4' },
+        { name: 'Needs Improvement', count: needsImprovementCourseFiles, fill: '#f59e0b' },
+        { name: 'Pending / Draft', count: draftCourseFiles + submittedCourseFiles, fill: '#94a3b8' }
+      ],
+      sessionDistribution: [
+        { session: 'Spring', count: scopedFiles.filter((f: any) => (f.session || 'Spring').toLowerCase().includes('spring')).length, fill: '#10b981' },
+        { session: 'Fall', count: scopedFiles.filter((f: any) => (f.session || '').toLowerCase().includes('fall')).length, fill: '#6366f1' }
+      ]
+    };
+
     return res.json({
       success: true,
       hod: {
@@ -116,16 +180,21 @@ export const getHODDashboard = async (req: HODRequest, res: Response) => {
         role: 'Head of Department'
       },
       stats: {
-        pendingRequests,
+        totalRegisteredTeachers,
         registeredTeachers: approvedTeachers.length,
         approvedTeachers: approvedTeachers.length,
+        pendingRequests,
         rejectedRequests,
-        totalAuthorizedTeachers: approvedTeachers.length,
-        pendingCourseFiles,
+        totalCourseFiles,
+        submittedCourseFiles,
+        underReviewCourseFiles,
+        needsImprovementCourseFiles,
         approvedCourseFiles,
-        returnedCourseFiles,
-        totalCourseFiles
+        pendingIncompleteCourseFiles,
+        certificatesAvailable,
+        pendingCourseFiles: submittedCourseFiles + underReviewCourseFiles
       },
+      charts,
       batchesOverview,
       recentCourseFiles,
       recentRequests
@@ -622,12 +691,13 @@ export const getHODTeacherProfileById = async (req: HODRequest, res: Response) =
 const filterFilesByHODScope = (files: any[], scope: any) => {
   return files.filter((f: any) => {
     if (f.deleted) return false;
-    const matchDept = f.departmentId === scope.departmentId ||
-      (f.departmentName && f.departmentName.toLowerCase() === scope.departmentName.toLowerCase());
-    const matchCampus = !f.campusId || f.campusId === scope.campusId ||
-      (f.campusName && f.campusName.toLowerCase() === scope.campusName.toLowerCase());
-    const matchHod = !f.hodId || f.hodId === scope.hodId;
-    return matchDept && matchCampus && matchHod;
+    const matchDept =
+      (scope.departmentId && f.departmentId === scope.departmentId) ||
+      (f.departmentName && scope.departmentName && f.departmentName.toLowerCase().trim() === scope.departmentName.toLowerCase().trim());
+    const matchCampus =
+      !f.campusId || !scope.campusId || f.campusId === scope.campusId ||
+      (f.campusName && scope.campusName && f.campusName.toLowerCase().trim() === scope.campusName.toLowerCase().trim());
+    return matchDept && matchCampus;
   });
 };
 
@@ -653,56 +723,111 @@ export const getHODBatchesHierarchy = async (req: HODRequest, res: Response) => 
     const allFiles = await CourseFileService.getAll();
     const scopedFiles = filterFilesByHODScope(allFiles, scope);
 
-    // Extract unique batches from existing files or standard academic batches (2026 to future years)
+    // Fetch department's teacher course assignments
+    const allAssignments = await TeacherAssignmentService.getAll();
+    const deptAssignments = allAssignments.filter((a: any) => {
+      if (a.active === false) return false;
+      const matchDept =
+        (scope.departmentId && a.departmentId === scope.departmentId) ||
+        (a.departmentName && scope.departmentName && a.departmentName.toLowerCase().trim() === scope.departmentName.toLowerCase().trim());
+      const matchCampus =
+        !a.campusId || !scope.campusId || a.campusId === scope.campusId ||
+        (a.campusName && scope.campusName && a.campusName.toLowerCase().trim() === scope.campusName.toLowerCase().trim());
+      return matchDept && matchCampus;
+    });
+
+    // Extract unique batches strictly from actual database data (files + assignments)
     const batchSet = new Set<string>();
-    scopedFiles.forEach((f: any) => { if (f.batch) batchSet.add(f.batch.trim()); });
-    ['2035', '2034', '2033', '2032', '2031', '2030', '2029', '2028', '2027', '2026', '2025', '2024'].forEach(b => batchSet.add(b));
-    const batches = Array.from(batchSet).sort((a, b) => b.localeCompare(a));
+    scopedFiles.forEach((f: any) => {
+      if (f.batch && f.batch.trim()) batchSet.add(f.batch.trim());
+    });
+    deptAssignments.forEach((a: any) => {
+      if (a.batch && a.batch.trim()) batchSet.add(a.batch.trim());
+    });
+
+    const batches = Array.from(batchSet).sort((a, b) => a.localeCompare(b));
+    const semOrder = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
     const hierarchy = batches.map(batchName => {
+      const batchFiles = scopedFiles.filter((f: any) => f.batch === batchName);
+      const batchAsgns = deptAssignments.filter((a: any) => a.batch === batchName);
+
+      // Identify sessions (Spring / Fall) that actually have data for this batch
       const sessionSet = new Set<string>();
-      scopedFiles.filter((f: any) => f.batch === batchName).forEach((f: any) => {
-        if (f.session) sessionSet.add(f.session.trim());
+      batchFiles.forEach((f: any) => {
+        if (f.session) {
+          const s = f.session.toLowerCase();
+          if (s.includes('spring')) sessionSet.add('Spring');
+          else if (s.includes('fall')) sessionSet.add('Fall');
+        }
       });
-      const bYear = parseInt(batchName);
-      if (!isNaN(bYear)) {
-        sessionSet.add(`${bYear}–${bYear + 4}`);
-      } else {
-        sessionSet.add(`${batchName}–${parseInt(batchName) || 2026 + 4}`);
-      }
+      batchAsgns.forEach((a: any) => {
+        if (a.session) {
+          const s = a.session.toLowerCase();
+          if (s.includes('spring')) sessionSet.add('Spring');
+          else if (s.includes('fall')) sessionSet.add('Fall');
+        }
+      });
 
+      // Sort sessions: Spring first, then Fall
+      const sessionNames = Array.from(sessionSet).sort((a, b) => (a === 'Spring' ? -1 : 1));
 
-      const sessions = Array.from(sessionSet).sort().map(sessionName => {
-        const semesters = STANDARD_SEMESTERS.map(semName => {
-          const filesInSemester = scopedFiles.filter((f: any) =>
-            f.batch === batchName &&
-            f.session === sessionName &&
-            f.semester === semName
-          );
+      const sessions = sessionNames.map(sessName => {
+        const sessFiles = batchFiles.filter((f: any) =>
+          f.session && f.session.toLowerCase().includes(sessName.toLowerCase())
+        );
+        const sessAsgns = batchAsgns.filter((a: any) =>
+          a.session && a.session.toLowerCase().includes(sessName.toLowerCase())
+        );
+
+        // Semesters with real records inside this Batch + Session
+        const semSet = new Set<string>();
+        sessFiles.forEach((f: any) => { if (f.semester && f.semester.trim()) semSet.add(f.semester.trim()); });
+        sessAsgns.forEach((a: any) => { if (a.semester && a.semester.trim()) semSet.add(a.semester.trim()); });
+
+        const semesters = Array.from(semSet).sort((a, b) => {
+          const idxA = semOrder.findIndex(s => a.toLowerCase().includes(s.toLowerCase()));
+          const idxB = semOrder.findIndex(s => b.toLowerCase().includes(s.toLowerCase()));
+          return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        }).map(semName => {
+          const filesInSem = sessFiles.filter((f: any) => f.semester === semName);
+          const asgnsInSem = sessAsgns.filter((a: any) => a.semester === semName);
+
+          const distinctCourses = new Set([
+            ...filesInSem.map((f: any) => (f.courseCode || f.courseTitle || '').trim().toUpperCase()),
+            ...asgnsInSem.map((a: any) => (a.courseCode || a.courseName || '').trim().toUpperCase())
+          ]);
 
           return {
             name: semName,
-            fileCount: filesInSemester.length,
-            pendingCount: filesInSemester.filter((f: any) => f.status === 'Submitted' || f.status === 'Under Review').length,
-            approvedCount: filesInSemester.filter((f: any) => f.status === 'Approved').length,
-            returnedCount: filesInSemester.filter((f: any) => f.status === 'Returned' || f.status === 'Rejected').length
+            fileCount: filesInSem.length,
+            courseCount: distinctCourses.size,
+            pendingCount: filesInSem.filter((f: any) => f.status === 'Submitted' || f.status === 'Under Review').length,
+            approvedCount: filesInSem.filter((f: any) => f.status === 'Approved').length,
+            returnedCount: filesInSem.filter((f: any) => f.status === 'Returned' || f.status === 'Rejected' || f.status === 'Needs Improvement').length
           };
-        });
+        }).filter(sem => sem.fileCount > 0);
 
-        const totalFilesInSession = semesters.reduce((acc, s) => acc + s.fileCount, 0);
+        const totalFilesInSess = sessFiles.length;
+        const totalApprovedInSess = sessFiles.filter((f: any) => f.status === 'Approved').length;
 
         return {
-          session: sessionName,
-          totalFiles: totalFilesInSession,
+          session: sessName,
+          name: sessName,
+          fileCount: totalFilesInSess,
+          approvedCount: totalApprovedInSess,
+          pendingCount: sessFiles.filter((f: any) => f.status === 'Submitted' || f.status === 'Under Review').length,
           semesters
         };
-      });
+      }).filter(sess => sess.fileCount > 0);
 
-      const totalFilesInBatch = sessions.reduce((acc, s) => acc + s.totalFiles, 0);
+      const totalFilesInBatch = batchFiles.length;
+      const totalApprovedInBatch = batchFiles.filter((f: any) => f.status === 'Approved').length;
 
       return {
         batch: batchName,
         totalFiles: totalFilesInBatch,
+        approvedFiles: totalApprovedInBatch,
         sessions
       };
     });
@@ -713,6 +838,99 @@ export const getHODBatchesHierarchy = async (req: HODRequest, res: Response) => 
     });
   } catch (error: any) {
     logger.error(`[getHODBatchesHierarchy Error] ${error.message}`);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /api/hod/courses-by-semester
+ * Dynamic Level 3/4 Courses endpoint: Returns all actual courses belonging to a Batch + Semester (+ optional Session) in HOD's department
+ */
+export const getHODSemesterCourses = async (req: HODRequest, res: Response) => {
+  try {
+    const scope = req.hodScope!;
+    const { batch, semester, session } = req.query;
+
+    if (!batch || !semester) {
+      return res.status(400).json({ success: false, message: 'Batch and Semester are required.' });
+    }
+
+    const batchStr = String(batch).trim();
+    const semStr = String(semester).trim();
+    const sessionStr = session ? String(session).trim().toLowerCase() : null;
+
+    const allFiles = await CourseFileService.getAll();
+    const scopedFiles = filterFilesByHODScope(allFiles, scope).filter(
+      (f: any) => f.batch === batchStr && f.semester === semStr && (!sessionStr || (f.session && f.session.toLowerCase() === sessionStr))
+    );
+
+    const deptAssignments = (await TeacherAssignmentService.getAll({
+      departmentId: scope.departmentId
+    })).filter((a: any) => a.batch === batchStr && a.semester === semStr && (!sessionStr || (a.session && a.session.toLowerCase() === sessionStr)));
+
+    const courseMap = new Map<string, any>();
+
+    // 1. Map courses from course files
+    for (const f of scopedFiles) {
+      const code = (f.courseCode || 'CS-101').trim().toUpperCase();
+      if (!courseMap.has(code)) {
+        courseMap.set(code, {
+          courseId: f.courseId,
+          courseCode: code,
+          courseName: f.courseTitle || f.title || 'Course',
+          creditHours: f.credits || 3,
+          batch: batchStr,
+          semester: semStr,
+          session: f.session || 'Spring',
+          academicYear: f.academicYear || '2024–25',
+          teacherId: f.teacherId,
+          teacherName: f.teacherName,
+          status: f.status,
+          courseFileId: f.id,
+          submittedAt: f.submittedAt || f.created_at,
+          fileUrl: f.fileUrl,
+          fileCount: 1,
+          templateData: f.templateData
+        });
+      } else {
+        const existing = courseMap.get(code);
+        existing.fileCount = (existing.fileCount || 1) + 1;
+      }
+    }
+
+    // 2. Map courses from assignments that have not yet uploaded files
+    for (const a of deptAssignments) {
+      const code = (a.courseCode || a.code || 'CS-101').trim().toUpperCase();
+      if (!courseMap.has(code)) {
+        courseMap.set(code, {
+          courseId: a.courseId || a.id,
+          courseCode: code,
+          courseName: a.courseName || a.title || 'Course',
+          creditHours: a.creditHours || a.credits || 3,
+          batch: batchStr,
+          semester: semStr,
+          session: a.session || 'Spring',
+          academicYear: a.academicYear || '2024–25',
+          teacherId: a.teacherId,
+          teacherName: a.teacherName,
+          status: 'Not Submitted',
+          courseFileId: null,
+          submittedAt: null,
+          fileUrl: null,
+          fileCount: 0,
+          templateData: null
+        });
+      }
+    }
+
+    const courses = Array.from(courseMap.values());
+    return res.json({
+      success: true,
+      count: courses.length,
+      data: courses
+    });
+  } catch (error: any) {
+    logger.error(`[getHODSemesterCourses Error] ${error.message}`);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -730,13 +948,27 @@ export const getHODCourseFiles = async (req: HODRequest, res: Response) => {
     let scopedFiles = filterFilesByHODScope(allFiles, scope);
 
     if (batch) {
-      scopedFiles = scopedFiles.filter((f: any) => f.batch === String(batch).trim());
+      const targetBatch = String(batch).trim().replace(/[\u2013\u2014]/g, '-').toLowerCase();
+      scopedFiles = scopedFiles.filter((f: any) => {
+        if (!f.batch) return false;
+        const fb = f.batch.trim().replace(/[\u2013\u2014]/g, '-').toLowerCase();
+        return fb === targetBatch;
+      });
     }
     if (session) {
-      scopedFiles = scopedFiles.filter((f: any) => f.session === String(session).trim());
+      const targetSession = String(session).trim().toLowerCase();
+      scopedFiles = scopedFiles.filter((f: any) => {
+        if (!f.session) return false;
+        return f.session.trim().toLowerCase().includes(targetSession);
+      });
     }
     if (semester) {
-      scopedFiles = scopedFiles.filter((f: any) => f.semester === String(semester).trim());
+      const targetSem = String(semester).trim().toLowerCase();
+      scopedFiles = scopedFiles.filter((f: any) => {
+        if (!f.semester) return false;
+        const fs = f.semester.trim().toLowerCase();
+        return fs === targetSem || fs.startsWith(targetSem.split(' ')[0]);
+      });
     }
     if (status) {
       const s = String(status).trim();
@@ -840,6 +1072,45 @@ export const approveHODCourseFile = async (req: HODRequest, res: Response) => {
         success: false,
         message: 'This course file has already been approved.'
       });
+    }
+
+    // Requirement 28: HOD Self-Approval Prevention Rule
+    const isSelfCourse = file.teacherId === req.hodUser?.id ||
+      file.teacherId === scope.hodId ||
+      (file.teacherEmail && scope.hodEmail && file.teacherEmail.toLowerCase() === scope.hodEmail.toLowerCase());
+
+    const isSuperAdmin = req.hodUser?.role === 'ADMIN' || req.headers['x-user-role'] === 'ADMIN';
+
+    if (isSelfCourse && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Self-approval is prohibited: Head of Department (HOD) cannot approve their own Course File. It must be reviewed and approved by Dean / Administrator.'
+      });
+    }
+
+    // Requirement 16 & 36: Backend validation - all required documents must be resolved & verified
+    const currentChecklist = req.body.checklist || (file.templateData?.checklist || []);
+    if (Array.isArray(currentChecklist) && currentChecklist.length > 0) {
+      const hasNeedsImp = currentChecklist.some((item: any) => item.status === 'Needs Improvement');
+      if (hasNeedsImp) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot approve course file: One or more documents are marked as "Needs Improvement". All sections must be verified or corrected before final approval.'
+        });
+      }
+
+      const hasUnresolvedMandatory = currentChecklist.some((item: any) => {
+        const isConditional = item.isApplicableOnly || [9, 10, 11].includes(item.srNo);
+        if (isConditional && (item.verified === 'N/A' || item.status === 'N/A' || item.isNA)) return false;
+        return item.verified !== 'Yes' && item.status !== 'Verified';
+      });
+
+      if (hasUnresolvedMandatory) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot approve course file: All required documents must be Verified (Yes) before final approval.'
+        });
+      }
     }
 
     const reviewedAt = new Date().toISOString();
@@ -976,6 +1247,166 @@ export const returnHODCourseFile = async (req: HODRequest, res: Response) => {
 };
 
 /**
+ * POST /api/hod/course-files/:id/item-review
+ * Reviews an individual course file item: sets status and mandatory/optional comment.
+ * If status === 'Needs Improvement', a comment is mandatory!
+ */
+export const reviewHODCourseFileItem = async (req: HODRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const scope = req.hodScope!;
+    const { srNo, status, comment } = req.body;
+
+    if (!srNo || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Section serial number (srNo) and review status are required.'
+      });
+    }
+
+    if (status === 'Needs Improvement' && (!comment || !comment.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a comment explaining what needs to be corrected.'
+      });
+    }
+
+    const file = await CourseFileService.getById(id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'Course file not found.' });
+    }
+
+    const matchDept = file.departmentId === scope.departmentId ||
+      (file.departmentName && file.departmentName.toLowerCase() === scope.departmentName.toLowerCase());
+    const matchCampus = !file.campusId || file.campusId === scope.campusId ||
+      (file.campusName && file.campusName.toLowerCase() === scope.campusName.toLowerCase());
+    const matchHod = !file.hodId || file.hodId === scope.hodId;
+
+    if (!matchDept || !matchCampus || !matchHod) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You cannot review course files outside your department.'
+      });
+    }
+
+    const checklist = Array.isArray(file.templateData?.checklist) ? [...file.templateData.checklist] : [];
+    const itemIndex = checklist.findIndex((it: any) => it.srNo === Number(srNo));
+
+    if (itemIndex === -1) {
+      return res.status(404).json({ success: false, message: `Checklist item ${srNo} not found.` });
+    }
+
+    const reviewedAt = new Date().toISOString();
+    const cleanComment = (comment || '').trim();
+
+    checklist[itemIndex] = {
+      ...checklist[itemIndex],
+      status,
+      verified: status === 'Verified' ? 'Yes' : status === 'N/A' ? 'N/A' : 'No',
+      comment: cleanComment,
+      reviewedAt,
+      reviewedBy: scope.hodName,
+      hodId: scope.hodId
+    };
+
+    const hasNeedsImprovement = checklist.some((it: any) => it.status === 'Needs Improvement');
+
+    const updated = await CourseFileService.update(id, {
+      templateData: {
+        ...file.templateData,
+        checklist
+      },
+      status: hasNeedsImprovement && file.status !== 'Approved' ? 'Needs Improvement' : file.status,
+      lastModified: new Date().toISOString().split('T')[0]
+    });
+
+    return res.json({
+      success: true,
+      message: `Review and comment for Section ${srNo} saved successfully.`,
+      data: {
+        item: checklist[itemIndex],
+        checklist
+      }
+    });
+  } catch (error: any) {
+    logger.error(`[reviewHODCourseFileItem Error] ${error.message}`);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * POST /api/hod/course-files/:id/checklist-review
+ * Reviews and updates the whole checklist with comments and statuses
+ */
+export const reviewHODCourseFileChecklist = async (req: HODRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const scope = req.hodScope!;
+    const { checklist } = req.body;
+
+    if (!Array.isArray(checklist)) {
+      return res.status(400).json({ success: false, message: 'Checklist array is required.' });
+    }
+
+    // Validate that if any item has status === 'Needs Improvement', it must have a comment
+    for (const item of checklist) {
+      if (item.status === 'Needs Improvement' && (!item.comment || !item.comment.trim())) {
+        return res.status(400).json({
+          success: false,
+          message: `Please enter a comment explaining what needs to be corrected for section ${item.srNo} (${item.content || item.name || 'document'}).`
+        });
+      }
+    }
+
+    const file = await CourseFileService.getById(id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'Course file not found.' });
+    }
+
+    const matchDept = file.departmentId === scope.departmentId ||
+      (file.departmentName && file.departmentName.toLowerCase() === scope.departmentName.toLowerCase());
+    const matchCampus = !file.campusId || file.campusId === scope.campusId ||
+      (file.campusName && file.campusName.toLowerCase() === scope.campusName.toLowerCase());
+    const matchHod = !file.hodId || file.hodId === scope.hodId;
+
+    if (!matchDept || !matchCampus || !matchHod) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You cannot review course files outside your department.'
+      });
+    }
+
+    const reviewedChecklist = checklist.map((item: any) => ({
+      ...item,
+      verified: item.status === 'Verified' ? 'Yes' : item.status === 'N/A' ? 'N/A' : (item.verified || 'No'),
+      reviewedBy: item.reviewedBy || scope.hodName,
+      hodId: item.hodId || scope.hodId,
+      reviewedAt: item.reviewedAt || new Date().toISOString()
+    }));
+
+    const hasNeedsImprovement = reviewedChecklist.some((it: any) => it.status === 'Needs Improvement');
+
+    const updated = await CourseFileService.update(id, {
+      templateData: {
+        ...file.templateData,
+        checklist: reviewedChecklist
+      },
+      status: hasNeedsImprovement && file.status !== 'Approved' ? 'Needs Improvement' : file.status,
+      lastModified: new Date().toISOString().split('T')[0]
+    });
+
+    return res.json({
+      success: true,
+      message: 'All checklist item reviews and comments saved successfully.',
+      data: updated
+    });
+  } catch (error: any) {
+    logger.error(`[reviewHODCourseFileChecklist Error] ${error.message}`);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * GET /api/hod/course-progress
  * Real course file progress within HOD scope (Requirement 27)
  * Shows Teacher, Course, Batch, Session, Semester, Status without fabricated percentages
@@ -1074,3 +1505,512 @@ export const getHODProfile = async (req: HODRequest, res: Response) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Generate official Course File Dossier HTML document
+ */
+export const generateCourseFileHtml = (file: any): string => {
+  const checklist = (file.templateData && Array.isArray(file.templateData.checklist))
+    ? file.templateData.checklist
+    : [];
+
+  const clos = (file.templateData && Array.isArray(file.templateData.clos))
+    ? file.templateData.clos
+    : [];
+
+  const approvalDate = file.reviewedAt
+    ? new Date(file.reviewedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Pending Review';
+
+  const rows = checklist.map((item: any) => `
+    <tr>
+      <td style="text-align:center; font-weight:bold;">${item.srNo || '-'}</td>
+      <td><strong>${item.name || 'Component'}</strong><br><span style="color:#64748b; font-size:11px;">${item.content || ''}</span></td>
+      <td>${item.fileName || 'Attached in Dossier'}</td>
+      <td style="text-align:center;">
+        <span style="display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:bold; background:${item.status === 'Verified' || item.verified === 'Yes' ? '#dcfce7' : '#fee2e2'}; color:${item.status === 'Verified' || item.verified === 'Yes' ? '#166534' : '#991b1b'};">
+          ${item.status || (item.verified === 'Yes' ? 'Verified' : 'Needs Improvement')}
+        </span>
+      </td>
+      <td>
+        <div style="font-size:12px; color:#334155; font-style:italic;">
+          ${item.comment ? `"${item.comment}"` : 'No individual comment recorded.'}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Accreditation Dossier - ${file.courseCode} - ${file.teacherName}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 30px; color: #1e293b; background: #fff; line-height: 1.5; }
+    .container { max-width: 900px; margin: auto; }
+    .header { text-align: center; border-bottom: 3px solid #059669; padding-bottom: 16px; margin-bottom: 24px; }
+    .header h1 { margin: 0 0 6px 0; font-size: 22px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .header h2 { margin: 0 0 4px 0; font-size: 15px; color: #059669; text-transform: uppercase; font-weight: bold; }
+    .header p { margin: 0; font-size: 13px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+    .meta-item span { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.5px; }
+    .meta-item strong { font-size: 13px; color: #0f172a; }
+    .section-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 24px 0 12px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    th { background: #f1f5f9; padding: 10px 8px; border: 1px solid #cbd5e1; text-align: left; font-size: 11px; text-transform: uppercase; color: #475569; }
+    td { padding: 10px 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
+    .sig-box { width: 220px; border-top: 1px solid #475569; text-align: center; padding-top: 6px; margin-top: 40px; font-weight: bold; color: #0f172a; }
+    @media print { body { padding: 10px; } .meta-grid { background: #fff !important; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>University of Education, Attock Campus</h1>
+      <h2>${file.departmentName || 'Department of Computer Science'}</h2>
+      <p>Official Course File & Accreditation Dossier</p>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-item"><span>Course Code</span><strong>${file.courseCode || 'N/A'}</strong></div>
+      <div class="meta-item"><span>Course Title</span><strong>${file.courseTitle || 'N/A'}</strong></div>
+      <div class="meta-item"><span>Credit Hours</span><strong>${file.credits || 3} Credits</strong></div>
+      <div class="meta-item"><span>Status</span><strong>${file.status || 'Approved'}</strong></div>
+      <div class="meta-item"><span>Faculty Member</span><strong>${file.teacherName || 'N/A'}</strong></div>
+      <div class="meta-item"><span>Batch & Session</span><strong>${file.batch || '2023'} (${file.session || '2023–2027'})</strong></div>
+      <div class="meta-item"><span>Semester</span><strong>${file.semester || '7th Semester'}</strong></div>
+      <div class="meta-item"><span>Approval Date</span><strong>${approvalDate}</strong></div>
+    </div>
+
+    ${file.templateData?.courseDescription ? `
+      <div class="section-title">Course Description</div>
+      <p style="font-size:13px; color:#334155; line-height:1.6; margin:0 0 16px 0;">${file.templateData.courseDescription}</p>
+    ` : ''}
+
+    ${clos.length > 0 ? `
+      <div class="section-title">Course Learning Outcomes (CLOs)</div>
+      <table>
+        <thead>
+          <tr><th style="width:15%;">Code</th><th style="width:65%;">Description</th><th style="width:20%;">Mapped PLO</th></tr>
+        </thead>
+        <tbody>
+          ${clos.map((c: any) => `<tr><td style="font-weight:bold; font-family:monospace;">${c.code || '-'}</td><td>${c.description || '-'}</td><td>${c.plo || '-'}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    ` : ''}
+
+    <div class="section-title">Statutory 15 Verification Checklist & Individual HOD Reviews</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:6%;">Sr</th>
+          <th style="width:30%;">Item / Component</th>
+          <th style="width:20%;">Attached Document</th>
+          <th style="width:16%; text-align:center;">Review State</th>
+          <th style="width:28%;">Mandatory HOD Review Comment</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+
+    <div style="display:flex; justify-content:space-between; margin-top:50px;">
+      <div class="sig-box">
+        Course Instructor / Teacher<br>
+        <span style="font-size:11px; font-weight:normal; color:#64748b;">${file.teacherName}</span>
+      </div>
+      <div class="sig-box">
+        Head of Department (HOD)<br>
+        <span style="font-size:11px; font-weight:normal; color:#64748b;">${file.reviewedBy || 'Dr. Asif'}</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+/**
+ * Generate official Certificate HTML document
+ */
+export const generateCertificateHtml = (file: any): string => {
+  const approvalDate = file.reviewedAt
+    ? new Date(file.reviewedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const certId = `UE-CFMS-${file.batch || '2026'}-${(file.id || 'CERT').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Certificate of Course File Completion - ${file.courseCode} - ${file.teacherName}</title>
+  <style>
+    body { font-family: 'Georgia', 'Times New Roman', serif; margin: 0; padding: 40px; background: #faf8f2; color: #14281e; }
+    .cert-container { max-width: 850px; margin: auto; border: 10px double #a67c1e; padding: 40px 50px; background: #fff; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+    .header { text-align: center; border-bottom: 2px solid #a67c1e; padding-bottom: 16px; margin-bottom: 24px; }
+    .crest { font-size: 32px; font-weight: 900; color: #a67c1e; margin-bottom: 6px; letter-spacing: 2px; }
+    .inst-name { font-size: 22px; font-weight: 900; text-transform: uppercase; color: #14281e; margin: 0; letter-spacing: 1px; }
+    .campus-name { font-size: 14px; font-weight: bold; color: #1b5e3c; text-transform: uppercase; margin: 4px 0 0 0; }
+    .cert-heading { text-align: center; margin: 28px 0; }
+    .cert-heading h2 { font-size: 20px; font-weight: 900; text-transform: uppercase; color: #a67c1e; letter-spacing: 2px; margin: 0; }
+    .cert-heading p { font-size: 13px; font-style: italic; color: #64748b; margin: 4px 0 0 0; }
+    .cert-body { font-size: 15px; line-height: 1.8; text-align: justify; margin: 20px 0; }
+    .highlight { font-weight: bold; color: #0d4a2b; }
+    .meta-box { background: #faf8f2; border: 1px solid #e7dfcb; border-radius: 6px; padding: 14px 20px; margin: 24px 0; font-family: sans-serif; font-size: 12px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .meta-grid div span { display: block; font-size: 10px; text-transform: uppercase; color: #8c733e; font-weight: bold; }
+    .meta-grid div strong { font-size: 13px; color: #14281e; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 50px; padding-top: 20px; }
+    .sig-line { width: 220px; border-top: 1px solid #14281e; text-align: center; font-size: 12px; font-weight: bold; padding-top: 6px; }
+    .footer-id { text-align: center; margin-top: 30px; font-size: 10px; color: #8c733e; font-family: monospace; letter-spacing: 1px; }
+    @media print { body { padding: 0; background: #fff; } .cert-container { box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <div class="cert-container">
+    <div class="header">
+      <div class="crest">UE</div>
+      <h1 class="inst-name">University of Education, Attock Campus</h1>
+      <p class="campus-name">${file.departmentName || 'Department of Computer Science'}</p>
+    </div>
+
+    <div class="cert-heading">
+      <h2>Certificate of Course File Completion</h2>
+      <p>Quality Enhancement Cell (QEC) & Accreditation Compliance</p>
+    </div>
+
+    <div class="cert-body">
+      This is to formally certify that <strong>${file.teacherName}</strong> (${file.teacherRole === 'REGULAR_TEACHER' ? 'Regular Faculty' : 'Visiting Faculty'}) has successfully submitted, compiled, and verified the complete Course File for the course <span class="highlight">${file.courseTitle} (${file.courseCode})</span> for the academic session <span class="highlight">${file.session || '2023–2027'}</span>, <span class="highlight">${file.semester || '7th Semester'}</span>, Batch <span class="highlight">${file.batch || '2023'}</span>.
+      <br><br>
+      All 15 statutory instructional and assessment components—including Curriculum Outlines, Weekly Lecture Plans, Examination Artifacts, Assessment Keys, and Outcome Attainment Records—have undergone rigorous verification and satisfy all Quality Enhancement Cell (QEC) accreditation requirements.
+    </div>
+
+    <div class="meta-box">
+      <div class="meta-grid">
+        <div><span>Certificate ID</span><strong>${certId}</strong></div>
+        <div><span>Date of Approval</span><strong>${approvalDate}</strong></div>
+        <div><span>Accreditation Status</span><strong style="color:#166534;">Verified & Approved</strong></div>
+      </div>
+    </div>
+
+    <div class="signatures">
+      <div class="sig-line">
+        Head of Department (HOD)<br>
+        <span style="font-size:10px; font-weight:normal; color:#64748b;">${file.reviewedBy || 'Dr. Asif'}</span>
+      </div>
+      <div class="sig-line">
+        Director / Convener QEC<br>
+        <span style="font-size:10px; font-weight:normal; color:#64748b;">Quality Enhancement Cell</span>
+      </div>
+    </div>
+
+    <div class="footer-id">
+      Official Verification Code: ${certId} • University of Education Attock Campus
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+/**
+ * Normalizes semester name to standard folder name (e.g., Semester_1, Semester_7)
+ */
+const normalizeSemesterFolder = (sem: string): string => {
+  if (!sem) return 'Semester_General';
+  const match = sem.match(/(\d+)/);
+  if (match) {
+    return `Semester_${match[1]}`;
+  }
+  return sem.replace(/[^a-zA-Z0-9]/g, '_');
+};
+
+/**
+ * GET /api/hod/downloads/batch/:batch
+ * Generates and streams structured ZIP package for an entire batch (Option 3 & Requirement 30)
+ * Directory Structure:
+ * Batch_{BatchYear}/
+ *   Semester_1/
+ *   Semester_2/
+ *   ...
+ *   Semester_8/
+ */
+export const downloadHODBatchZip = async (req: HODRequest, res: Response) => {
+  try {
+    const scope = req.hodScope!;
+    const batch = (req.params.batch || req.query.batch || '').toString().trim();
+    const session = (req.query.session || '').toString().trim();
+
+    const allFiles = await CourseFileService.getAll();
+    const scopedFiles = filterFilesByHODScope(allFiles, scope);
+    const normReqBatch = batch ? batch.replace(/[\u2013\u2014]/g, '-').trim().toLowerCase() : '';
+    const batchApprovedFiles = scopedFiles.filter((f: any) => {
+      const matchStatus = f.status === 'Approved';
+      const fBatchNorm = (f.batch || '').replace(/[\u2013\u2014]/g, '-').trim().toLowerCase();
+      const matchBatch = !batch || fBatchNorm === normReqBatch;
+      const matchSession = !session || (f.session && f.session.toLowerCase().includes(session.toLowerCase()));
+      return matchStatus && matchBatch && matchSession;
+    });
+
+    const safeBatch = (batch || 'AllBatches').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const safeDept = (scope.departmentName || 'Dept').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeSess = session ? `_${session}` : '';
+    const zipFilename = `${safeBatch}${safeSess}_${safeDept}_CourseFiles.zip`;
+
+    res.attachment(zipFilename);
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = createZipArchive({ zlib: { level: 9 } });
+
+    archive.on('error', (err: any) => {
+      logger.error(`[archiver error] ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
+
+    archive.pipe(res);
+
+    for (const file of batchApprovedFiles) {
+      const fileSess = (file.session && file.session.toLowerCase().includes('fall')) ? 'Fall' : 'Spring';
+      const semFolder = normalizeSemesterFolder(file.semester);
+      const safeTeacher = (file.teacherName || 'Faculty').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeCourse = (file.courseCode || 'Course').replace(/[^a-zA-Z0-9]/g, '_');
+      const basePath = `${safeBatch}/${fileSess}/${semFolder}/${safeCourse}_${safeTeacher}`;
+
+      // 1. Course File Dossier HTML
+      const dossierHtml = generateCourseFileHtml(file);
+      archive.append(dossierHtml, { name: `${basePath}_CourseFile_Dossier.html` });
+
+      // 2. Official Certificate HTML
+      const certHtml = generateCertificateHtml(file);
+      archive.append(certHtml, { name: `${basePath}_Certificate.html` });
+
+      // 3. Attach physical file if uploaded on disk
+      if (file.fileUrl) {
+        const localPath = path.join(process.cwd(), file.fileUrl.replace(/^\//, ''));
+        if (fs.existsSync(localPath)) {
+          archive.file(localPath, { name: `${basePath}_AttachedFile${path.extname(localPath)}` });
+        }
+      }
+    }
+
+    if (batchApprovedFiles.length === 0) {
+      const sessionLabel = session ? `${session} session of ` : '';
+      archive.append(`No approved course files available yet for ${sessionLabel}Batch ${batch}.\n`, {
+        name: `${safeBatch}/README.txt`
+      });
+    }
+
+    // Add Batch Manifest
+    const manifest = {
+      institution: 'University of Education, Attock Campus',
+      department: scope.departmentName,
+      campus: scope.campusName,
+      batch: batch || 'All',
+      session: session || 'All (Spring + Fall)',
+      generatedAt: new Date().toISOString(),
+      generatedBy: scope.hodName,
+      totalApprovedCourseFiles: batchApprovedFiles.length,
+      files: batchApprovedFiles.map((f: any) => ({
+        id: f.id,
+        courseCode: f.courseCode,
+        courseTitle: f.courseTitle,
+        teacherName: f.teacherName,
+        session: f.session,
+        semester: f.semester,
+        reviewedAt: f.reviewedAt
+      }))
+    };
+    archive.append(JSON.stringify(manifest, null, 2), {
+      name: `${safeBatch}/manifest.json`
+    });
+
+    await archive.finalize();
+  } catch (error: any) {
+    logger.error(`[downloadHODBatchZip Error] ${error.message}`);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+};
+
+/**
+ * GET /api/hod/downloads/semester
+ * Generates and streams structured ZIP package for a specific semester (Option 2)
+ */
+export const downloadHODSemesterZip = async (req: HODRequest, res: Response) => {
+  try {
+    const scope = req.hodScope!;
+    const semester = (req.query.semester || '').toString().trim();
+    const batch = (req.query.batch || '').toString().trim();
+    const session = (req.query.session || '').toString().trim();
+
+    const allFiles = await CourseFileService.getAll();
+    const scopedFiles = filterFilesByHODScope(allFiles, scope);
+    const normReqBatch = batch ? batch.replace(/[\u2013\u2014]/g, '-').trim().toLowerCase() : '';
+    const semesterApprovedFiles = scopedFiles.filter((f: any) => {
+      const matchStatus = f.status === 'Approved';
+      const matchSem = !semester || (f.semester && (
+        f.semester.toLowerCase() === semester.toLowerCase() ||
+        normalizeSemesterFolder(f.semester) === normalizeSemesterFolder(semester)
+      ));
+      const fBatchNorm = (f.batch || '').replace(/[\u2013\u2014]/g, '-').trim().toLowerCase();
+      const matchBatch = !batch || fBatchNorm === normReqBatch;
+      const matchSession = !session || (f.session && f.session.toLowerCase().includes(session.toLowerCase()));
+      return matchStatus && matchSem && matchBatch && matchSession;
+    });
+
+    const safeBatch = (batch || 'Batch').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const safeDept = (scope.departmentName || 'Dept').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeSem = normalizeSemesterFolder(semester || 'Semester');
+    const safeSess = session ? `_${session}` : '';
+    const zipFilename = `${safeBatch}${safeSess}_${safeSem}_CourseFiles.zip`;
+
+    res.attachment(zipFilename);
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = createZipArchive({ zlib: { level: 9 } });
+
+    archive.on('error', (err: any) => {
+      logger.error(`[archiver error] ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
+
+    archive.pipe(res);
+
+    for (const file of semesterApprovedFiles) {
+      const safeTeacher = (file.teacherName || 'Faculty').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeCourse = (file.courseCode || 'Course').replace(/[^a-zA-Z0-9]/g, '_');
+      const folderPrefix = `${safeBatch}/${session || file.session || 'Session'}/${safeSem}`;
+      const basePath = `${folderPrefix}/${safeCourse}_${safeTeacher}`;
+
+      // 1. Dossier
+      archive.append(generateCourseFileHtml(file), { name: `${basePath}_CourseFile_Dossier.html` });
+
+      // 2. Certificate
+      archive.append(generateCertificateHtml(file), { name: `${basePath}_Certificate.html` });
+
+      // 3. Physical upload if present
+      if (file.fileUrl) {
+        const localPath = path.join(process.cwd(), file.fileUrl.replace(/^\//, ''));
+        if (fs.existsSync(localPath)) {
+          archive.file(localPath, { name: `${basePath}_AttachedFile${path.extname(localPath)}` });
+        }
+      }
+    }
+
+    if (semesterApprovedFiles.length === 0) {
+      archive.append(`No approved course files found for ${batch} ${session} ${semester}.\n`, {
+        name: `${safeBatch}_${safeSem}/README.txt`
+      });
+    }
+
+    await archive.finalize();
+  } catch (error: any) {
+    logger.error(`[downloadHODSemesterZip Error] ${error.message}`);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+};
+
+/**
+ * GET /api/hod/downloads/certificates
+ * Generates and streams structured ZIP package for approved certificates
+ */
+export const downloadHODCertificatesZip = async (req: HODRequest, res: Response) => {
+  try {
+    const scope = req.hodScope!;
+    const batch = req.query.batch ? req.query.batch.toString().trim() : '';
+    const semester = req.query.semester ? req.query.semester.toString().trim() : '';
+
+    const allFiles = await CourseFileService.getAll();
+    const scopedFiles = filterFilesByHODScope(allFiles, scope);
+    const approvedFiles = scopedFiles.filter((f: any) => {
+      const matchStatus = f.status === 'Approved';
+      const matchBatch = !batch || f.batch === batch;
+      const matchSem = !semester || (f.semester && f.semester.toLowerCase() === semester.toLowerCase());
+      return matchStatus && matchBatch && matchSem;
+    });
+
+    const safeDept = (scope.departmentName || 'Dept').replace(/[^a-zA-Z0-9]/g, '_');
+    const zipFilename = `Certificates_${safeDept}_${batch || 'All'}.zip`;
+
+    res.attachment(zipFilename);
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = createZipArchive({ zlib: { level: 9 } });
+
+    archive.on('error', (err: any) => {
+      logger.error(`[archiver error] ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: err.message });
+      }
+    });
+
+    archive.pipe(res);
+
+    for (const file of approvedFiles) {
+      const safeTeacher = (file.teacherName || 'Faculty').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeCourse = (file.courseCode || 'Course').replace(/[^a-zA-Z0-9]/g, '_');
+      const certHtml = generateCertificateHtml(file);
+      archive.append(certHtml, { name: `Certificates/${safeCourse}_${safeTeacher}_Certificate.html` });
+    }
+
+    if (approvedFiles.length === 0) {
+      archive.append('No approved certificates found for the selected scope.\n', { name: 'Certificates/info.txt' });
+    }
+
+    await archive.finalize();
+  } catch (error: any) {
+    logger.error(`[downloadHODCertificatesZip Error] ${error.message}`);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+};
+
+/**
+ * GET /api/hod/downloads/course-file/:id
+ * Streams downloadable single course file HTML dossier
+ */
+export const downloadSingleCourseFileDossier = async (req: HODRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const scope = req.hodScope!;
+
+    const file = await CourseFileService.getById(id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'Course file not found.' });
+    }
+
+    const matchDept = file.departmentId === scope.departmentId ||
+      (file.departmentName && file.departmentName.toLowerCase() === scope.departmentName.toLowerCase());
+    const matchCampus = !file.campusId || file.campusId === scope.campusId ||
+      (file.campusName && file.campusName.toLowerCase() === scope.campusName.toLowerCase());
+    const matchHod = !file.hodId || file.hodId === scope.hodId;
+
+    if (!matchDept || !matchCampus || !matchHod) {
+      return res.status(403).json({ success: false, message: 'Access denied: Out of scope.' });
+    }
+
+    const safeTeacher = (file.teacherName || 'Faculty').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeCourse = (file.courseCode || 'Course').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeBatch = (file.batch || 'Batch').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeSem = (file.semester || 'Sem').replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `${safeTeacher}_${safeCourse}_${safeBatch}_${safeSem}_CourseFile.html`;
+
+    const html = generateCourseFileHtml(file);
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(html);
+  } catch (error: any) {
+    logger.error(`[downloadSingleCourseFileDossier Error] ${error.message}`);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+

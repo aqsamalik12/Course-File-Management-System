@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, UserRole, TeacherProfileFormData, LoginLog, TeacherEnrollmentRequest, SelectedCourseItem } from '../types';
 
 // ─── localStorage keys ───────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const backendUsers: User[] = data.data;
             const combined = [...backendUsers];
             for (const u of prev) {
-              if (!combined.some((b) => b.id === u.id || b.email.toLowerCase() === u.email.toLowerCase())) {
+              if (!combined.some((b) => b.id === u.id || (b.email && u.email && b.email.toLowerCase() === u.email.toLowerCase()))) {
                 combined.push(u);
               }
             }
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const emailLower = email.trim().toLowerCase();
 
     // Check if email already exists
-    const existing = allUsers.find((u) => u.email.toLowerCase() === emailLower);
+    const existing = allUsers.find((u) => u.email && u.email.toLowerCase() === emailLower);
     if (existing) {
       return { success: false, error: 'An account with this email already exists. Please sign in.' };
     }
@@ -254,8 +254,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Update system/registered users list
         setSystemUsers((prev) => {
-          const exists = prev.some((u) => u.id === authenticatedUser.id || u.email.toLowerCase() === emailLower);
-          return exists ? prev.map((u) => (u.id === authenticatedUser.id || u.email.toLowerCase() === emailLower) ? authenticatedUser : u) : [authenticatedUser, ...prev];
+          const exists = prev.some((u) => u.id === authenticatedUser.id || (u.email && u.email.toLowerCase() === emailLower));
+          return exists ? prev.map((u) => (u.id === authenticatedUser.id || (u.email && u.email.toLowerCase() === emailLower)) ? authenticatedUser : u) : [authenticatedUser, ...prev];
         });
 
         // Track login log for teacher roles
@@ -288,7 +288,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // 2. Fallback / Offline / Local Authentication
-    let match = allUsers.find((u) => u.email.toLowerCase() === emailLower);
+    let match = allUsers.find((u) => u.email && u.email.toLowerCase() === emailLower);
 
     if (!match) {
       // Auto-register new teacher if any valid email format is used
@@ -303,7 +303,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // Check password for local fallback
-    const isSystemUser = systemUsers.some((u) => u.email.toLowerCase() === emailLower);
+    const isSystemUser = systemUsers.some((u) => u.email && u.email.toLowerCase() === emailLower);
 
     if (isSystemUser) {
       const devPasswords: Record<string, string> = {
@@ -379,6 +379,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // ─── Quick Dev Login (by role, no password) ─────────────────────────────────
   const switchRole = (role: UserRole) => {
+    localStorage.removeItem('cfms_token');
+    localStorage.removeItem('cfms_refresh_token');
     const match = systemUsers.find((u) => u.role === role) || allUsers.find((u) => u.role === role);
     if (match) {
       setLoggedInUser(match);
@@ -598,7 +600,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // ─── Refresh Current Teacher's Request Status ───────────────────────────────
-  const refreshMyRequest = async () => {
+  const refreshMyRequest = useCallback(async () => {
     if (!loggedInUser) return;
     try {
       const res = await fetch(`/api/teacher-requests/my-request?teacherId=${loggedInUser.id}&email=${encodeURIComponent(loggedInUser.email)}`);
@@ -627,7 +629,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
     } catch {}
-  };
+  }, [loggedInUser]);
 
   // ─── Contract helpers ────────────────────────────────────────────────────────
   let isVisitingContractExpired = false;

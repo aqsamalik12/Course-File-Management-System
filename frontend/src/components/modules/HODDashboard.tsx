@@ -1056,7 +1056,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-2xs font-semibold text-slate-700">
-                      {req.departmentName.replace('Department of ', '')}
+                      {(req.departmentName || 'Computer Science').replace('Department of ', '')}
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex flex-wrap items-center gap-1 max-w-[200px]">

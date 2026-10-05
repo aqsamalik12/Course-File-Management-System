@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { CourseFileCertificateModal } from '../common/CourseFileCertificateModal';
 import { CourseFileDossierModal } from '../common/CourseFileDossierModal';
-import { TeacherFormSetup } from './TeacherFormSetup';
 
 interface TeacherDashboardProps {
   onNavigate: (moduleName: string) => void;
@@ -146,79 +145,43 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }
         </div>
       </div>
 
-      {/* ─── Active Teacher Workflow Setup Card ─── */}
-      {activeTeacherSetup ? (
-        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-2 border-emerald-300 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300">
-                  Active Authorized Selection
-                </span>
-                <span className="text-xs font-bold text-slate-800">
-                  Dept: {activeTeacherSetup.departmentName}
-                </span>
-                <span className="text-slate-400">•</span>
-                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  Section: {activeTeacherSetup.sectionName}
-                </span>
-                <span className="text-slate-400">•</span>
-                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                  Course: {activeTeacherSetup.courseCode} – {activeTeacherSetup.courseName}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-1">
-                Submissions automatically route to Department HOD: <strong className="text-emerald-800">{activeTeacherSetup.hodName}</strong>
-              </p>
-            </div>
+      {/* ─── Faculty Profile & Department Scope Banner ─── */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white border-2 border-emerald-300 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fade-in">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-          <button
-            onClick={() => setShowSetupModal(true)}
-            className="px-4 py-2 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5"
-          >
-            <span>Switch Setup</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      ) : (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-              <Layers className="w-6 h-6" />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300">
+                Departmental Faculty
+              </span>
+              <span className="text-xs font-bold text-slate-800">
+                Dept: {currentUser?.departmentName || (currentUser as any)?.department || 'Computer Science'}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                Campus: {currentUser?.campus || currentUser?.campusName || 'Attock Campus'}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                Status: {currentUser?.enrollmentStatus || 'Approved'}
+              </span>
             </div>
-            <div>
-              <p className="text-sm font-extrabold text-amber-900">
-                Department, Section & Course Setup Required
-              </p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Before accessing your course file submission workflow, select your assigned Department, Section, and Course.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowSetupModal(true)}
-            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-md shrink-0 flex items-center gap-2"
-          >
-            <span>Configure Setup Now</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {showSetupModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-xl w-full">
-            <TeacherFormSetup
-              isModal
-              onContinue={() => setShowSetupModal(false)}
-              onCancel={() => setShowSetupModal(false)}
-            />
+            <p className="text-xs text-slate-600 mt-1">
+              Faculty Member: <strong className="text-slate-900">{currentUser?.name}</strong> • Supervising HOD: <strong className="text-emerald-800">{currentUser?.hodName || 'Dr. Asif (HOD Computer Science)'}</strong>
+            </p>
           </div>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={() => onNavigate('Course File Submission')}
+          className="px-5 py-2.5 bg-[#1E7B4E] hover:bg-[#165534] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md shrink-0 flex items-center gap-2"
+        >
+          <span>Create / Submit Course File</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* Contract Banner if Visiting Faculty */}
       {isVisiting && (

@@ -59,7 +59,6 @@ import { CourseFileSubmissionModule } from './components/modules/CourseFileSubmi
 import { SubmissionHistoryModule } from './components/modules/SubmissionHistoryModule';
 import { ChangePasswordModule } from './components/modules/ChangePasswordModule';
 import { TeacherProfileForm } from './components/modules/TeacherProfileForm';
-import { TeacherFormSetup } from './components/modules/TeacherFormSetup';
 
 import { LoginPage } from './components/auth/LoginPage';
 
@@ -109,12 +108,12 @@ const MainAppContent: React.FC = () => {
   const isApproved = enrollmentStatus === 'Approved';
   const formSubmitted = isApproved || (currentUser?.profileFormSubmitted ?? false);
 
-  // Automatic live unlock polling: When teacher is waiting on pending HOD approval, poll status automatically every 3.5 seconds
+  // Automatic live unlock polling: When teacher is waiting on pending HOD approval, poll status automatically every 5 seconds
   useEffect(() => {
     if (isTeacher && enrollmentStatus === 'PendingHODApproval') {
       const timer = setInterval(() => {
         refreshMyRequest();
-      }, 3500);
+      }, 5000);
       return () => clearInterval(timer);
     }
   }, [isTeacher, enrollmentStatus, refreshMyRequest]);
@@ -351,26 +350,32 @@ const MainAppContent: React.FC = () => {
         case 'Dashboard':
         case 'HOD Dashboard':
           return <HODDashboard onNavigate={(m) => setActiveModule(m)} />;
-        case 'Course Files':
-        case 'Academic / Course Files':
-        case 'All Course Files':
-          return <HODCourseFiles />;
-        case 'Pending Course Files':
-        case 'Pending Files':
-          return <HODPendingCourseFiles />;
-        case 'Approved Course Files':
-        case 'Approved Files':
-          return <HODApprovedCourseFiles />;
         case 'Teacher Requests':
         case 'Teacher Registration Requests':
         case 'Pending Requests':
-        case 'Teachers':
           return <HODTeacherRequests />;
+        case 'Teachers':
         case 'Approved Teachers':
           return <HODApprovedTeachers />;
         case 'Teacher Profiles':
         case 'Department Teachers':
           return <HODTeacherProfiles />;
+        case 'Course Files':
+        case 'Academic / Course Files':
+        case 'All Course Files':
+          return <HODCourseFiles />;
+        case 'Course File Status / Pending Review':
+        case 'Pending Course Files':
+        case 'Pending Files':
+        case 'Needs Improvement':
+          return <HODPendingCourseFiles />;
+        case 'Approved Course Files':
+        case 'Approved Files':
+        case 'Certificates':
+        case 'Downloads':
+          return <HODApprovedCourseFiles />;
+        case 'My Course Files':
+          return <CourseFileSubmissionModule onNavigate={(m) => setActiveModule(m)} />;
         case 'Course / File Progress':
         case 'Progress':
           return <HODCourseProgress />;
@@ -386,12 +391,49 @@ const MainAppContent: React.FC = () => {
       }
     }
 
+    // ─── Teacher Dedicated Modules (Exact Section 11 Navigation) ───
+    if (activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER') {
+      switch (activeModule) {
+        case 'Dashboard':
+        case 'Teacher Dashboard':
+          return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
+        case 'My Profile':
+        case 'Teacher Profile':
+        case 'My Profile Form':
+        case 'Teacher Profile Form':
+          return <TeacherProfileForm onNavigate={(m) => setActiveModule(m)} />;
+        case 'My Assigned Courses':
+        case 'Assigned Courses':
+        case 'My Courses':
+          return <TeacherCourses onNavigate={(m) => setActiveModule(m)} />;
+        case 'Course File Submission':
+        case 'Upload Course File':
+        case 'Upload File':
+        case 'New File Upload':
+          return <CourseFileSubmissionModule onNavigate={(m) => setActiveModule(m)} />;
+        case 'My Submitted Files':
+        case 'Submitted Files':
+          return <TeacherFiles filterStatus="Submitted" onNavigate={(m) => setActiveModule(m)} />;
+        case 'Needs Improvement':
+          return <TeacherFiles filterStatus="Needs Improvement" onNavigate={(m) => setActiveModule(m)} />;
+        case 'Approved Course Files':
+        case 'Approved Files':
+          return <TeacherFiles filterStatus="Approved" onNavigate={(m) => setActiveModule(m)} />;
+        case 'Certificates':
+          return <TeacherFiles filterStatus="Certificates" onNavigate={(m) => setActiveModule(m)} />;
+        case 'Downloads':
+          return <TeacherFiles filterStatus="Downloads" onNavigate={(m) => setActiveModule(m)} />;
+        case 'Notifications':
+        case 'All Notifications':
+          return <NotificationsModule activeModule={activeModule} />;
+        default:
+          return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
+      }
+    }
+
     switch (activeModule) {
       // 1. Dashboard
       case 'Dashboard':
-        if (activeRole === 'REGULAR_TEACHER' || activeRole === 'VISITING_TEACHER') {
-          return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
-        }
         return <AdminDashboard onNavigate={(m) => setActiveModule(m)} />;
 
       // 2. Campus Management
@@ -553,7 +595,7 @@ const MainAppContent: React.FC = () => {
         return <TeacherDashboard onNavigate={(m) => setActiveModule(m)} />;
       case 'Teacher Form Setup':
       case 'Form Setup':
-        return <TeacherFormSetup onContinue={() => setActiveModule('Course File Submission')} />;
+        return <CourseFileSubmissionModule onNavigate={(m) => setActiveModule(m)} />;
       case 'My Profile Form':
       case 'Teacher Profile Form':
         return <TeacherProfileForm onNavigate={(m) => setActiveModule(m)} />;

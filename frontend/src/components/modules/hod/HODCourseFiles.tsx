@@ -32,6 +32,7 @@ import { CourseFileDossierModal } from '../../common/CourseFileDossierModal';
 interface SemesterFolder {
   name: string;
   fileCount: number;
+  courseCount?: number;
   pendingCount: number;
   approvedCount: number;
   returnedCount: number;
@@ -39,13 +40,18 @@ interface SemesterFolder {
 
 interface SessionData {
   session: string;
-  totalFiles: number;
+  name: string;
+  fileCount: number;
+  totalFiles?: number;
+  approvedCount: number;
+  pendingCount?: number;
   semesters: SemesterFolder[];
 }
 
 interface BatchData {
   batch: string;
   totalFiles: number;
+  semesters?: any[];
   sessions: SessionData[];
 }
 
@@ -74,6 +80,7 @@ interface CourseFileItem {
   templateData?: any;
   fileUrl?: string;
   fileName?: string;
+  uploadDate?: string;
 }
 
 export const HODCourseFiles: React.FC = () => {
@@ -82,8 +89,9 @@ export const HODCourseFiles: React.FC = () => {
   // Hierarchy Data & Navigation State
   const [hierarchy, setHierarchy] = useState<BatchData[]>([]);
   const [loadingHierarchy, setLoadingHierarchy] = useState(true);
-  const [selectedBatch, setSelectedBatch] = useState<string | null>('2024');
-  const [selectedSession, setSelectedSession] = useState<string | null>('2024–2025');
+  const [hierarchyError, setHierarchyError] = useState<string | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedSemester, setSelectedSemester] = useState<string | null>(null);
 
   // Files in selected scope
@@ -101,6 +109,7 @@ export const HODCourseFiles: React.FC = () => {
   const [showCertificateFile, setShowCertificateFile] = useState<CourseFileItem | null>(null);
   const [showDossierFile, setShowDossierFile] = useState<CourseFileItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [savingItemSr, setSavingItemSr] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -129,8 +138,23 @@ export const HODCourseFiles: React.FC = () => {
           ? {
               ...it,
               status,
-              verified: status === 'Verified' ? 'Yes' : 'None',
+              verified: status === 'Verified' ? 'Yes' : 'No',
               comment: it.comment || (status === 'Verified' ? 'Complete and verified.' : 'Needs improvement.')
+            }
+          : it
+      )
+    );
+  };
+
+  const updateItemNA = (srNo: number) => {
+    setReviewItems((prev) =>
+      prev.map((it) =>
+        it.srNo === srNo
+          ? {
+              ...it,
+              status: 'N/A',
+              verified: 'N/A',
+              comment: 'Not applicable for this course.'
             }
           : it
       )
@@ -143,41 +167,129 @@ export const HODCourseFiles: React.FC = () => {
     );
   };
 
+  // Save individual item review & comment directly to database (Requirements 10, 23, 24)
+  const handleSaveItemReview = async (item: any) => {
+    if (!viewFile) return;
+    const currentComment = (item.comment || '').trim();
+
+    // Mandatory comment validation for Needs Improvement (Requirement 24)
+    if (item.status === 'Needs Improvement' && !currentComment) {
+      showToast('Please enter a comment explaining what needs to be corrected.', 'error');
+      return;
+    }
+
+    setSavingItemSr(item.srNo);
+    try {
+      const res = await fetch(`/api/hod/course-files/${viewFile.id}/item-review`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          srNo: item.srNo,
+          status: item.status || 'Verified',
+          comment: currentComment
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Review and comment for Section ${item.srNo} saved successfully.`, 'success');
+        if (data.data?.checklist) {
+          setReviewItems(data.data.checklist);
+          setViewFile((prev) => (prev ? {
+            ...prev,
+            status: data.data.checklist.some((it: any) => it.status === 'Needs Improvement') ? 'Needs Improvement' : prev.status,
+            templateData: {
+              ...prev.templateData,
+              checklist: data.data.checklist
+            }
+          } : null));
+        }
+        await fetchFiles();
+      } else {
+        showToast(data.message || 'Failed to save item review.', 'error');
+      }
+    } catch {
+      showToast('Network error occurred while saving review.', 'error');
+    } finally {
+      setSavingItemSr(null);
+    }
+  };
+
+  // Save all items and comments at once
+  const handleSaveAllReviews = async () => {
+    if (!viewFile) return;
+    const currentChecklist = reviewItems.length > 0 ? reviewItems : (viewFile.templateData?.checklist || []);
+
+    for (const it of currentChecklist) {
+      if (it.status === 'Needs Improvement' && (!it.comment || !it.comment.trim())) {
+        showToast(`Please enter a comment explaining what needs to be corrected for Section ${it.srNo}.`, 'error');
+        return;
+      }
+    }
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/hod/course-files/${viewFile.id}/checklist-review`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ checklist: currentChecklist })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('All item reviews and comments saved to database successfully.', 'success');
+        if (data.data?.templateData?.checklist) {
+          setReviewItems(data.data.templateData.checklist);
+        }
+        await fetchFiles();
+      } else {
+        showToast(data.message || 'Failed to save all reviews.', 'error');
+      }
+    } catch {
+      showToast('Network error occurred while saving reviews.', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getHeaders = () => {
     const token = localStorage.getItem('cfms_token');
     return {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
       'x-user-id': currentUser?.id || '',
+      'x-user-email': currentUser?.email || '',
       'x-user-role': currentUser?.role || 'HOD',
-      'x-department-id': currentUser?.departmentId || ''
+      'x-department-id': currentUser?.departmentId || '',
+      'x-department-name': currentUser?.departmentName || '',
+      'x-campus-id': currentUser?.campusId || '',
+      'x-campus-name': currentUser?.campusName || currentUser?.campus || ''
     };
   };
 
   // 1. Fetch Hierarchy (Batches -> Sessions -> 4 Semesters)
   const fetchHierarchy = async () => {
     setLoadingHierarchy(true);
+    setHierarchyError(null);
     try {
       const res = await fetch('/api/hod/batches', { headers: getHeaders() });
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.data)) {
         setHierarchy(data.data);
-        if (data.data.length > 0 && !selectedBatch) {
-          setSelectedBatch(data.data[0].batch);
-          if (data.data[0].sessions?.length > 0) {
-            setSelectedSession(data.data[0].sessions[0].session);
-          }
-        }
+      } else {
+        setHierarchyError(data.message || 'Server error loading batches.');
       }
     } catch {
-      // keep empty hierarchy
+      setHierarchyError('Network error connecting to CFMS server.');
     } finally {
       setLoadingHierarchy(false);
     }
   };
 
-  // 2. Fetch Files for current selection
+  // 2. Fetch Files for current selection (Progressive loading: only when semester is opened)
   const fetchFiles = async () => {
+    if (!selectedSemester) {
+      setFiles([]);
+      return;
+    }
     setLoadingFiles(true);
     try {
       const params = new URLSearchParams();
@@ -289,6 +401,145 @@ export const HODCourseFiles: React.FC = () => {
     }
   };
 
+  // ─── Download Handlers (All 4 Levels: Batch, Spring/Fall, Semester, Individual File) ─────────
+  const handleDownloadBatchZip = async (batch: string, session?: string) => {
+    try {
+      const sessLabel = session ? ` ${session} session` : '';
+      showToast(`Generating Batch ${batch}${sessLabel} ZIP package...`);
+      const token = localStorage.getItem('cfms_token');
+      const params = new URLSearchParams();
+      params.append('batch', batch);
+      if (session) params.append('session', session);
+
+      const res = await fetch(`/api/hod/downloads/batch?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Batch_${batch.replace(/\s+/g, '_')}${session ? '_' + session : ''}_CourseFiles.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast(`Batch ${batch}${sessLabel} course files ZIP downloaded successfully.`);
+      } else {
+        showToast('Failed to download batch ZIP.', 'error');
+      }
+    } catch {
+      showToast('Error downloading batch package.', 'error');
+    }
+  };
+
+  const handleDownloadSemesterZip = async (semester: string, batch?: string, session?: string) => {
+    try {
+      showToast(`Generating ${semester}${session ? ' ' + session : ''} ZIP package...`);
+      const token = localStorage.getItem('cfms_token');
+      const params = new URLSearchParams();
+      params.append('semester', semester);
+      if (batch) params.append('batch', batch);
+      if (session) params.append('session', session);
+      const res = await fetch(`/api/hod/downloads/semester?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${semester.replace(/\s+/g, '_')}${session ? '_' + session : ''}_CourseFiles.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast(`${semester}${session ? ' ' + session : ''} files ZIP downloaded successfully.`);
+      } else {
+        showToast('Failed to download semester ZIP.', 'error');
+      }
+    } catch {
+      showToast('Error downloading semester package.', 'error');
+    }
+  };
+
+  const handleDownloadSingleFile = async (file: CourseFileItem) => {
+    try {
+      showToast(`Downloading course file for ${file.courseCode}...`);
+      const token = localStorage.getItem('cfms_token');
+      const res = await fetch(`/api/hod/downloads/course-file/${file.id}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeTeacher = (file.teacherName || 'Faculty').replace(/[^a-zA-Z0-9]/g, '_');
+        const safeCourse = (file.courseCode || 'Course').replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `${safeTeacher}_${safeCourse}_CourseFile.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast(`${file.courseCode} course file downloaded successfully.`);
+      } else {
+        showToast('Failed to download course file.', 'error');
+      }
+    } catch {
+      showToast('Error downloading course file.', 'error');
+    }
+  };
+
+  const handleDownloadCertificatesZip = async (batch?: string, semester?: string) => {
+    try {
+      showToast('Generating Certificates ZIP package...');
+      const token = localStorage.getItem('cfms_token');
+      const params = new URLSearchParams();
+      if (batch) params.append('batch', batch);
+      if (semester) params.append('semester', semester);
+      const res = await fetch(`/api/hod/downloads/certificates?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Certificates_${batch || 'All'}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast('Approved certificates ZIP downloaded successfully.');
+      } else {
+        showToast('Failed to download certificates ZIP.', 'error');
+      }
+    } catch {
+      showToast('Error downloading certificates package.', 'error');
+    }
+  };
+
   // Active Batch & Session objects
   const activeBatchObj = hierarchy.find(b => b.batch === selectedBatch) || hierarchy[0];
   const activeSessionObj = activeBatchObj?.sessions?.find(s => s.session === selectedSession) || activeBatchObj?.sessions?.[0];
@@ -328,21 +579,52 @@ export const HODCourseFiles: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => { fetchHierarchy(); fetchFiles(); }}
-          disabled={loadingFiles || loadingHierarchy}
-          className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer self-start md:self-auto shadow-2xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${(loadingFiles || loadingHierarchy) ? 'animate-spin text-emerald-600' : ''}`} />
-          <span>Refresh Files</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => handleDownloadBatchZip(selectedBatch || '2023')}
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Download Complete Batch Package (ZIP)"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Download Batch ZIP</span>
+          </button>
+
+          {selectedSemester && (
+            <button
+              onClick={() => handleDownloadSemesterZip(selectedSemester, selectedBatch || undefined)}
+              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Download Current Semester Files (ZIP)"
+            >
+              <Download className="w-3.5 h-3.5 text-white" />
+              <span>Download {selectedSemester} ZIP</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => handleDownloadCertificatesZip(selectedBatch || undefined, selectedSemester || undefined)}
+            className="px-3.5 py-2 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Download Approved Certificates (ZIP)"
+          >
+            <Award className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Certificates ZIP</span>
+          </button>
+
+          <button
+            onClick={() => { fetchHierarchy(); fetchFiles(); }}
+            disabled={loadingFiles || loadingHierarchy}
+            className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${(loadingFiles || loadingHierarchy) ? 'animate-spin text-emerald-600' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
-      {/* ─── Breadcrumb Navigation (Requirement 32) ─── */}
-      <nav className="flex items-center gap-2 text-xs font-bold bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-2xs overflow-x-auto text-slate-600">
+      {/* ─── Breadcrumb Navigation (Exact Hierarchy: Course Files → Batch → Session → Semester) ─── */}
+      <nav className="flex items-center gap-2 text-xs font-bold bg-white px-5 py-3 rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto text-slate-600">
         <button
-          onClick={() => { setSelectedSemester(null); }}
-          className="hover:text-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+          onClick={() => { setSelectedBatch(null); setSelectedSession(null); setSelectedSemester(null); setViewFile(null); }}
+          className={`hover:text-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${!selectedBatch ? 'text-emerald-700 font-extrabold' : ''}`}
         >
           <Folder className="w-4 h-4 text-emerald-600" />
           <span>Course Files</span>
@@ -351,7 +633,12 @@ export const HODCourseFiles: React.FC = () => {
         {selectedBatch && (
           <>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-slate-800 shrink-0">Batch {selectedBatch}</span>
+            <button
+              onClick={() => { setSelectedSession(null); setSelectedSemester(null); setViewFile(null); }}
+              className={`hover:text-emerald-700 transition-colors cursor-pointer shrink-0 ${selectedBatch && !selectedSession ? 'text-emerald-700 font-extrabold' : 'text-slate-700'}`}
+            >
+              📁 {selectedBatch}
+            </button>
           </>
         )}
 
@@ -359,10 +646,10 @@ export const HODCourseFiles: React.FC = () => {
           <>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <button
-              onClick={() => setSelectedSemester(null)}
-              className={`hover:text-emerald-700 transition-colors cursor-pointer shrink-0 ${!selectedSemester ? 'text-emerald-700 font-extrabold' : 'text-slate-700'}`}
+              onClick={() => { setSelectedSemester(null); setViewFile(null); }}
+              className={`hover:text-emerald-700 transition-colors cursor-pointer shrink-0 ${selectedSession && !selectedSemester ? 'text-emerald-700 font-extrabold' : 'text-slate-700'}`}
             >
-              Session {selectedSession}
+              📁 {selectedSession}
             </button>
           </>
         )}
@@ -370,350 +657,500 @@ export const HODCourseFiles: React.FC = () => {
         {selectedSemester && (
           <>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-              {selectedSemester}
+            <span className="text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200 font-extrabold shrink-0">
+              📁 {selectedSemester}
             </span>
           </>
         )}
       </nav>
 
-      {/* ─── Level 1 & 2: Batch & Session Selector Bar ─── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-wrap items-center justify-between gap-4">
-        {/* Batch Selection Tabs */}
-        <div className="flex items-center gap-2">
-          <span className="text-2xs font-extrabold text-slate-500 uppercase tracking-wider mr-1">Batch:</span>
-          {hierarchy.map(b => (
-            <button
-              key={b.batch}
-              onClick={() => {
-                setSelectedBatch(b.batch);
-                if (b.sessions?.length > 0) setSelectedSession(b.sessions[0].session);
-                setSelectedSemester(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedBatch === b.batch
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
-              Batch {b.batch}
-            </button>
-          ))}
-        </div>
-
-        {/* Session Selection */}
-        {activeBatchObj && activeBatchObj.sessions && (
-          <div className="flex items-center gap-2">
-            <span className="text-2xs font-extrabold text-slate-500 uppercase tracking-wider mr-1">Session:</span>
-            {activeBatchObj.sessions.map(s => (
-              <button
-                key={s.session}
-                onClick={() => {
-                  setSelectedSession(s.session);
-                  setSelectedSemester(null);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedSession === s.session
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/60'
-                }`}
-              >
-                {s.session}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ─── Level 3: The 4 Standard Semester Containers (Requirements 7, 8, 31, 33) ─── */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs px-1">
-          <span className="font-extrabold uppercase text-slate-500 tracking-wider text-2xs">
-            Standard Semester Containers (Batch {selectedBatch} • Session {selectedSession})
-          </span>
-          {selectedSemester && (
-            <button
-              onClick={() => setSelectedSemester(null)}
-              className="text-2xs font-bold text-emerald-700 hover:underline cursor-pointer"
-            >
-              Show All Semesters
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(activeSessionObj?.semesters || [
-            { name: '1st Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '2nd Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '3rd Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '4th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '5th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '6th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '7th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 },
-            { name: '8th Semester', fileCount: 0, pendingCount: 0, approvedCount: 0, returnedCount: 0 }
-          ]).map((sem) => {
-            const isSelected = selectedSemester === sem.name;
-            return (
-              <div
-                key={sem.name}
-                onClick={() => setSelectedSemester(isSelected ? null : sem.name)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer select-none group relative overflow-hidden ${
-                  isSelected
-                    ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-600'
-                    : 'bg-white hover:bg-slate-50 border-slate-200/90 shadow-2xs hover:border-emerald-300'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    {isSelected ? (
-                      <FolderOpen className="w-5 h-5 text-emerald-200" />
-                    ) : (
-                      <Folder className="w-5 h-5 text-emerald-600 group-hover:scale-110 transition-transform" />
-                    )}
-                    <h3 className={`text-sm font-extrabold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                      {sem.name}
-                    </h3>
-                  </div>
-                  {sem.pendingCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-3xs font-extrabold bg-amber-500 text-white">
-                      {sem.pendingCount} Pending
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-baseline justify-between">
-                  <span className={`text-2xl font-black font-heading ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                    {sem.fileCount}
-                  </span>
-                  <span className={`text-2xs font-bold ${isSelected ? 'text-emerald-100' : 'text-slate-500'}`}>
-                    Course {sem.fileCount === 1 ? 'File' : 'Files'}
-                  </span>
-                </div>
-
-                <div className={`mt-3 pt-2 border-t text-2xs flex items-center justify-between font-bold ${
-                  isSelected ? 'border-emerald-700 text-emerald-100' : 'border-slate-100 text-emerald-700'
-                }`}>
-                  <span>{isSelected ? 'Viewing Semester Files' : 'Open Semester Folder →'}</span>
-                  {sem.approvedCount > 0 && (
-                    <span className="text-3xs opacity-80">{sem.approvedCount} Approved</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ─── Search & Status Filters for Table ─── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Status Filter */}
-        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
-          {['All', 'Pending', 'Approved', 'Returned'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === tab
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {tab === 'Pending' ? 'Pending Review' : tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Input */}
-        <form onSubmit={handleSearchSubmit} className="relative sm:w-72">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by course code, title, teacher..."
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 text-slate-900 placeholder-slate-400"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </form>
-      </div>
-
-      {/* ─── Level 4: Course Files Table (Requirement 18, 33) ─── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
-          <div>
-            <h2 className="text-sm font-extrabold text-slate-900 font-heading">
-              {selectedSemester ? `${selectedSemester} Course Files` : 'All Semester Course Files'}
-            </h2>
-            <p className="text-2xs text-slate-500">
-              Batch {selectedBatch} • Session {selectedSession} • Scoped to {currentUser?.departmentName}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const approvedInScope = files.filter(f => f.status === 'Approved');
-                if (approvedInScope.length === 0) {
-                  showToast('No approved course files available to download in this semester.', 'error');
-                  return;
-                }
-                setShowDossierFile(approvedInScope[0]);
-                showToast(`Preparing package for ${selectedSemester || 'Current Semester'} (${approvedInScope.length} course files)...`, 'success');
-              }}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-              title="Download all approved files in this semester"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Download Semester Files</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const approvedInScope = files.filter(f => f.status === 'Approved');
-                if (approvedInScope.length === 0) {
-                  showToast('No approved course files available in this batch.', 'error');
-                  return;
-                }
-                setShowDossierFile(approvedInScope[0]);
-                showToast(`Preparing batch folder package for Batch ${selectedBatch} (${approvedInScope.length} files)...`, 'success');
-              }}
-              className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-              title="Download complete batch course file folder package"
-            >
-              <Folder className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Download Batch Package</span>
-            </button>
-            <span className="text-xs font-bold text-slate-500 ml-2">
-              Total: <strong className="text-slate-900">{files.length}</strong>
+      {/* ─── LEVEL 1: BATCH VIEW (Only batches with real department records) ─── */}
+      {!selectedBatch ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs px-1">
+            <span className="font-extrabold uppercase text-slate-500 tracking-wider text-2xs">
+              Level 1 — Academic Batches ({hierarchy.length} Found)
+            </span>
+            <span className="text-2xs text-slate-400 font-medium">
+              Authorized Campus: {currentUser?.campus || 'Attock Campus'} • Department: {currentUser?.departmentName || 'Computer Science'}
             </span>
           </div>
-        </div>
 
-        {loadingFiles ? (
-          <div className="p-16 text-center text-xs text-slate-500">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
-            <p className="font-bold text-slate-700">Loading course files...</p>
-          </div>
-        ) : files.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 space-y-2">
-            <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-sm font-bold text-slate-700">No course files found.</p>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              When approved teachers submit course files for {selectedSemester || 'this session'}, they will automatically appear inside their respective semester folders.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold text-2xs tracking-wider">
-                <tr>
-                  <th className="px-6 py-3.5">Course Code & Title</th>
-                  <th className="px-6 py-3.5">Teacher</th>
-                  <th className="px-6 py-3.5">Semester</th>
-                  <th className="px-6 py-3.5">Credits</th>
-                  <th className="px-6 py-3.5">Submitted Date</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {files.map((file) => (
-                  <tr key={file.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">{file.courseCode} — {file.courseTitle}</div>
-                      <div className="text-2xs text-slate-500">{file.title}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">{file.teacherName}</div>
-                      <div className="text-2xs text-slate-500">{file.teacherEmail || file.teacherRole}</div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-slate-700">
-                      {file.semester || '1st Semester'}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-800">
-                      {file.credits || 3} Credits
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {file.submittedAt ? new Date(file.submittedAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Draft'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-extrabold border ${
-                          file.status === 'Approved'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : file.status === 'Returned' || file.status === 'Rejected'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : file.status === 'Draft'
-                            ? 'bg-slate-100 text-slate-700 border-slate-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}
-                      >
-                        {file.status === 'Submitted' ? 'Pending Review' : file.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          onClick={() => setViewFile(file)}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer"
-                          title="Open and Review Course File"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Review</span>
-                        </button>
-
-                        {file.status === 'Approved' && (
-                          <>
-                            <button
-                              onClick={() => setShowDossierFile(file)}
-                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                              title="Download Course File PDF Dossier"
-                            >
-                              <Download className="w-3.5 h-3.5 text-slate-700" />
-                              <span>Download PDF</span>
-                            </button>
-                            <button
-                              onClick={() => setShowCertificateFile(file)}
-                              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                              title="View & Download Official Certificate"
-                            >
-                              <Award className="w-3.5 h-3.5 text-emerald-700" />
-                              <span>Certificate</span>
-                            </button>
-                          </>
-                        )}
-
-                        {(file.status === 'Submitted' || file.status === 'Under Review') && (
-                          <>
-                            <button
-                              onClick={() => setApproveConfirmId(file.id)}
-                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                              title="Approve File"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Approve</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setReturnModalFile(file);
-                                setReturnComment('');
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer"
-                              title="Return for Revision"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Return</span>
-                            </button>
-                          </>
-                        )}
+          {loadingHierarchy ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">Loading Academic Batches...</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Retrieving approved course file folders from repository...
+              </p>
+            </div>
+          ) : hierarchyError ? (
+            <div className="bg-white rounded-3xl border border-rose-200 p-12 text-center space-y-3">
+              <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
+              <p className="text-sm font-bold text-slate-800">Unable to Load Batches</p>
+              <p className="text-xs text-rose-600 max-w-sm mx-auto">{hierarchyError}</p>
+              <button
+                onClick={() => fetchHierarchy()}
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs inline-flex items-center gap-1.5 mx-auto"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Retry</span>
+              </button>
+            </div>
+          ) : hierarchy.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+              <Folder className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700">No Batches Available</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No course files or assignments have been submitted yet under your department.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {hierarchy.map((b) => (
+                <div
+                  key={b.batch}
+                  onClick={() => setSelectedBatch(b.batch)}
+                  className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                        <Folder className="w-5 h-5" />
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="px-2.5 py-1 text-3xs font-extrabold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                        {b.totalFiles} File{b.totalFiles === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 font-heading group-hover:text-emerald-800 transition-colors">
+                        📁 {b.batch}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {b.sessions?.length || 0} active session{(b.sessions?.length || 0) === 1 ? '' : 's'} ({b.sessions?.map(s => s.name || s.session).join(', ') || 'None'})
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-2xs text-slate-600 flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Department</span>
+                      <span className="font-bold text-slate-800">{currentUser?.departmentName || 'Computer Science'}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDownloadBatchZip(b.batch)}
+                      title="Download Complete Batch"
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Download</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedBatch(b.batch)}
+                      className="flex-1 py-2 px-3.5 bg-[#1E7B4E] hover:bg-[#165534] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <span>Open Batch</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : !selectedSession ? (
+        /* ─── LEVEL 2: BATCH FOLDER (Spring / Fall Sessions) ─── */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedBatch(null); }}
+                  className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ← Back to Course Files
+                </button>
+                <span className="text-slate-300">•</span>
+                <span className="text-3xs font-extrabold uppercase tracking-wider text-[#1E7B4E] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  Level 2 — Sessions
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900 font-heading">
+                📁 {selectedBatch}
+              </h2>
+              <p className="text-xs text-slate-500">
+                Inside this batch, only sessions with real course file records appear below.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleDownloadBatchZip(selectedBatch)}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs shrink-0"
+              title="Download Complete Batch"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>Download Batch</span>
+            </button>
           </div>
-        )}
-      </div>
+
+          {(!activeBatchObj?.sessions || activeBatchObj.sessions.length === 0) ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+              <Folder className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700">No Sessions Available</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No course files have been submitted yet under Batch {selectedBatch}.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {activeBatchObj.sessions.map((sess) => (
+                <div
+                  key={sess.name}
+                  onClick={() => setSelectedSession(sess.session)}
+                  className={`bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs transition-all flex flex-col justify-between space-y-4 group cursor-pointer ${
+                    sess.name === 'Spring' ? 'hover:border-emerald-400 hover:shadow-md' : 'hover:border-indigo-400 hover:shadow-md'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                        sess.name === 'Spring'
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                          : 'bg-indigo-50 border border-indigo-200 text-indigo-700'
+                      }`}>
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <span className={`px-2.5 py-1 text-3xs font-extrabold rounded-full border ${
+                        sess.name === 'Spring'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                      }`}>
+                        {sess.fileCount} File{sess.fileCount === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 font-heading group-hover:text-emerald-800 transition-colors">
+                        📁 {sess.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {sess.semesters?.length || 0} active semester{(sess.semesters?.length || 0) === 1 ? '' : 's'} • {sess.approvedCount} approved
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDownloadBatchZip(selectedBatch, sess.session)}
+                      title={`Download Complete ${sess.name}`}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Download</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedSession(sess.session)}
+                      className={`flex-1 py-2 px-3.5 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs ${
+                        sess.name === 'Spring' ? 'bg-[#1E7B4E] hover:bg-[#165534]' : 'bg-indigo-700 hover:bg-indigo-800'
+                      }`}
+                    >
+                      <span>Open {sess.name}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : !selectedSemester ? (
+        /* ─── LEVEL 3: SPRING / FALL FOLDER (Semesters inside Session) ─── */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedSession(null); }}
+                  className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ← Back to {selectedBatch}
+                </button>
+                <span className="text-slate-300">•</span>
+                <span className="text-3xs font-extrabold uppercase tracking-wider text-[#1E7B4E] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  Level 3 — Semesters
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900 font-heading">
+                📁 {selectedSession} — {selectedBatch}
+              </h2>
+              <p className="text-xs text-slate-500">
+                Showing only semesters with course-file records for {selectedBatch} ({selectedSession}).
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => handleDownloadBatchZip(selectedBatch, selectedSession)}
+                className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs shrink-0"
+                title={`Download All ${selectedSession} Files for ${selectedBatch}`}
+              >
+                <Download className="w-4 h-4 text-white" />
+                <span>Download {selectedSession}</span>
+              </button>
+            </div>
+          </div>
+
+          {(!activeSessionObj?.semesters || activeSessionObj.semesters.length === 0) ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+              <FolderOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-700">No Semesters Found</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No {selectedSession} course files available for this batch.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {activeSessionObj.semesters.map((sem) => (
+                <div
+                  key={sem.name}
+                  onClick={() => setSelectedSemester(sem.name)}
+                  className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                        <FolderOpen className="w-5 h-5" />
+                      </div>
+                      <span className="px-2.5 py-1 text-3xs font-extrabold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                        {sem.fileCount} File{sem.fileCount === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900 font-heading group-hover:text-emerald-800 transition-colors">
+                        📁 {sem.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {sem.courseCount || sem.fileCount} course{(sem.courseCount || sem.fileCount) === 1 ? '' : 's'} • {sem.approvedCount} approved
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {sem.approvedCount > 0 && (
+                        <span className="text-3xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {sem.approvedCount} Approved
+                        </span>
+                      )}
+                      {sem.pendingCount > 0 && (
+                        <span className="text-3xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          {sem.pendingCount} Pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDownloadSemesterZip(sem.name, selectedBatch, selectedSession)}
+                      title="Download Complete Semester"
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Download</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedSemester(sem.name)}
+                      className="flex-1 py-2 px-3 bg-[#1E7B4E] hover:bg-[#165534] text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      <span>Open</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ─── LEVEL 4: SEMESTER FOLDER (Course Files in Semester) ─── */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedSemester(null); }}
+                  className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ← Back to {selectedSession}
+                </button>
+                <span className="text-slate-300">•</span>
+                <span className="text-3xs font-extrabold uppercase tracking-wider text-[#1E7B4E] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  Level 4 — Course Files
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900 font-heading">
+                {selectedSemester} ({selectedBatch} • {selectedSession})
+              </h2>
+              <p className="text-xs text-slate-500">
+                All course files for {selectedBatch} → {selectedSession} → {selectedSemester}.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => handleDownloadSemesterZip(selectedSemester, selectedBatch, selectedSession)}
+                className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                title="Download Complete Semester"
+              >
+                <Download className="w-4 h-4 text-white" />
+                <span>Download Semester</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Status Filters */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
+              {['All', 'Pending', 'Approved', 'Returned'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    statusFilter === tab
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab === 'Pending' ? 'Pending Review' : tab}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSearchSubmit} className="relative sm:w-72">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by course code, title, teacher..."
+                className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 text-slate-900 placeholder-slate-400"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </form>
+          </div>
+
+          {/* Courses & Course Files Table */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <span className="text-xs font-bold text-slate-700">
+                Course Files ({files.length})
+              </span>
+              <span className="text-2xs text-slate-400 font-medium">
+                Scoped to {currentUser?.departmentName || 'Computer Science'}
+              </span>
+            </div>
+
+            {loadingFiles ? (
+              <div className="p-16 text-center text-xs text-slate-500">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
+                <p className="font-bold text-slate-700">Loading course files...</p>
+              </div>
+            ) : files.length === 0 ? (
+              <div className="p-16 text-center text-slate-500 space-y-2">
+                <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">No course files are available for this semester.</p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  When assigned teachers submit course files for Batch {selectedBatch} ({selectedSemester}), they will automatically appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold text-2xs tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3.5">Course Name & Code</th>
+                      <th className="px-6 py-3.5">Teacher Name</th>
+                      <th className="px-6 py-3.5">Submission Date</th>
+                      <th className="px-6 py-3.5">Status</th>
+                      <th className="px-6 py-3.5 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {files.map((file) => (
+                      <tr key={file.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900">{file.courseTitle || file.title || 'Course'}</div>
+                          <div className="text-2xs font-mono text-emerald-700 font-bold">{file.courseCode}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900">{file.teacherName}</div>
+                          <div className="text-2xs text-slate-500">{file.teacherEmail || file.teacherRole}</div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600">
+                          {file.submittedAt ? new Date(file.submittedAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' }) : (file.uploadDate || 'Draft')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-2xs font-extrabold border ${
+                              file.status === 'Approved'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : file.status === 'Returned' || file.status === 'Rejected'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : file.status === 'Draft'
+                                ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {file.status === 'Submitted' ? 'Pending Review' : file.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            <button
+                              onClick={() => setViewFile(file)}
+                              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer"
+                              title="View & Review Course File"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-600" />
+                              <span>View</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDownloadSingleFile(file)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="Download Individual Approved Course File"
+                            >
+                              <Download className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Download</span>
+                            </button>
+
+                            {file.status === 'Approved' && (
+                              <button
+                                onClick={() => setShowCertificateFile(file)}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                title="View Certificate"
+                              >
+                                <Award className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>Certificate</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
 
       {/* ─── Detailed Course File Review Modal (Requirement 19) ─── */}
       {viewFile && (
@@ -799,103 +1236,160 @@ export const HODCourseFiles: React.FC = () => {
                   <div className="flex items-center justify-between border-b pb-2">
                     <h5 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                       <FileCheck2 className="w-4 h-4 text-emerald-600" />
-                      <span>Official 15-Item Course File Verification Sheet</span>
+                      <span>Official 14-Item Statutory Course File Verification Sheet</span>
                     </h5>
                     <span className="text-3xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).filter((i: any) => i.status === 'Verified' || i.verified === 'Yes').length} / 15 Verified
+                      {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).filter((i: any) => i.status === 'Verified' || i.verified === 'Yes' || i.verified === 'N/A' || i.status === 'N/A').length} / {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).length || 14} Verified/Compliant
                     </span>
                   </div>
 
                   <div className="border border-slate-300 rounded-xl overflow-hidden shadow-xs">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-slate-100/90 border-b border-slate-300 text-slate-700">
-                          <th className="py-2.5 px-3 font-bold w-12 text-center border-r border-slate-300">Sr.</th>
-                          <th className="py-2.5 px-3 font-bold w-1/3 border-r border-slate-300">Document / Section</th>
-                          <th className="py-2.5 px-3 font-bold w-48 text-center border-r border-slate-300">Review Decision</th>
-                          <th className="py-2.5 px-3 font-bold">Mandatory HOD Comment / Feedback</th>
+                        <tr className="bg-slate-100/90 border-b border-slate-300 text-slate-700 font-extrabold uppercase text-3xs tracking-wider">
+                          <th className="py-2.5 px-3 w-10 text-center border-r border-slate-300">Sr.</th>
+                          <th className="py-2.5 px-3 w-1/3 border-r border-slate-300">Document / Section</th>
+                          <th className="py-2.5 px-2 w-24 text-center border-r border-slate-300">Uploaded</th>
+                          <th className="py-2.5 px-3 w-52 text-center border-r border-slate-300">Review Decision</th>
+                          <th className="py-2.5 px-3">Mandatory HOD Comment & Review Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 text-2xs">
                         {(reviewItems.length > 0 ? reviewItems : viewFile.templateData?.checklist || []).map((item: any) => {
-                          const isNeedsImp = item.status === 'Needs Improvement';
+                          const isNeedsImp = item.status === 'Needs Improvement' || item.verified === 'No';
                           const isVer = item.status === 'Verified' || item.verified === 'Yes';
-                          const isEditable = viewFile.status === 'Submitted' || viewFile.status === 'Under Review';
+                          const isNA = item.status === 'N/A' || item.verified === 'N/A' || item.isNA;
+                          const isEditable = viewFile.status === 'Submitted' || viewFile.status === 'Under Review' || viewFile.status === 'Needs Improvement';
+                          const isConditional = [9, 10, 11].includes(item.srNo) || item.isApplicableOnly;
+                          const hasFile = !!item.fileName || !!item.file || item.uploaded || item.isUploaded || item.verified === 'Yes';
 
                           return (
                             <tr
                               key={item.srNo}
                               className={`transition-colors ${
-                                isNeedsImp ? 'bg-rose-50/70' : isVer ? 'hover:bg-emerald-50/20' : 'hover:bg-slate-50'
+                                isNeedsImp ? 'bg-rose-50/70' : isVer ? 'hover:bg-emerald-50/20' : isNA ? 'bg-slate-50/50' : 'hover:bg-slate-50'
                               }`}
                             >
-                              <td className="py-2 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300 align-top pt-3">
+                              <td className="py-2.5 px-3 font-mono font-bold text-slate-700 text-center border-r border-slate-300 align-top pt-3">
                                 {item.srNo}.
                               </td>
 
-                              <td className="py-2 px-3 border-r border-slate-300 align-top">
+                              <td className="py-2.5 px-3 border-r border-slate-300 align-top">
                                 <span className="font-extrabold text-slate-900 block text-xs">
                                   {item.content || item.name}
                                 </span>
                                 {item.fileName ? (
-                                  <div className="flex items-center gap-1.5 mt-1">
+                                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                     <span className="text-3xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                                       <span>📄</span>
-                                      <span className="truncate max-w-[200px]">{item.fileName}</span>
+                                      <span className="truncate max-w-[140px]">{item.fileName}</span>
                                       <span>({item.fileSize || 'PDF'})</span>
                                     </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (item.fileUrl) {
+                                          window.open(item.fileUrl, '_blank');
+                                        } else {
+                                          const sampleText = `%PDF-1.4\nOfficial University of Education Course File Document\nSr No. ${item.srNo}: ${item.content || item.name}\nFile: ${item.fileName}\nCourse: ${viewFile.courseCode} - ${viewFile.courseTitle}\nFaculty: ${viewFile.teacherName}\nStatus: ${item.status || 'Verified'}\nComment: ${item.comment || 'Verified and compliant'}`;
+                                          const blob = new Blob([sampleText], { type: 'application/pdf' });
+                                          const url = URL.createObjectURL(blob);
+                                          window.open(url, '_blank');
+                                        }
+                                      }}
+                                      className="px-2 py-0.5 rounded text-3xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                                      title="Preview uploaded PDF"
+                                    >
+                                      <Eye className="w-3 h-3 text-emerald-700" />
+                                      <span>View PDF</span>
+                                    </button>
                                   </div>
+                                ) : isNA ? (
+                                  <span className="text-3xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 mt-1 inline-block font-semibold">
+                                    Not Applicable (Theory Course)
+                                  </span>
                                 ) : (
                                   <span className="text-3xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mt-1 inline-block">
-                                    No direct file attached
+                                    No document attached
                                   </span>
                                 )}
                               </td>
 
-                              {/* Review Decision */}
-                              <td className="py-2 px-3 border-r border-slate-300 align-top text-center">
+                              {/* Uploaded Indicator (Requirement 6, 23) */}
+                              <td className="py-2.5 px-2 text-center border-r border-slate-300 align-top pt-3">
+                                {isNA ? (
+                                  <span className="text-slate-400 font-semibold text-3xs">N/A</span>
+                                ) : hasFile ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-3xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <Check className="w-3 h-3 stroke-[3] text-emerald-700" />
+                                    <span>Yes</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-3xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                    No
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Review Decision (Requirement 9, 23) */}
+                              <td className="py-2.5 px-3 border-r border-slate-300 align-top text-center">
                                 {isEditable ? (
-                                  <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1">
+                                  <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1 flex-wrap justify-center">
                                     <button
                                       type="button"
                                       onClick={() => updateItemStatus(item.srNo, 'Verified')}
-                                      className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
-                                        isVer && !isNeedsImp
+                                      className={`px-2 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                        isVer && !isNeedsImp && !isNA
                                           ? 'bg-emerald-600 text-white shadow-xs'
                                           : 'text-slate-600 hover:text-emerald-700 hover:bg-white'
                                       }`}
                                     >
                                       <Check className="w-3 h-3" />
-                                      <span>Verified</span>
+                                      <span>Verified (Yes)</span>
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => updateItemStatus(item.srNo, 'Needs Improvement')}
-                                      className={`px-2.5 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
+                                      className={`px-2 py-1 rounded-md font-bold text-3xs flex items-center gap-1 transition-all cursor-pointer ${
                                         isNeedsImp
                                           ? 'bg-rose-600 text-white shadow-xs'
                                           : 'text-slate-600 hover:text-rose-700 hover:bg-white'
                                       }`}
                                     >
                                       <RotateCcw className="w-3 h-3" />
-                                      <span>Return</span>
+                                      <span>Needs Imp. (No)</span>
                                     </button>
+                                    {isConditional && (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateItemNA(item.srNo)}
+                                        className={`px-1.5 py-1 rounded-md font-bold text-3xs flex items-center gap-0.5 transition-all cursor-pointer ${
+                                          isNA
+                                            ? 'bg-slate-700 text-white shadow-xs'
+                                            : 'text-slate-500 hover:text-slate-700 hover:bg-white'
+                                        }`}
+                                      >
+                                        <span>N/A</span>
+                                      </button>
+                                    )}
                                   </div>
                                 ) : (
                                   <span
                                     className={`inline-flex items-center px-2 py-0.5 rounded font-extrabold text-3xs border ${
                                       isNeedsImp
                                         ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : isNA
+                                        ? 'bg-slate-100 text-slate-700 border-slate-300'
                                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                     }`}
                                   >
-                                    {isNeedsImp ? 'Needs Improvement' : 'Verified'}
+                                    {isNeedsImp ? 'Needs Improvement (No)' : isNA ? 'N/A' : 'Verified (Yes)'}
                                   </span>
                                 )}
                               </td>
 
-                              {/* Mandatory Individual Comment */}
-                              <td className="py-2 px-3 align-top space-y-1.5">
+                              {/* Mandatory Individual Comment & Save Review Button (Requirements 7, 10, 23, 24) */}
+                              <td className="py-2.5 px-3 align-top space-y-2">
                                 {isEditable ? (
                                   <>
                                     <input
@@ -909,34 +1403,48 @@ export const HODCourseFiles: React.FC = () => {
                                           : 'border-slate-300 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500'
                                       }`}
                                     />
-                                    <div className="flex items-center gap-1 flex-wrap">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItemComment(item.srNo, 'Complete and verified.')}
+                                          className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                        >
+                                          + Complete & Verified
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItemComment(item.srNo, 'CV mein required information missing hai.')}
+                                          className="text-[9px] font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 cursor-pointer"
+                                        >
+                                          + CV missing info
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItemComment(item.srNo, 'Mid Term paper upload kar dein.')}
+                                          className="text-[9px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 cursor-pointer"
+                                        >
+                                          + Upload Midterm
+                                        </button>
+                                      </div>
+
                                       <button
                                         type="button"
-                                        onClick={() => updateItemComment(item.srNo, 'Complete and verified.')}
-                                        className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                                        disabled={savingItemSr === item.srNo}
+                                        onClick={() => handleSaveItemReview(item)}
+                                        className={`px-3 py-1 rounded-lg text-2xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-xs ${
+                                          isNeedsImp
+                                            ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                                            : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                                        }`}
+                                        title="Save this item review and comment to database"
                                       >
-                                        + Complete & Verified
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateItemComment(item.srNo, 'CV mein required information missing hai.')}
-                                        className="text-[9px] font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200 cursor-pointer"
-                                      >
-                                        + CV missing info
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateItemComment(item.srNo, 'Mid Term paper upload kar dein.')}
-                                        className="text-[9px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 cursor-pointer"
-                                      >
-                                        + Upload Midterm
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateItemComment(item.srNo, 'Final examination record complete hai.')}
-                                        className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
-                                      >
-                                        + Final Exam Complete
+                                        {savingItemSr === item.srNo ? (
+                                          <RefreshCw className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <Check className="w-3 h-3" />
+                                        )}
+                                        <span>Save Review</span>
                                       </button>
                                     </div>
                                   </>
@@ -1059,25 +1567,79 @@ export const HODCourseFiles: React.FC = () => {
                 </>
               )}
 
-              {(viewFile.status === 'Submitted' || viewFile.status === 'Under Review') && (
-                <>
-                  <button
-                    onClick={() => {
-                      setReturnModalFile(viewFile);
-                      setReturnComment('');
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs cursor-pointer transition-all"
-                  >
-                    Return for Revision
-                  </button>
-                  <button
-                    onClick={() => setApproveConfirmId(viewFile.id)}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition-all shadow-md shadow-emerald-950/20"
-                  >
-                    Approve Course File
-                  </button>
-                </>
-              )}
+              {(viewFile.status === 'Submitted' || viewFile.status === 'Under Review') && (() => {
+                const currentChecklist = reviewItems.length > 0 ? reviewItems : (viewFile.templateData?.checklist || []);
+                const hasNeedsImp = currentChecklist.some((item: any) => item.status === 'Needs Improvement');
+                const allRequiredApproved = currentChecklist.length > 0 && currentChecklist.every((item: any) => {
+                  if (item.isApplicableOnly || item.isConditional || [9, 10, 11].includes(item.srNo)) {
+                    if (item.verified === 'N/A' || item.status === 'N/A' || item.isNA) return true;
+                  }
+                  return item.verified === 'Yes' || item.status === 'Verified';
+                });
+                const isSelfCourse = viewFile.teacherId === currentUser?.id ||
+                  (!!currentUser?.email && !!viewFile.teacherEmail && viewFile.teacherEmail.toLowerCase() === currentUser.email.toLowerCase());
+                const isSuperAdmin = currentUser?.role === 'ADMIN';
+                const canApprove = !hasNeedsImp && allRequiredApproved && (!isSelfCourse || isSuperAdmin);
+
+                return (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+                    {isSelfCourse && !isSuperAdmin && (
+                      <div className="px-3 py-2 bg-amber-50 border border-amber-300 rounded-xl text-2xs text-amber-900 font-medium flex items-center gap-1.5 flex-1">
+                        <span>⚠️</span>
+                        <span><strong>Self-Approval Restricted:</strong> You are the instructor for this course. Per academic policy, an HOD cannot self-approve their own file; approval is delegated to Dean / Admin.</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 justify-end ml-auto">
+                      <button
+                        type="button"
+                        disabled={actionLoading}
+                        onClick={handleSaveAllReviews}
+                        className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs cursor-pointer transition-all flex items-center gap-1.5"
+                        title="Save all item reviews and comments to database"
+                      >
+                        <Check className="w-3.5 h-3.5 text-slate-700" />
+                        <span>Save All Reviews</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReturnModalFile(viewFile);
+                          setReturnComment('');
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs cursor-pointer transition-all"
+                      >
+                        Return for Revision
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isSelfCourse && !isSuperAdmin) {
+                            showToast('Self-approval restricted: HOD cannot approve their own course file.', 'error');
+                            return;
+                          }
+                          if (!canApprove) {
+                            if (hasNeedsImp) {
+                              showToast('Cannot approve: One or more documents are marked as "Needs Improvement". Please return for revision or verify them.', 'error');
+                            } else {
+                              showToast('Cannot approve: All required documents must be Verified (Yes) before final approval.', 'error');
+                            }
+                            return;
+                          }
+                          setApproveConfirmId(viewFile.id);
+                        }}
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md ${
+                          canApprove
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-emerald-950/20'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                        }`}
+                        title={isSelfCourse && !isSuperAdmin ? 'Self-approval is prohibited' : canApprove ? 'Approve Course File' : 'All required items must be verified (Yes) before approval'}
+                      >
+                        Approve Course File
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

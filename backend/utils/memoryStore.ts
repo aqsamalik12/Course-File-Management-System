@@ -28,35 +28,7 @@ export interface MemoryStore {
 // at startup. All fake/mock/dummy seed data has been removed.
 // ==================================================================================
 export const memoryStore: MemoryStore = {
-  campuses: [
-    {
-      id: 'camp-attock',
-      code: 'UE-ATK',
-      name: 'Attock Campus',
-      city: 'Attock',
-      address: 'University Road, Attock City',
-      directorName: 'Prof. Dr. Muhammad Aslam',
-      status: 'Active'
-    },
-    {
-      id: 'camp-main',
-      code: 'UE-MAIN',
-      name: 'Main Campus',
-      city: 'Lahore',
-      address: 'College Road, Township, Lahore',
-      directorName: 'Prof. Dr. Shahid Iqbal',
-      status: 'Active'
-    },
-    {
-      id: 'camp-multan',
-      code: 'UE-MLT',
-      name: 'Multan Campus',
-      city: 'Multan',
-      address: 'Bosan Road, Multan',
-      directorName: 'Prof. Dr. Rashid Mehmood',
-      status: 'Active'
-    }
-  ],
+  campuses: [],
   notifications: [],
   users: [
     // Only the essential admin account is kept as a critical fallback

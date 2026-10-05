@@ -13,10 +13,29 @@ import {
   GraduationCap,
   Folder,
   FileText,
-  Layers,
   Calendar,
-  BookOpen
+  Award,
+  AlertTriangle,
+  Download,
+  FileCheck2,
+  CheckCircle2,
+  HelpCircle,
+  BarChart3,
+  PieChart as PieChartIcon
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 interface HODDashboardProps {
   onNavigate: (moduleName: string, state?: any) => void;
@@ -46,12 +65,24 @@ interface DashboardData {
     role: string;
   };
   stats: {
+    totalRegisteredTeachers: number;
+    approvedTeachers: number;
     pendingRequests: number;
-    registeredTeachers: number;
-    pendingCourseFiles: number;
+    totalCourseFiles: number;
+    submittedCourseFiles: number;
+    underReviewCourseFiles: number;
+    needsImprovementCourseFiles: number;
     approvedCourseFiles: number;
-    returnedCourseFiles?: number;
-    totalCourseFiles?: number;
+    pendingIncompleteCourseFiles: number;
+    certificatesAvailable: number;
+    pendingCourseFiles?: number;
+    rejectedRequests?: number;
+  };
+  charts?: {
+    teacherRegistrationOverview?: any[];
+    courseFileOverview?: any[];
+    courseFileCompletion?: any[];
+    sessionDistribution?: any[];
   };
   batchesOverview: BatchOverview[];
   recentCourseFiles: any[];
@@ -74,8 +105,12 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
           'x-user-id': currentUser?.id || '',
+          'x-user-email': currentUser?.email || '',
           'x-user-role': currentUser?.role || 'HOD',
-          'x-department-id': currentUser?.departmentId || ''
+          'x-department-id': currentUser?.departmentId || '',
+          'x-department-name': currentUser?.departmentName || '',
+          'x-campus-id': currentUser?.campusId || '',
+          'x-campus-name': currentUser?.campusName || currentUser?.campus || ''
         }
       });
       const resData = await res.json();
@@ -101,9 +136,38 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
 
   const batches = data?.batchesOverview || [];
   const currentBatch = batches[selectedBatchIdx] || batches[0];
+  const stats = data?.stats;
+
+  // Real chart data computed strictly from server response
+  const teacherChartData = data?.charts?.teacherRegistrationOverview || [
+    { name: 'Approved', count: stats?.approvedTeachers ?? 0, fill: '#10b981' },
+    { name: 'Pending', count: stats?.pendingRequests ?? 0, fill: '#f59e0b' },
+    { name: 'Rejected', count: stats?.rejectedRequests ?? 0, fill: '#f43f5e' }
+  ];
+
+  const courseFileChartData = data?.charts?.courseFileOverview || [
+    { status: 'Submitted', count: stats?.submittedCourseFiles ?? 0, fill: '#3b82f6' },
+    { status: 'Under Review', count: stats?.underReviewCourseFiles ?? 0, fill: '#06b6d4' },
+    { status: 'Needs Improvement', count: stats?.needsImprovementCourseFiles ?? 0, fill: '#f59e0b' },
+    { status: 'Approved', count: stats?.approvedCourseFiles ?? 0, fill: '#10b981' }
+  ];
+
+  const completionChartData = data?.charts?.courseFileCompletion || [
+    { name: 'Approved', count: stats?.approvedCourseFiles ?? 0, fill: '#10b981' },
+    { name: 'Under Review', count: stats?.underReviewCourseFiles ?? 0, fill: '#06b6d4' },
+    { name: 'Needs Improvement', count: stats?.needsImprovementCourseFiles ?? 0, fill: '#f59e0b' },
+    { name: 'Submitted / Incomplete', count: (stats?.submittedCourseFiles ?? 0), fill: '#94a3b8' }
+  ];
+
+  const sessionChartData = data?.charts?.sessionDistribution || [
+    { session: 'Spring', count: 0, fill: '#10b981' },
+    { session: 'Fall', count: 0, fill: '#6366f1' }
+  ];
+
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#6366f1'];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-8">
       {/* ─── Header: HOD & Scope Identification ─── */}
       <div className="bg-white rounded-2xl border border-emerald-100/80 shadow-xs p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5">
@@ -160,129 +224,300 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Loading state */}
-      {loading && !data && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-16 text-center text-xs text-slate-500 shadow-xs">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
-          <p className="font-bold text-slate-700 text-sm">Loading dashboard data from real database records...</p>
+      {/* ─── PHASE 4: Quick Actions Bar ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs">
+        <div className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-2 px-1">
+          HOD Quick Navigation
         </div>
-      )}
-
-      {/* ─── Real Database Metrics Cards (Requirements 29 & 30) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Pending Teacher Requests */}
-        <div
-          onClick={() => onNavigate('Teacher Requests')}
-          className="bg-white rounded-2xl border border-amber-200/80 p-5 shadow-xs hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Pending Requests
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform border border-amber-200/60">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-black text-slate-900 font-heading">
-              {loading ? '-' : data?.stats?.pendingRequests ?? 0}
-            </span>
-            <span className="text-2xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-              Teacher Signups
-            </span>
-          </div>
-          <p className="text-2xs text-slate-500 mt-2">
-            Awaiting registration review
-          </p>
-        </div>
-
-        {/* 2. Pending Course Files */}
-        <div
-          onClick={() => onNavigate('Pending Course Files')}
-          className="bg-white rounded-2xl border border-sky-200/80 p-5 shadow-xs hover:border-sky-400 hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Pending Course Files
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform border border-sky-200/60">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-black text-slate-900 font-heading">
-              {loading ? '-' : data?.stats?.pendingCourseFiles ?? 0}
-            </span>
-            <span className="text-2xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
-              Needs Evaluation
-            </span>
-          </div>
-          <p className="text-2xs text-slate-500 mt-2">
-            Submitted by approved teachers
-          </p>
-        </div>
-
-        {/* 3. Approved Course Files */}
-        <div
-          onClick={() => onNavigate('Approved Course Files')}
-          className="bg-white rounded-2xl border border-emerald-200/80 p-5 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Approved Course Files
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform border border-emerald-200/60">
-              <CheckCircle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-black text-slate-900 font-heading">
-              {loading ? '-' : data?.stats?.approvedCourseFiles ?? 0}
-            </span>
-            <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              Archived & Approved
-            </span>
-          </div>
-          <p className="text-2xs text-slate-500 mt-2">
-            Successfully vetted course files
-          </p>
-        </div>
-
-        {/* 4. Registered Teachers */}
-        <div
-          onClick={() => onNavigate('Approved Teachers')}
-          className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Registered Teachers
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-slate-50 text-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-200">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline justify-between">
-            <span className="text-3xl font-black text-slate-900 font-heading">
-              {loading ? '-' : data?.stats?.registeredTeachers ?? 0}
-            </span>
-            <span className="text-2xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-              Active Faculty
-            </span>
-          </div>
-          <p className="text-2xs text-slate-500 mt-2">
-            Approved teachers in {departmentName}
-          </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <button
+            onClick={() => onNavigate('Teacher Requests')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-amber-200/80 bg-amber-50/50 hover:bg-amber-100/60 text-amber-900 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="truncate">Teacher Requests</span>
+          </button>
+          <button
+            onClick={() => onNavigate('Course Files')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-100/60 text-emerald-900 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <Folder className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Course Files</span>
+          </button>
+          <button
+            onClick={() => onNavigate('Pending Course Files')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-rose-200/80 bg-rose-50/50 hover:bg-rose-100/60 text-rose-900 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="truncate">Needs Improvement</span>
+          </button>
+          <button
+            onClick={() => onNavigate('Approved Course Files')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-100/60 text-emerald-900 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Approved Files</span>
+          </button>
+          <button
+            onClick={() => onNavigate('Approved Course Files')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-purple-200/80 bg-purple-50/50 hover:bg-purple-100/60 text-purple-900 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <Award className="w-4 h-4 text-purple-600 shrink-0" />
+            <span className="truncate">Certificates</span>
+          </button>
+          <button
+            onClick={() => onNavigate('Course Files')}
+            className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold transition-all cursor-pointer text-left"
+          >
+            <Download className="w-4 h-4 text-slate-600 shrink-0" />
+            <span className="truncate">Downloads</span>
+          </button>
         </div>
       </div>
 
-      {/* ─── Course File Overview: Batch / Session / 4 Semesters Structure (Requirements 30 & 31) ─── */}
+      {/* ─── PHASE 2: 10 Real Database Metrics Cards ─── */}
+      <div>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-700">
+            Real Database Metrics Overview
+          </h2>
+          <span className="text-2xs text-slate-400 font-medium">Strictly real database counts</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          {/* 1. Total Registered Teachers */}
+          <div
+            onClick={() => onNavigate('Approved Teachers')}
+            className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs hover:border-slate-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-slate-500 uppercase">
+              <span>Total Faculty</span>
+              <Users className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-slate-900 font-heading">
+              {loading ? '-' : stats?.totalRegisteredTeachers ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">1. Registered Teachers</p>
+          </div>
+
+          {/* 2. Approved / Enrolled Teachers */}
+          <div
+            onClick={() => onNavigate('Approved Teachers')}
+            className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-emerald-700 uppercase">
+              <span>Approved</span>
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-emerald-800 font-heading">
+              {loading ? '-' : stats?.approvedTeachers ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">2. Enrolled Teachers</p>
+          </div>
+
+          {/* 3. Pending Teacher Requests */}
+          <div
+            onClick={() => onNavigate('Teacher Requests')}
+            className="bg-white rounded-2xl border border-amber-200 p-4 shadow-xs hover:border-amber-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-amber-700 uppercase">
+              <span>Pending Req.</span>
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-amber-800 font-heading">
+              {loading ? '-' : stats?.pendingRequests ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">3. Teacher Requests</p>
+          </div>
+
+          {/* 4. Total Course Files */}
+          <div
+            onClick={() => onNavigate('Course Files')}
+            className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs hover:border-slate-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-slate-500 uppercase">
+              <span>Total Files</span>
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-slate-900 font-heading">
+              {loading ? '-' : stats?.totalCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">4. Total Course Files</p>
+          </div>
+
+          {/* 5. Submitted Course Files */}
+          <div
+            onClick={() => onNavigate('Pending Course Files')}
+            className="bg-white rounded-2xl border border-sky-200 p-4 shadow-xs hover:border-sky-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-sky-700 uppercase">
+              <span>Submitted</span>
+              <FileCheck2 className="w-3.5 h-3.5 text-sky-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-sky-800 font-heading">
+              {loading ? '-' : stats?.submittedCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">5. Submitted Files</p>
+          </div>
+
+          {/* 6. Under Review Course Files */}
+          <div
+            onClick={() => onNavigate('Pending Course Files')}
+            className="bg-white rounded-2xl border border-cyan-200 p-4 shadow-xs hover:border-cyan-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-cyan-700 uppercase">
+              <span>Under Review</span>
+              <Eye className="w-3.5 h-3.5 text-cyan-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-cyan-800 font-heading">
+              {loading ? '-' : stats?.underReviewCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">6. Under Review Files</p>
+          </div>
+
+          {/* 7. Needs Improvement Course Files */}
+          <div
+            onClick={() => onNavigate('Pending Course Files')}
+            className="bg-white rounded-2xl border border-rose-200 p-4 shadow-xs hover:border-rose-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-rose-700 uppercase">
+              <span>Action Req.</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-rose-800 font-heading">
+              {loading ? '-' : stats?.needsImprovementCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">7. Needs Improvement</p>
+          </div>
+
+          {/* 8. Approved Course Files */}
+          <div
+            onClick={() => onNavigate('Approved Course Files')}
+            className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-emerald-700 uppercase">
+              <span>Approved</span>
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-emerald-800 font-heading">
+              {loading ? '-' : stats?.approvedCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">8. Approved Course Files</p>
+          </div>
+
+          {/* 9. Pending/Incomplete Course Files */}
+          <div
+            onClick={() => onNavigate('Pending Course Files')}
+            className="bg-white rounded-2xl border border-amber-200 p-4 shadow-xs hover:border-amber-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-amber-700 uppercase">
+              <span>Incomplete</span>
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-amber-800 font-heading">
+              {loading ? '-' : stats?.pendingIncompleteCourseFiles ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">9. Pending / Incomplete</p>
+          </div>
+
+          {/* 10. Certificates Available */}
+          <div
+            onClick={() => onNavigate('Approved Course Files')}
+            className="bg-white rounded-2xl border border-purple-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-2xs font-bold text-purple-700 uppercase">
+              <span>Certificates</span>
+              <Award className="w-3.5 h-3.5 text-purple-600" />
+            </div>
+            <div className="mt-2 text-2xl font-black text-purple-800 font-heading">
+              {loading ? '-' : stats?.certificatesAvailable ?? 0}
+            </div>
+            <p className="text-3xs text-slate-400 mt-1">10. Certificates Available</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── PHASE 3: Professional HOD Charts (Real Data) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Chart 1: Teacher Registration Overview */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 font-heading">
+                Teacher Registration Overview
+              </h3>
+              <p className="text-2xs text-slate-500">Distribution of registered faculty in {departmentName}</p>
+            </div>
+            <Users className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={teacherChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {teacherChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-around pt-3 border-t border-slate-100 text-2xs font-bold">
+            <span className="text-emerald-700">● Approved: {stats?.approvedTeachers ?? 0}</span>
+            <span className="text-amber-600">● Pending: {stats?.pendingRequests ?? 0}</span>
+            <span className="text-rose-600">● Rejected: {stats?.rejectedRequests ?? 0}</span>
+          </div>
+        </div>
+
+        {/* Chart 2: Course File Status Overview */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 font-heading">
+                Course File Status Overview
+              </h3>
+              <p className="text-2xs text-slate-500">Breakdown of submitted course files across evaluation states</p>
+            </div>
+            <FileText className="w-4 h-4 text-sky-600" />
+          </div>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={courseFileChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="status" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {courseFileChartData.map((entry, index) => (
+                    <Cell key={`cell-cf-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-around pt-3 border-t border-slate-100 text-2xs font-bold">
+            <span className="text-sky-700">Submitted: {stats?.submittedCourseFiles ?? 0}</span>
+            <span className="text-cyan-700">Review: {stats?.underReviewCourseFiles ?? 0}</span>
+            <span className="text-rose-600">Needs Imp: {stats?.needsImprovementCourseFiles ?? 0}</span>
+            <span className="text-emerald-700">Approved: {stats?.approvedCourseFiles ?? 0}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Course File Overview: Batch / Session / 4 Semesters Structure ─── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <Folder className="w-4 h-4 text-emerald-600" />
               <h2 className="text-base font-extrabold text-slate-900 font-heading">
-                Course File Overview
+                Course File Hierarchy Overview
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -365,12 +600,12 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
           </div>
         ) : (
           <div className="p-8 text-center text-xs text-slate-400">
-            No batch overview data available.
+            No batch overview data available yet. Courses will populate when assigned.
           </div>
         )}
       </div>
 
-      {/* ─── Recent Course Files Preview Table (Requirements 30 & 54) ─── */}
+      {/* ─── Recent Course Files Preview Table ─── */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>
@@ -444,7 +679,7 @@ export const HODDashboard: React.FC<HODDashboardProps> = ({ onNavigate }) => {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-2xs font-extrabold border ${
                           file.status === 'Approved'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : file.status === 'Returned' || file.status === 'Rejected'
+                            : file.status === 'Returned' || file.status === 'Rejected' || file.status === 'Needs Improvement'
                             ? 'bg-rose-50 text-rose-700 border-rose-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}

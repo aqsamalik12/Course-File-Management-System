@@ -57,7 +57,7 @@ export const ApprovalManagement: React.FC<ApprovalManagementProps> = ({ activeMo
       sortable: true,
       render: (f) => (
         <span className="text-xs font-semibold text-slate-800 whitespace-nowrap">
-          {f.departmentName.replace('Department of ', '')}
+          {(f.departmentName || '').replace('Department of ', '')}
         </span>
       )
     },

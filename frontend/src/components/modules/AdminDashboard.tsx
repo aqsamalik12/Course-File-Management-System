@@ -212,25 +212,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   ].filter(d => d.value > 0);
 
   // ==========================================
-  // 4. COURSE FILE & QA PIPELINE DATA
+  // 4. REAL COURSE FILE & QA PIPELINE DATA
   // ==========================================
-  const monthlySubmissionVelocity = [
-    { month: 'Oct 2025', submissions: 24, approvals: 20, target: 25 },
-    { month: 'Nov 2025', submissions: 58, approvals: 50, target: 55 },
-    { month: 'Dec 2025', submissions: 98, approvals: 88, target: 90 },
-    { month: 'Jan 2026', submissions: 135, approvals: 124, target: 130 },
-    { month: 'Feb 2026', submissions: 172, approvals: 158, target: 165 },
-    { month: 'Mar 2026 (Live)', submissions: 215, approvals: 198, target: 210 }
-  ];
+  const monthlySubmissionVelocity = React.useMemo(() => {
+    if (!courseFiles || courseFiles.length === 0) {
+      return [];
+    }
+    const monthMap: Record<string, { month: string; submissions: number; approvals: number; sortKey: number }> = {};
+    courseFiles.forEach((cf) => {
+      const dateStr = cf.submittedAt || cf.created_at || cf.uploadDate || cf.reviewedAt;
+      const d = dateStr ? new Date(dateStr) : new Date();
+      if (isNaN(d.getTime())) return;
+      const monthLabel = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      const sortKey = d.getFullYear() * 100 + (d.getMonth() + 1);
+      if (!monthMap[monthLabel]) {
+        monthMap[monthLabel] = { month: monthLabel, submissions: 0, approvals: 0, sortKey };
+      }
+      monthMap[monthLabel].submissions++;
+      if (cf.status === 'Approved') {
+        monthMap[monthLabel].approvals++;
+      }
+    });
+    return Object.values(monthMap).sort((a, b) => a.sortKey - b.sortKey);
+  }, [courseFiles]);
 
-  const qaComplianceCategories = [
-    { category: 'Course Outline & Weekly Breakdown', compliance: 98, status: 'Audited' },
-    { category: 'Lecture Presentations & Reading Packs', compliance: 94, status: 'Audited' },
-    { category: 'Graded Assignments & Model Keys', compliance: 90, status: 'Audited' },
-    { category: 'Quizzes & Step Marking Rubrics', compliance: 88, status: 'Audited' },
-    { category: 'Midterm Examination Answer Scripts', compliance: 92, status: 'Audited' },
-    { category: 'Final Term Question Paper & Grade Sheet', compliance: 82, status: 'In Review' }
-  ];
+  const qaComplianceCategories = React.useMemo(() => {
+    const categories = [
+      { key: 'Instructor CV', label: 'Instructor CV & Academic Profile' },
+      { key: 'Course Outlines', label: 'Course Outline & Weekly Breakdown' },
+      { key: 'Attendance Record', label: 'Attendance Records & Registers' },
+      { key: 'Assignments', label: 'Graded Assignments & Model Keys' },
+      { key: 'Quizzes', label: 'Quizzes & Step Marking Rubrics' },
+      { key: 'Mid Term Paper', label: 'Midterm Examination Answer Scripts' },
+      { key: 'Final Term paper', label: 'Final Term Question Paper & Grade Sheet' }
+    ];
+
+    if (!courseFiles || courseFiles.length === 0) {
+      return [];
+    }
+
+    return categories.map((cat) => {
+      let totalAssessed = 0;
+      let verifiedOrUploaded = 0;
+
+      courseFiles.forEach((cf) => {
+        const checklist = cf.templateData?.checklist;
+        if (Array.isArray(checklist)) {
+          const item = checklist.find((i: any) =>
+            (i.content || i.name || '').toLowerCase().includes(cat.key.toLowerCase())
+          );
+          if (item) {
+            totalAssessed++;
+            if (item.verified === 'Yes' || item.status === 'Verified' || item.fileName || item.file) {
+              verifiedOrUploaded++;
+            }
+          }
+        }
+      });
+
+      const compliance = totalAssessed > 0 ? Math.round((verifiedOrUploaded / totalAssessed) * 100) : 0;
+      return {
+        category: cat.label,
+        compliance,
+        status: compliance >= 90 ? 'Audited' : 'In Review'
+      };
+    });
+  }, [courseFiles]);
 
   // Custom Recharts Tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -720,10 +767,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                       <Landmark className="w-4 h-4 text-[#1E7B4E]" />
                       Departments, Faculty & Registered Courses by Campus
                     </h3>
-                    <p className="text-3xs text-[#567567]">Main, Attock, Lower Mall, Bank Road, Faisalabad, Jauharabad, Vehari</p>
+                    <p className="text-3xs text-[#567567]">{activeCampusesList.map(c => c.name).join(', ') || 'No campuses registered'}</p>
                   </div>
                   <span className="text-3xs font-bold text-[#15803D] bg-white px-2.5 py-1 rounded border border-[#E2EFE6]">
-                    7 UE Campuses
+                    {totalCampusesCount} Registered Campuses
                   </span>
                 </div>
 
@@ -919,7 +966,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                 onClick={() => onNavigate('Course Management')}
                 className="text-xs font-bold text-[#1E7B4E] hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <span>View All 31 Courses</span>
+                <span>View All ({totalCoursesCount}) Courses</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
@@ -1042,49 +1089,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                     <p className="text-3xs text-[#567567]">Active semester upload milestones compared against target benchmarks</p>
                   </div>
                   <span className="text-3xs font-bold text-[#15803D] bg-[#E6F4EC] px-2.5 py-1 rounded-md border border-[#E2EFE6]">
-                    +34.2% Velocity
+                    {approvedFiles} of {totalFiles} Approved
                   </span>
                 </div>
 
-                <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlySubmissionVelocity} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#165534" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#165534" stopOpacity={0.0} />
-                        </linearGradient>
-                        <linearGradient id="colorApprovals" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#1E7B4E" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#1E7B4E" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E2EFE6" />
-                      <XAxis dataKey="month" stroke="#567567" fontSize={11} tickLine={false} />
-                      <YAxis stroke="#567567" fontSize={11} tickLine={false} />
-                      <RechartsTooltip content={<CustomTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="submissions"
-                        name="Files Uploaded"
-                        stroke="#165534"
-                        strokeWidth={2.5}
-                        fillOpacity={1}
-                        fill="url(#colorSubmissions)"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="approvals"
-                        name="HOD Approved"
-                        stroke="#1E7B4E"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#colorApprovals)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                {monthlySubmissionVelocity.length === 0 ? (
+                  <div className="h-56 flex flex-col items-center justify-center text-center p-4 bg-white rounded-xl border border-dashed border-[#E2EFE6]">
+                    <FileCheck2 className="w-8 h-8 text-slate-300 mb-2" />
+                    <p className="text-xs font-bold text-slate-600">No submission records yet</p>
+                    <p className="text-3xs text-slate-400">Course file uploads will automatically plot monthly progress here.</p>
+                  </div>
+                ) : (
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={monthlySubmissionVelocity} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#165534" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#165534" stopOpacity={0.0} />
+                          </linearGradient>
+                          <linearGradient id="colorApprovals" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#1E7B4E" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#1E7B4E" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E2EFE6" />
+                        <XAxis dataKey="month" stroke="#567567" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#567567" fontSize={11} tickLine={false} />
+                        <RechartsTooltip content={<CustomTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+                        <Area
+                          type="monotone"
+                          dataKey="submissions"
+                          name="Files Uploaded"
+                          stroke="#165534"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorSubmissions)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="approvals"
+                          name="HOD Approved"
+                          stroke="#1E7B4E"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorApprovals)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
               {/* Chart 8: QA Checklist Compliance */}
@@ -1095,29 +1150,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                       <CheckSquare className="w-4 h-4 text-[#1E7B4E]" />
                       HEC Checklist QA Compliance
                     </h3>
-                    <p className="text-3xs text-[#567567]">Mandatory 6-item audit pass rate</p>
+                    <p className="text-3xs text-[#567567]">Mandatory statutory document audit rate</p>
                   </div>
                   <span className="text-3xs font-bold text-[#15803D] bg-white px-2 py-0.5 rounded border border-[#E2EFE6]">
-                    94% Avg
+                    {qaComplianceCategories.length > 0
+                      ? `${Math.round(qaComplianceCategories.reduce((acc, c) => acc + c.compliance, 0) / qaComplianceCategories.length)}% Avg`
+                      : '0% Avg'}
                   </span>
                 </div>
 
-                <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                  {qaComplianceCategories.map((item) => (
-                    <div key={item.category} className="space-y-1">
-                      <div className="flex items-center justify-between text-3xs font-semibold">
-                        <span className="text-[#0F2D1F] truncate">{item.category}</span>
-                        <span className="text-[#165534] font-bold">{item.compliance}%</span>
+                {qaComplianceCategories.length === 0 ? (
+                  <div className="p-6 flex flex-col items-center justify-center text-center bg-white rounded-xl border border-dashed border-[#E2EFE6]">
+                    <CheckSquare className="w-6 h-6 text-slate-300 mb-1" />
+                    <p className="text-xs font-bold text-slate-600">No QA data available</p>
+                    <p className="text-3xs text-slate-400">Compliance percentages reflect verified items in submitted course files.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                    {qaComplianceCategories.map((item) => (
+                      <div key={item.category} className="space-y-1">
+                        <div className="flex items-center justify-between text-3xs font-semibold">
+                          <span className="text-[#0F2D1F] truncate">{item.category}</span>
+                          <span className="text-[#165534] font-bold">{item.compliance}%</span>
+                        </div>
+                        <div className="w-full bg-[#E2EFE6] h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-[#165534] h-full rounded-full transition-all duration-500"
+                            style={{ width: `${item.compliance}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-[#E2EFE6] h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-[#165534] h-full rounded-full transition-all duration-500"
-                          style={{ width: `${item.compliance}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="p-2.5 bg-white rounded-xl border border-[#E2EFE6] text-3xs text-[#567567] text-center">
                   All course files follow official HEC Higher Education Commission Quality Enhancement Cell (QEC) protocols.

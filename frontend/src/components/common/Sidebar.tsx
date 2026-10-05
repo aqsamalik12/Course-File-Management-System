@@ -39,7 +39,11 @@ import {
   BookMarked,
   Layers,
   Search,
-  BarChart2
+  BarChart2,
+  AlertTriangle,
+  CheckCircle2,
+  Award,
+  Download
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -235,72 +239,81 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  // 2. Final HOD Nav Modules in exact required sequence (Requirements 3 & 51):
-  // Dashboard -> Academic / Course Files (Course Files, Pending Course Files, Approved Course Files) -> Teachers (Teacher Requests, Approved Teachers, Teacher Profiles) -> Progress (Course / File Progress) -> Notifications -> HOD Profile
+  // 2. HOD Navigation Modules (Phase 5: Clean, Course-File Focused Structure)
+  const pendingHODRequestsCount = teacherRequests.filter((r) => r.status === 'PendingHODApproval').length;
+  const hodNeedsImprovementCount = courseFiles.filter(
+    (f) => f.status === 'Returned' || f.status === 'Needs Improvement' || f.status === 'Returned for Revision'
+  ).length;
+
   const hodNav: NavParent[] = [
     { name: 'Dashboard', icon: LayoutDashboard },
     {
-      name: 'Academic / Course Files',
-      icon: FolderTree,
-      children: [
-        { name: 'Course Files' },
-        { name: 'Pending Course Files' },
-        { name: 'Approved Course Files' }
-      ]
+      name: 'Teacher Requests',
+      icon: ClipboardList,
+      badge: pendingHODRequestsCount > 0 ? pendingHODRequestsCount : undefined,
+      badgeColor: 'bg-amber-500 text-white'
     },
     {
       name: 'Teachers',
       icon: Users,
       children: [
-        {
-          name: 'Teacher Requests',
-          badge: teacherRequests.filter((r) => r.status === 'PendingHODApproval').length > 0
-            ? teacherRequests.filter((r) => r.status === 'PendingHODApproval').length
-            : undefined,
-          badgeColor: 'bg-amber-500 text-white'
-        },
         { name: 'Approved Teachers' },
         { name: 'Teacher Profiles' }
       ]
     },
+    { name: 'Course Files', icon: FolderTree },
+    { name: 'Course File Status / Pending Review', icon: Clock },
     {
-      name: 'Progress',
-      icon: BarChart2,
-      children: [
-        { name: 'Course / File Progress' }
-      ]
+      name: 'Needs Improvement',
+      icon: AlertTriangle,
+      badge: hodNeedsImprovementCount > 0 ? hodNeedsImprovementCount : undefined,
+      badgeColor: 'bg-rose-500 text-white'
     },
+    { name: 'Certificates', icon: Award },
+    { name: 'My Course Files', icon: BookOpen },
+    { name: 'Downloads', icon: Download },
+    { name: 'Profile', icon: User },
+    { name: 'Logout', icon: LogOut }
+  ];
+
+  // 3. Teacher Nav Items (Exact Section 11 Structure)
+  const teacherFormSubmitted = currentUser?.profileFormSubmitted ?? false;
+  const teacherNeedsImprovementCount = courseFiles.filter(
+    (f) => (f.teacherId === currentUser?.id || f.teacherName === currentUser?.name) &&
+           (f.status === 'Returned' || f.status === 'Needs Improvement' || f.status === 'Returned for Revision' || f.status === 'Revision Requested')
+  ).length;
+
+  const teacherApprovedCount = courseFiles.filter(
+    (f) => (f.teacherId === currentUser?.id || f.teacherName === currentUser?.name) &&
+           f.status === 'Approved'
+  ).length;
+
+  const teacherNav: NavParent[] = [
+    { name: 'Dashboard', icon: LayoutDashboard },
+    { name: 'My Profile', icon: User },
+    { name: 'My Assigned Courses', icon: BookOpen },
+    { name: 'Course File Submission', icon: Upload },
+    { name: 'My Submitted Files', icon: History },
+    {
+      name: 'Needs Improvement',
+      icon: AlertTriangle,
+      badge: teacherNeedsImprovementCount > 0 ? teacherNeedsImprovementCount : undefined,
+      badgeColor: 'bg-rose-500 text-white'
+    },
+    {
+      name: 'Approved Course Files',
+      icon: CheckCircle2,
+      badge: teacherApprovedCount > 0 ? teacherApprovedCount : undefined,
+      badgeColor: 'bg-emerald-600 text-white'
+    },
+    { name: 'Certificates', icon: Award },
+    { name: 'Downloads', icon: Download },
     {
       name: 'Notifications',
       icon: Bell,
       badge: unreadNotifsCount > 0 ? unreadNotifsCount : undefined,
       badgeColor: 'bg-emerald-600 text-white'
     },
-    { name: 'HOD Profile', icon: User }
-  ];
-
-  // 3. Teacher Nav Items (Clean, Minimal Sidebar)
-  const teacherFormSubmitted = currentUser?.profileFormSubmitted ?? false;
-  const teacherNav: NavParent[] = [
-    { name: 'Dashboard', icon: LayoutDashboard },
-    {
-      name: 'My Profile Form',
-      icon: ClipboardList,
-      badge: !teacherFormSubmitted ? 1 : undefined,
-      badgeColor: 'bg-amber-500 text-white'
-    },
-    { name: 'Teacher Form Setup', icon: Sliders },
-    { name: 'My Assigned Courses', icon: BookOpen },
-    { name: 'Course File Submission', icon: Upload },
-    { name: 'Templates & Instructions', icon: FileText },
-    { name: 'Submission History', icon: History },
-    {
-      name: 'Notifications',
-      icon: Bell,
-      badge: unreadNotifsCount,
-      badgeColor: 'bg-emerald-600 text-white'
-    },
-    { name: 'My Profile', icon: User },
     { name: 'Logout', icon: LogOut }
   ];
 

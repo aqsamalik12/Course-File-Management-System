@@ -272,6 +272,7 @@ export type FileStatus =
   | 'In Review'
   | 'Returned for Revision'
   | 'Returned'
+  | 'Needs Improvement'
   | 'Revision Requested'
   | 'Approved'
   | 'Archived'
@@ -310,6 +311,7 @@ export interface CourseFileItem {
   departmentName: string;
   teacherId: string;
   teacherName: string;
+  teacherEmail?: string;
   teacherRole: UserRole;
   title: string;
   category: FileCategoryType;
@@ -331,6 +333,7 @@ export interface CourseFileItem {
   hodName?: string;
   credits?: number;
   submittedAt?: string;
+  created_at?: string;
   reviewedAt?: string;
   reviewedBy?: string;
   reviewComment?: string;

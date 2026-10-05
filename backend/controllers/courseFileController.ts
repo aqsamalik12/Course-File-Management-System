@@ -50,7 +50,7 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
       const hasAssignments = await TeacherAssignmentService.hasAssignmentsForTeacher(teacherId);
       if (hasAssignments) {
         const secVal = body.section || body.sectionName || body.sectionId || body.batch || '';
-        const crsVal = body.courseId || body.courseCode || body.courseTitle || '';
+        const crsVal = body.courseCode || body.courseId || body.courseTitle || '';
         const deptVal = body.departmentId || body.departmentName || '';
         const val = await TeacherAssignmentService.validateAssignment(teacherId, deptVal, secVal, crsVal);
         if (!val.isValid) {
@@ -117,7 +117,7 @@ export const uploadCourseFile = async (req: Request, res: Response) => {
       const hasAssignments = await TeacherAssignmentService.hasAssignmentsForTeacher(teacherId);
       if (hasAssignments) {
         const secVal = body.section || body.sectionName || body.sectionId || body.batch || '';
-        const crsVal = body.courseId || body.courseCode || body.courseTitle || '';
+        const crsVal = body.courseCode || body.courseId || body.courseTitle || '';
         const val = await TeacherAssignmentService.validateAssignment(teacherId, departmentId, secVal, crsVal);
         if (!val.isValid) {
           return res.status(403).json({

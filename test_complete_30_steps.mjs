@@ -242,23 +242,22 @@ async function run() {
   console.log('  ✓ Dr. Asif accepted teacher request. Teacher officially registered in CS Department!');
 
   // ─── STEP 12 & 13: Teacher Dashboard Access & Course File Creation ─────────────
-  console.log('\nSTEP 12 & 13: Teacher Dashboard Access & Course File Creation (15 Statutory Items)');
+  console.log('\nSTEP 12 & 13: Teacher Dashboard Access & Course File Creation (14 Statutory Items - Starting from Instructor CV)');
   const statutoryChecklist = [
-    { srNo: 1, name: 'Faculty CV', content: 'Faculty CV / Profile', verified: 'Yes', fileName: 'CV_Muhammad_Ali.pdf', fileSize: '1.2 MB' },
-    { srNo: 2, name: 'Course Outline', content: 'Course Outline & Objectives', verified: 'Yes', fileName: 'Course_Outline_CS301.pdf', fileSize: '0.8 MB' },
-    { srNo: 3, name: 'Weekly Lecture Plan', content: '16-Week Lecture Plan', verified: 'Yes', fileName: 'Lecture_Plan_CS301.pdf', fileSize: '0.5 MB' },
-    { srNo: 4, name: 'Attendance Record', content: 'Student Attendance Sheet', verified: 'Yes', fileName: 'Attendance_BSCS2023.pdf', fileSize: '2.1 MB' },
-    { srNo: 5, name: 'Assignments', content: 'Assignments & Rubrics', verified: 'Yes', fileName: 'Assignments_CS301.pdf', fileSize: '3.4 MB' },
-    { srNo: 6, name: 'Quizzes', content: 'Quizzes & Solutions', verified: 'Yes', fileName: 'Quizzes_CS301.pdf', fileSize: '1.5 MB' },
-    { srNo: 7, name: 'Midterm Exam', content: 'Mid Term Question Paper & Key', verified: 'Yes', fileName: 'Midterm_CS301.pdf', fileSize: '1.1 MB' },
-    { srNo: 8, name: 'Final Exam', content: 'Final Examination Question Paper & Key', verified: 'Yes', fileName: 'Final_Exam_CS301.pdf', fileSize: '1.8 MB' },
-    { srNo: 9, name: 'Grading Rubric', content: 'Assessment & Grading Rubric', verified: 'Yes', fileName: 'Grading_Rubric.pdf', fileSize: '0.4 MB' },
-    { srNo: 10, name: 'Lab Manual', content: 'Lab Manual & Experiments (If applicable)', verified: 'Yes', fileName: 'Lab_Manual_CS301.pdf', fileSize: '4.2 MB' },
-    { srNo: 11, name: 'Lab Reports', content: 'Student Sample Lab Reports (If applicable)', verified: 'Yes', fileName: 'Lab_Reports_Samples.pdf', fileSize: '5.0 MB' },
-    { srNo: 12, name: 'Project Guidelines', content: 'Semester Project Guidelines (If applicable)', verified: 'Yes', fileName: 'Project_Guidelines.pdf', fileSize: '1.3 MB' },
-    { srNo: 13, name: 'Sample Work', content: 'Sample Graded Work (Best, Average, Worst)', verified: 'Yes', fileName: 'Student_Samples.pdf', fileSize: '6.1 MB' },
-    { srNo: 14, name: 'Result Sheet', content: 'Consolidated Result & Award List', verified: 'Yes', fileName: 'Result_Sheet_CS301.pdf', fileSize: '1.9 MB' },
-    { srNo: 15, name: 'Teacher Evaluation', content: 'Course Evaluation & Teacher Feedback', verified: 'Yes', fileName: 'Course_Feedback.pdf', fileSize: '0.9 MB' }
+    { srNo: 1, name: 'Instructor CV', content: 'Instructor CV', verified: 'Yes', fileName: 'CV_Muhammad_Ali.pdf', fileSize: '1.2 MB' },
+    { srNo: 2, name: 'Course Outlines', content: 'Course Outlines', verified: 'Yes', fileName: 'Course_Outline_CS301.pdf', fileSize: '0.8 MB' },
+    { srNo: 3, name: 'Course Description Form ( Containing weekly course plan)', content: 'Course Description Form ( Containing weekly course plan)', verified: 'Yes', fileName: 'Course_Description_CS301.pdf', fileSize: '0.5 MB' },
+    { srNo: 4, name: 'Attendance Record', content: 'Attendance Record', verified: 'Yes', fileName: 'Attendance_BSCS2023.pdf', fileSize: '2.1 MB' },
+    { srNo: 5, name: 'Assignments(Copy of Assignment questions, its solution, sample of best, average, and worst graded quiz)', content: 'Assignments', verified: 'Yes', fileName: 'Assignments_CS301.pdf', fileSize: '3.4 MB' },
+    { srNo: 6, name: 'Quizzes (Copy of quiz questions, its solution, sample of best, average, and worst graded quiz)', content: 'Quizzes', verified: 'Yes', fileName: 'Quizzes_CS301.pdf', fileSize: '1.5 MB' },
+    { srNo: 7, name: 'Mid Term Paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )', content: 'Mid Term Paper', verified: 'Yes', fileName: 'Midterm_CS301.pdf', fileSize: '1.1 MB' },
+    { srNo: 8, name: 'Final Term paper (question paper ,its solution, photocopy of best, average, and worst answer sheets )', content: 'Final Term paper', verified: 'Yes', fileName: 'Final_Exam_CS301.pdf', fileSize: '1.8 MB' },
+    { srNo: 9, name: 'Semester project (If applicable) (Best, worst, average)', content: 'Semester project (If applicable)', verified: 'N/A', isApplicableOnly: true, isNA: true },
+    { srNo: 10, name: 'Lab Manuals (If applicable) ( Lab Outline, Lab Manuals, with its solution in soft form )', content: 'Lab Manuals (If applicable)', verified: 'Yes', fileName: 'Lab_Manual_CS301.pdf', fileSize: '4.2 MB', isApplicableOnly: true },
+    { srNo: 11, name: 'Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)', content: 'Lab Practical ( question paper, its solution, photocopy of best, average and worst answer sheet)', verified: 'Yes', fileName: 'Lab_Practical_CS301.pdf', fileSize: '5.0 MB', isApplicableOnly: true },
+    { srNo: 12, name: 'Lecture Notes ( Only in soft form)', content: 'Lecture Notes ( Only in soft form)', verified: 'Yes', fileName: 'Lecture_Notes_CS301.pdf', fileSize: '6.1 MB' },
+    { srNo: 13, name: 'Complete Result', content: 'Complete Result', verified: 'Yes', fileName: 'Result_Sheet_CS301.pdf', fileSize: '1.9 MB' },
+    { srNo: 14, name: 'Course Completion Certificate', content: 'Course Completion Certificate', verified: 'Yes', fileName: 'Course_Completion_Certificate.pdf', fileSize: '0.9 MB' }
   ];
 
   const uploadCourseFile = await api('/api/course-files/upload', {

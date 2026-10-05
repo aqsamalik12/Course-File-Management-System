@@ -1,17 +1,35 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { supabase } from '../config/supabase';
 import { memoryStore } from '../utils/memoryStore';
 import { logger } from '../config/logger';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper to determine if an error is due to missing table
 const isTableMissing = (error: any): boolean => {
   return error && (error.code === 'PGRST205' || (error.message && error.message.includes('schema cache')));
 };
 
-const USERS_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
-  ? path.join(process.cwd(), 'backend', 'data', 'users.json')
-  : path.join(process.cwd(), 'data', 'users.json');
+const getDataFilePath = (filename: string): string => {
+  const possiblePaths = [
+    path.join(process.cwd(), 'backend', 'data', filename),
+    path.join(process.cwd(), 'data', filename),
+    path.resolve(__dirname, '..', 'data', filename)
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  const defaultDir = path.resolve(__dirname, '..', 'data');
+  if (!fs.existsSync(defaultDir)) {
+    fs.mkdirSync(defaultDir, { recursive: true });
+  }
+  return path.join(defaultDir, filename);
+};
+
+const USERS_FILE = getDataFilePath('users.json');
 
 function persistLocalUsers(list: any[]) {
   try {
@@ -35,7 +53,7 @@ function loadLocalUsers(): any[] {
       }
     }
   } catch {}
-  return memoryStore.users;
+  return memoryStore.users && memoryStore.users.length > 0 ? memoryStore.users : [];
 }
 
 // Populate initial memoryStore users from users.json if present
@@ -47,27 +65,44 @@ memoryStore.users = loadLocalUsers();
 export const UserService = {
   async getAll() {
     try {
+      const local = loadLocalUsers();
       const { data, error } = await supabase.from('users').select('*').order('name');
       if (error || !data || data.length === 0) {
-        return memoryStore.users;
+        memoryStore.users = local;
+        return local;
       }
-      return data.map((dbUser: any) => {
-        const mem = memoryStore.users.find((u) => u.id === dbUser.id || (u.email && dbUser.email && u.email.toLowerCase() === dbUser.email.toLowerCase()));
-        return mem ? { ...dbUser, ...mem } : dbUser;
-      });
+      // Merge remote and local users so no user/HOD/teacher is ever lost
+      const combined = [...data];
+      for (const loc of local) {
+        const existingIdx = combined.findIndex(
+          (u: any) => u.id === loc.id || (u.email && loc.email && u.email.toLowerCase() === loc.email.toLowerCase())
+        );
+        if (existingIdx === -1) {
+          combined.push(loc);
+        } else {
+          combined[existingIdx] = { ...combined[existingIdx], ...loc };
+        }
+      }
+      memoryStore.users = combined;
+      persistLocalUsers(combined);
+      return combined;
     } catch {
-      return memoryStore.users;
+      const local = loadLocalUsers();
+      memoryStore.users = local;
+      return local;
     }
   },
 
   async getById(id: string) {
     try {
+      const local = loadLocalUsers();
+      const locUser = local.find((u: any) => u.id === id);
       const { data, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
-      const memUser = memoryStore.users.find((u) => u.id === id);
-      if (error || !data) return memUser;
-      return memUser ? { ...data, ...memUser } : data;
+      if (error || !data) return locUser;
+      return locUser ? { ...data, ...locUser } : data;
     } catch {
-      return memoryStore.users.find((u) => u.id === id);
+      const local = loadLocalUsers();
+      return local.find((u: any) => u.id === id);
     }
   },
 
@@ -75,68 +110,64 @@ export const UserService = {
     const targetEmail = (email || '').trim().toLowerCase();
     if (!targetEmail) return null;
     try {
+      const local = loadLocalUsers();
+      const locUser = local.find((u: any) => u.email && u.email.toLowerCase() === targetEmail);
       const { data, error } = await supabase.from('users').select('*').ilike('email', targetEmail).maybeSingle();
-      const memUser = memoryStore.users.find((u) => u.email && u.email.toLowerCase() === targetEmail);
-      if (error || !data) {
-        return memUser;
-      }
-      return memUser ? { ...data, ...memUser } : data;
+      if (error || !data) return locUser;
+      return locUser ? { ...data, ...locUser } : data;
     } catch {
-      return memoryStore.users.find((u) => u.email && u.email.toLowerCase() === targetEmail);
+      const local = loadLocalUsers();
+      return local.find((u: any) => u.email && u.email.toLowerCase() === targetEmail);
     }
   },
 
   async create(user: any) {
+    const local = loadLocalUsers();
+    const idx = local.findIndex((u: any) => u.id === user.id || (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase()));
+    if (idx === -1) local.unshift(user);
+    else local[idx] = { ...local[idx], ...user };
+    memoryStore.users = local;
+    persistLocalUsers(local);
+
     try {
       const { data, error } = await supabase.from('users').insert([user]).select().single();
-      if (error) {
-        if (!isTableMissing(error)) logger.warn(`[Supabase Users Create] ${error.message}`);
-        const idx = memoryStore.users.findIndex((u) => u.id === user.id);
-        if (idx === -1) memoryStore.users.unshift(user);
-        else memoryStore.users[idx] = { ...memoryStore.users[idx], ...user };
-        persistLocalUsers(memoryStore.users);
-        return user;
+      if (!error && data) {
+        const updatedIdx = local.findIndex((u: any) => u.id === user.id);
+        if (updatedIdx !== -1) {
+          local[updatedIdx] = { ...data, ...local[updatedIdx] };
+          persistLocalUsers(local);
+        }
+        return local[updatedIdx] || data;
       }
-      // Also sync memory store
-      const idx = memoryStore.users.findIndex((u) => u.id === user.id);
-      if (idx === -1) memoryStore.users.unshift(data);
-      else memoryStore.users[idx] = { ...memoryStore.users[idx], ...data };
-      persistLocalUsers(memoryStore.users);
-      return data;
-    } catch {
-      const idx = memoryStore.users.findIndex((u) => u.id === user.id);
-      if (idx === -1) memoryStore.users.unshift(user);
-      else memoryStore.users[idx] = { ...memoryStore.users[idx], ...user };
-      persistLocalUsers(memoryStore.users);
-      return user;
+    } catch (e: any) {
+      logger.warn(`[Supabase Users Create Exception] ${e.message}`);
     }
+    return user;
   },
 
   async update(id: string, updates: any) {
-    // 1. Always update or push to memoryStore
-    let idx = memoryStore.users.findIndex((u) => u.id === id);
+    const local = loadLocalUsers();
+    let idx = local.findIndex((u: any) => u.id === id);
     if (idx !== -1) {
-      memoryStore.users[idx] = { ...memoryStore.users[idx], ...updates };
+      local[idx] = { ...local[idx], ...updates };
     } else {
-      memoryStore.users.unshift({ id, ...updates });
+      local.unshift({ id, ...updates });
       idx = 0;
     }
-    persistLocalUsers(memoryStore.users);
+    memoryStore.users = local;
+    persistLocalUsers(local);
 
-    // 2. Safely sync to Supabase (strip non-standard columns if Supabase complains)
     try {
       const { courses, selectedCourses, ...safeUpdates } = updates;
       const { data, error } = await supabase.from('users').update(safeUpdates).eq('id', id).select().maybeSingle();
-      if (error) {
-        if (!isTableMissing(error)) logger.warn(`[Supabase Users Update] ${error.message}`);
-      } else if (data) {
-        memoryStore.users[idx] = { ...data, ...memoryStore.users[idx] };
-        persistLocalUsers(memoryStore.users);
+      if (!error && data) {
+        local[idx] = { ...data, ...local[idx] };
+        persistLocalUsers(local);
       }
     } catch (e: any) {
       logger.warn(`[Supabase Users Update Exception] ${e.message}`);
     }
-    return memoryStore.users[idx];
+    return local[idx];
   },
 
   async softDelete(id: string) {
@@ -147,9 +178,7 @@ export const UserService = {
 // ==========================================
 // CAMPUSES SERVICE (University of Education)
 // ==========================================
-const CAMPUSES_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
-  ? path.join(process.cwd(), 'backend', 'data', 'campuses.json')
-  : path.join(process.cwd(), 'data', 'campuses.json');
+const CAMPUSES_FILE = getDataFilePath('campuses.json');
 
 const INITIAL_CAMPUSES = [
   {
@@ -207,38 +236,44 @@ function loadLocalCampuses(): any[] {
   return [...INITIAL_CAMPUSES];
 }
 
+// Populate initial memoryStore campuses from campuses.json
+memoryStore.campuses = loadLocalCampuses();
+
 export const CampusService = {
   async getAll() {
     try {
+      const local = loadLocalCampuses();
       const { data, error } = await supabase.from('campuses').select('*').order('name');
       if (error || !data || data.length === 0) {
-        if (!memoryStore.campuses || memoryStore.campuses.length === 0) {
-          memoryStore.campuses = loadLocalCampuses();
+        memoryStore.campuses = local;
+        return local;
+      }
+      const combined = [...data];
+      for (const loc of local) {
+        if (!combined.some((c: any) => c.id === loc.id || (c.code && loc.code && c.code.toUpperCase() === loc.code.toUpperCase()))) {
+          combined.push(loc);
         }
-        return memoryStore.campuses;
       }
-      memoryStore.campuses = data;
-      persistLocalCampuses(data);
-      return data;
+      memoryStore.campuses = combined;
+      persistLocalCampuses(combined);
+      return combined;
     } catch {
-      if (!memoryStore.campuses || memoryStore.campuses.length === 0) {
-        memoryStore.campuses = loadLocalCampuses();
-      }
-      return memoryStore.campuses;
+      const local = loadLocalCampuses();
+      memoryStore.campuses = local;
+      return local;
     }
   },
 
   async getById(id: string) {
     try {
+      const local = loadLocalCampuses();
+      const loc = local.find((c: any) => c.id === id);
       const { data, error } = await supabase.from('campuses').select('*').eq('id', id).maybeSingle();
-      if (error || !data) {
-        const all = await this.getAll();
-        return all.find((c: any) => c.id === id);
-      }
-      return data;
+      if (error || !data) return loc;
+      return loc ? { ...data, ...loc } : data;
     } catch {
-      const all = await this.getAll();
-      return all.find((c: any) => c.id === id);
+      const local = loadLocalCampuses();
+      return local.find((c: any) => c.id === id);
     }
   },
 
@@ -256,60 +291,43 @@ export const CampusService = {
   },
 
   async create(campus: any) {
+    const local = loadLocalCampuses();
+    const idx = local.findIndex((c: any) => c.id === campus.id || (c.code && campus.code && c.code.toUpperCase() === campus.code.toUpperCase()));
+    if (idx === -1) local.push(campus);
+    else local[idx] = { ...local[idx], ...campus };
+    memoryStore.campuses = local;
+    persistLocalCampuses(local);
+
     try {
       const { data, error } = await supabase.from('campuses').insert([campus]).select().single();
-      if (error) {
-        if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-        memoryStore.campuses.push(campus);
-        persistLocalCampuses(memoryStore.campuses);
-        return campus;
+      if (!error && data) {
+        return data;
       }
-      if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-      memoryStore.campuses.push(data);
-      persistLocalCampuses(memoryStore.campuses);
-      return data;
-    } catch {
-      if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-      memoryStore.campuses.push(campus);
-      persistLocalCampuses(memoryStore.campuses);
-      return campus;
-    }
+    } catch {}
+    return campus;
   },
 
   async update(id: string, updates: any) {
-    try {
-      const { data, error } = await supabase.from('campuses').update(updates).eq('id', id).select().maybeSingle();
-      if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-      const idx = memoryStore.campuses.findIndex((c: any) => c.id === id);
-      if (idx !== -1) {
-        memoryStore.campuses[idx] = { ...memoryStore.campuses[idx], ...updates, ...(data || {}) };
-        persistLocalCampuses(memoryStore.campuses);
-        return memoryStore.campuses[idx];
-      }
-      if (data) {
-        persistLocalCampuses(memoryStore.campuses);
-        return data;
-      }
-      return null;
-    } catch {
-      if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-      const idx = memoryStore.campuses.findIndex((c: any) => c.id === id);
-      if (idx !== -1) {
-        memoryStore.campuses[idx] = { ...memoryStore.campuses[idx], ...updates };
-        persistLocalCampuses(memoryStore.campuses);
-        return memoryStore.campuses[idx];
-      }
-      return null;
+    const local = loadLocalCampuses();
+    const idx = local.findIndex((c: any) => c.id === id);
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...updates };
+      memoryStore.campuses = local;
+      persistLocalCampuses(local);
     }
+    try {
+      await supabase.from('campuses').update(updates).eq('id', id);
+    } catch {}
+    return idx !== -1 ? local[idx] : null;
   },
 
   async delete(id: string) {
+    const local = loadLocalCampuses().filter((c: any) => c.id !== id);
+    memoryStore.campuses = local;
+    persistLocalCampuses(local);
     try {
       await supabase.from('campuses').delete().eq('id', id);
     } catch {}
-    if (!memoryStore.campuses) memoryStore.campuses = loadLocalCampuses();
-    memoryStore.campuses = memoryStore.campuses.filter((c: any) => c.id !== id);
-    persistLocalCampuses(memoryStore.campuses);
     return true;
   }
 };
@@ -317,7 +335,7 @@ export const CampusService = {
 // ==========================================
 // DEPARTMENTS SERVICE (University of Education)
 // ==========================================
-const DEPARTMENTS_FILE = path.join(process.cwd(), 'data', 'departments.json');
+const DEPARTMENTS_FILE = getDataFilePath('departments.json');
 
 function persistLocalDepartments(list: any[]) {
   try {
@@ -344,6 +362,9 @@ function loadLocalDepartments(): any[] {
   persistLocalDepartments([]);
   return [];
 }
+
+// Populate initial memoryStore departments from departments.json
+memoryStore.departments = loadLocalDepartments();
 
 function toDbDept(dept: any) {
   const meta = {
@@ -394,14 +415,12 @@ function fromDbDept(row: any) {
 export const DepartmentService = {
   async getAll() {
     try {
-      const { data, error } = await supabase.from('departments').select('*').order('name');
       const local = loadLocalDepartments();
+      const { data, error } = await supabase.from('departments').select('*').order('name');
 
-      if (error || !data) {
-        if (!memoryStore.departments || memoryStore.departments.length === 0) {
-          memoryStore.departments = local;
-        }
-        return memoryStore.departments;
+      if (error || !data || data.length === 0) {
+        memoryStore.departments = local;
+        return local;
       }
 
       const mapped = data.map(fromDbDept);
@@ -412,7 +431,6 @@ export const DepartmentService = {
       for (const loc of local) {
         if (!combined.some((c: any) => c.id === loc.id || (c.code === loc.code && c.campusId === loc.campusId))) {
           combined.push(loc);
-          // Sync missing local record into Supabase
           try {
             Promise.resolve(supabase.from('departments').insert([toDbDept(loc)])).catch(() => {});
           } catch {}
@@ -423,24 +441,22 @@ export const DepartmentService = {
       persistLocalDepartments(combined);
       return combined;
     } catch {
-      if (!memoryStore.departments || memoryStore.departments.length === 0) {
-        memoryStore.departments = loadLocalDepartments();
-      }
-      return memoryStore.departments;
+      const local = loadLocalDepartments();
+      memoryStore.departments = local;
+      return local;
     }
   },
 
   async getById(id: string) {
     try {
+      const local = loadLocalDepartments();
+      const loc = local.find((d: any) => d.id === id);
       const { data, error } = await supabase.from('departments').select('*').eq('id', id).maybeSingle();
-      if (error || !data) {
-        const all = await this.getAll();
-        return all.find((d: any) => d.id === id);
-      }
-      return fromDbDept(data);
+      if (error || !data) return loc;
+      return loc ? { ...fromDbDept(data), ...loc } : fromDbDept(data);
     } catch {
-      const all = await this.getAll();
-      return all.find((d: any) => d.id === id);
+      const local = loadLocalDepartments();
+      return local.find((d: any) => d.id === id);
     }
   },
 
@@ -467,56 +483,45 @@ export const DepartmentService = {
       status: dept.status || 'Active'
     };
 
+    const local = loadLocalDepartments();
+    const idx = local.findIndex((d: any) => d.id === formatted.id || (d.code === formatted.code && d.campusId === formatted.campusId));
+    if (idx === -1) local.push(formatted);
+    else local[idx] = { ...local[idx], ...formatted };
+    memoryStore.departments = local;
+    persistLocalDepartments(local);
+
     try {
       const dbPayload = toDbDept(formatted);
       const { data, error } = await supabase.from('departments').insert([dbPayload]).select().single();
-      if (error || !data) {
-        if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-        memoryStore.departments.push(formatted);
-        persistLocalDepartments(memoryStore.departments);
-        return formatted;
+      if (!error && data) {
+        const saved = fromDbDept(data);
+        const uIdx = local.findIndex((d: any) => d.id === formatted.id);
+        if (uIdx !== -1) {
+          local[uIdx] = { ...saved, ...local[uIdx] };
+          persistLocalDepartments(local);
+        }
+        return local[uIdx] || saved;
       }
-      const saved = fromDbDept(data);
-      if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-      memoryStore.departments.push(saved);
-      persistLocalDepartments(memoryStore.departments);
-      return saved;
-    } catch {
-      if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-      memoryStore.departments.push(formatted);
-      persistLocalDepartments(memoryStore.departments);
-      return formatted;
-    }
+    } catch {}
+    return formatted;
   },
 
   async update(id: string, updates: any) {
-    try {
-      const existing = await this.getById(id);
-      const merged = { ...(existing || {}), ...updates };
-      const dbPayload = toDbDept(merged);
-      const { data, error } = await supabase.from('departments').update(dbPayload).eq('id', id).select().maybeSingle();
-
-      if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-      const idx = memoryStore.departments.findIndex((d: any) => d.id === id);
-      const finalObj = data ? fromDbDept(data) : merged;
-
-      if (idx !== -1) {
-        memoryStore.departments[idx] = finalObj;
-      } else {
-        memoryStore.departments.push(finalObj);
-      }
-      persistLocalDepartments(memoryStore.departments);
-      return finalObj;
-    } catch {
-      if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-      const idx = memoryStore.departments.findIndex((d: any) => d.id === id);
-      if (idx !== -1) {
-        memoryStore.departments[idx] = { ...memoryStore.departments[idx], ...updates };
-        persistLocalDepartments(memoryStore.departments);
-        return memoryStore.departments[idx];
-      }
-      return null;
+    const local = loadLocalDepartments();
+    const idx = local.findIndex((d: any) => d.id === id);
+    let finalObj: any = null;
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...updates };
+      finalObj = local[idx];
+      memoryStore.departments = local;
+      persistLocalDepartments(local);
     }
+
+    try {
+      const dbPayload = toDbDept(finalObj || updates);
+      await supabase.from('departments').update(dbPayload).eq('id', id);
+    } catch {}
+    return finalObj;
   },
 
   async assignHOD(deptId: string, hodId: string, hodName: string) {
@@ -524,12 +529,12 @@ export const DepartmentService = {
   },
 
   async delete(id: string) {
+    const local = loadLocalDepartments().filter((d: any) => d.id !== id);
+    memoryStore.departments = local;
+    persistLocalDepartments(local);
     try {
       await supabase.from('departments').delete().eq('id', id);
     } catch {}
-    if (!memoryStore.departments) memoryStore.departments = loadLocalDepartments();
-    memoryStore.departments = memoryStore.departments.filter((d: any) => d.id !== id);
-    persistLocalDepartments(memoryStore.departments);
     return true;
   }
 };
@@ -537,7 +542,7 @@ export const DepartmentService = {
 // ==========================================
 // COURSES SERVICE
 // ==========================================
-const COURSES_FILE = path.join(process.cwd(), 'data', 'courses.json');
+const COURSES_FILE = getDataFilePath('courses.json');
 
 function persistLocalCourses(list: any[]) {
   try {
@@ -563,6 +568,9 @@ function loadLocalCourses(): any[] {
   } catch {}
   return [];
 }
+
+// Populate initial memoryStore courses from courses.json
+memoryStore.courses = loadLocalCourses();
 
 export const CourseService = {
   async getAll() {
@@ -686,7 +694,7 @@ export const CourseService = {
 // ==========================================
 // COURSE FILES SERVICE (With Disk Persistence & Remote Sync)
 // ==========================================
-const COURSE_FILES_FILE = path.join(process.cwd(), 'data', 'course_files.json');
+const COURSE_FILES_FILE = getDataFilePath('course_files.json');
 
 function persistLocalCourseFiles(list: any[]) {
   try {
@@ -713,6 +721,9 @@ function loadLocalCourseFiles(): any[] {
   persistLocalCourseFiles([]);
   return [];
 }
+
+// Populate initial memoryStore courseFiles from course_files.json
+memoryStore.courseFiles = loadLocalCourseFiles();
 
 export const CourseFileService = {
   async getAll() {
@@ -1294,7 +1305,7 @@ export const ArchiveService = {
 // ==========================================
 // TEACHER REQUESTS SERVICE (With Disk Persistence)
 // ==========================================
-const TEACHER_REQUESTS_FILE = path.join(process.cwd(), 'data', 'teacher_requests.json');
+const TEACHER_REQUESTS_FILE = getDataFilePath('teacher_requests.json');
 
 function persistLocalTeacherRequests(list: any[]) {
   try {
@@ -1321,6 +1332,9 @@ function loadLocalTeacherRequests(): any[] {
   persistLocalTeacherRequests([]);
   return [];
 }
+
+// Populate initial memoryStore teacherRequests from teacher_requests.json
+memoryStore.teacherRequests = loadLocalTeacherRequests();
 
 export const TeacherRequestService = {
   async getAll(filters?: { departmentId?: string; hodId?: string; status?: string; teacherId?: string; campusName?: string; campusId?: string }) {
@@ -1486,7 +1500,7 @@ export const TeacherRequestService = {
 // ==========================================
 // HOD ASSIGNMENTS SERVICE (Multi-Campus & Multi-Department)
 // ==========================================
-const HOD_ASSIGNMENTS_FILE = path.join(process.cwd(), 'data', 'hod_assignments.json');
+const HOD_ASSIGNMENTS_FILE = getDataFilePath('hod_assignments.json');
 
 function persistLocalHODAssignments(list: any[]) {
   try {
@@ -1514,9 +1528,13 @@ function loadLocalHODAssignments(): any[] {
   return [];
 }
 
+// Populate initial memoryStore hodAssignments from hod_assignments.json
+memoryStore.hodAssignments = loadLocalHODAssignments();
+
 export const HODAssignmentService = {
   async getAll(filters?: { campusId?: string; departmentId?: string; hodId?: string; status?: string }) {
     try {
+      const local = loadLocalHODAssignments();
       let query = supabase.from('hod_assignments').select('*').order('created_at', { ascending: false });
       if (filters?.campusId) query = query.eq('campusId', filters.campusId);
       if (filters?.departmentId) query = query.eq('departmentId', filters.departmentId);
@@ -1524,13 +1542,10 @@ export const HODAssignmentService = {
       if (filters?.status) query = query.eq('status', filters.status);
 
       const { data, error } = await query;
-      const local = loadLocalHODAssignments();
 
       if (error || !data || data.length === 0) {
-        if (!memoryStore.hodAssignments || memoryStore.hodAssignments.length === 0) {
-          memoryStore.hodAssignments = local;
-        }
-        let list = [...(memoryStore.hodAssignments || [])];
+        memoryStore.hodAssignments = local;
+        let list = [...local];
         if (filters?.campusId) list = list.filter((a) => a.campusId === filters.campusId);
         if (filters?.departmentId) list = list.filter((a) => a.departmentId === filters.departmentId);
         if (filters?.hodId) list = list.filter((a) => a.hodId === filters.hodId);
@@ -1555,10 +1570,9 @@ export const HODAssignmentService = {
       if (filters?.status) list = list.filter((a) => a.status === filters.status);
       return list;
     } catch {
-      if (!memoryStore.hodAssignments || memoryStore.hodAssignments.length === 0) {
-        memoryStore.hodAssignments = loadLocalHODAssignments();
-      }
-      let list = [...(memoryStore.hodAssignments || [])];
+      const local = loadLocalHODAssignments();
+      memoryStore.hodAssignments = local;
+      let list = [...local];
       if (filters?.campusId) list = list.filter((a) => a.campusId === filters.campusId);
       if (filters?.departmentId) list = list.filter((a) => a.departmentId === filters.departmentId);
       if (filters?.hodId) list = list.filter((a) => a.hodId === filters.hodId);
@@ -1569,20 +1583,21 @@ export const HODAssignmentService = {
 
   async getById(id: string) {
     try {
+      const local = loadLocalHODAssignments();
+      const loc = local.find((a: any) => a.id === id);
       const { data, error } = await supabase.from('hod_assignments').select('*').eq('id', id).maybeSingle();
-      if (error || !data) {
-        const all = await this.getAll();
-        return all.find((a: any) => a.id === id);
-      }
-      return data;
+      if (error || !data) return loc;
+      return loc ? { ...data, ...loc } : data;
     } catch {
-      const all = await this.getAll();
-      return all.find((a: any) => a.id === id);
+      const local = loadLocalHODAssignments();
+      return local.find((a: any) => a.id === id);
     }
   },
 
   async getActiveByHodId(hodId: string) {
     try {
+      const local = loadLocalHODAssignments();
+      const loc = local.find((a: any) => a.hodId === hodId && a.status === 'Active');
       const { data, error } = await supabase
         .from('hod_assignments')
         .select('*')
@@ -1591,19 +1606,20 @@ export const HODAssignmentService = {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error || !data) {
-        const all = await this.getAll();
-        return all.find((a: any) => a.hodId === hodId && a.status === 'Active');
-      }
-      return data;
+      if (error || !data) return loc;
+      return loc ? { ...data, ...loc } : data;
     } catch {
-      const all = await this.getAll();
-      return all.find((a: any) => a.hodId === hodId && a.status === 'Active');
+      const local = loadLocalHODAssignments();
+      return local.find((a: any) => a.hodId === hodId && a.status === 'Active');
     }
   },
 
   async getActiveByScope(campusId: string, departmentId: string) {
     try {
+      const local = loadLocalHODAssignments();
+      const loc = local.find(
+        (a: any) => a.campusId === campusId && a.departmentId === departmentId && a.status === 'Active'
+      );
       const { data, error } = await supabase
         .from('hod_assignments')
         .select('*')
@@ -1612,87 +1628,72 @@ export const HODAssignmentService = {
         .eq('status', 'Active')
         .limit(1)
         .maybeSingle();
-      if (error || !data) {
-        const all = await this.getAll();
-        return all.find(
-          (a: any) => a.campusId === campusId && a.departmentId === departmentId && a.status === 'Active'
-        );
-      }
-      return data;
+      if (error || !data) return loc;
+      return loc ? { ...data, ...loc } : data;
     } catch {
-      const all = await this.getAll();
-      return all.find(
+      const local = loadLocalHODAssignments();
+      return local.find(
         (a: any) => a.campusId === campusId && a.departmentId === departmentId && a.status === 'Active'
       );
     }
   },
 
   async create(assignment: any) {
-    try {
-      if (assignment.status === 'Active') {
-        try {
-          await supabase
-            .from('hod_assignments')
-            .update({ status: 'Inactive' })
-            .eq('campusId', assignment.campusId)
-            .eq('departmentId', assignment.departmentId);
-        } catch {}
-        if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-        memoryStore.hodAssignments.forEach((a: any) => {
-          if (a.campusId === assignment.campusId && a.departmentId === assignment.departmentId && a.id !== assignment.id) {
-            a.status = 'Inactive';
-          }
-        });
-      }
-
-      const { data, error } = await supabase.from('hod_assignments').insert([assignment]).select().single();
-      if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-      const saved = (!error && data) ? data : assignment;
-
-      memoryStore.hodAssignments.unshift(saved);
-      persistLocalHODAssignments(memoryStore.hodAssignments);
-      return saved;
-    } catch {
-      if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-      memoryStore.hodAssignments.unshift(assignment);
-      persistLocalHODAssignments(memoryStore.hodAssignments);
-      return assignment;
+    const local = loadLocalHODAssignments();
+    if (assignment.status === 'Active') {
+      local.forEach((a: any) => {
+        if (a.campusId === assignment.campusId && a.departmentId === assignment.departmentId && a.id !== assignment.id) {
+          a.status = 'Inactive';
+        }
+      });
+      try {
+        await supabase
+          .from('hod_assignments')
+          .update({ status: 'Inactive' })
+          .eq('campusId', assignment.campusId)
+          .eq('departmentId', assignment.departmentId);
+      } catch {}
     }
+
+    const idx = local.findIndex((a: any) => a.id === assignment.id);
+    if (idx === -1) local.unshift(assignment);
+    else local[idx] = { ...local[idx], ...assignment };
+    memoryStore.hodAssignments = local;
+    persistLocalHODAssignments(local);
+
+    try {
+      const { data, error } = await supabase.from('hod_assignments').insert([assignment]).select().single();
+      if (!error && data) {
+        return data;
+      }
+    } catch {}
+    return assignment;
   },
 
   async update(id: string, updates: any) {
-    try {
-      const { data, error } = await supabase.from('hod_assignments').update(updates).eq('id', id).select().maybeSingle();
-      if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-      const idx = memoryStore.hodAssignments.findIndex((a: any) => a.id === id);
-      const updated = (!error && data) ? data : { ...((idx !== -1 ? memoryStore.hodAssignments[idx] : {})), ...updates };
-
-      if (idx !== -1) {
-        memoryStore.hodAssignments[idx] = updated;
-      } else {
-        memoryStore.hodAssignments.push(updated);
-      }
-      persistLocalHODAssignments(memoryStore.hodAssignments);
-      return updated;
-    } catch {
-      if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-      const idx = memoryStore.hodAssignments.findIndex((a: any) => a.id === id);
-      if (idx !== -1) {
-        memoryStore.hodAssignments[idx] = { ...memoryStore.hodAssignments[idx], ...updates };
-        persistLocalHODAssignments(memoryStore.hodAssignments);
-        return memoryStore.hodAssignments[idx];
-      }
-      return null;
+    const local = loadLocalHODAssignments();
+    const idx = local.findIndex((a: any) => a.id === id);
+    let updated: any = null;
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...updates };
+      updated = local[idx];
+      memoryStore.hodAssignments = local;
+      persistLocalHODAssignments(local);
     }
+
+    try {
+      await supabase.from('hod_assignments').update(updates).eq('id', id);
+    } catch {}
+    return updated;
   },
 
   async delete(id: string) {
+    const local = loadLocalHODAssignments().filter((a: any) => a.id !== id);
+    memoryStore.hodAssignments = local;
+    persistLocalHODAssignments(local);
     try {
       await supabase.from('hod_assignments').delete().eq('id', id);
     } catch {}
-    if (!memoryStore.hodAssignments) memoryStore.hodAssignments = loadLocalHODAssignments();
-    memoryStore.hodAssignments = memoryStore.hodAssignments.filter((a: any) => a.id !== id);
-    persistLocalHODAssignments(memoryStore.hodAssignments);
     return true;
   }
 };
@@ -1700,9 +1701,7 @@ export const HODAssignmentService = {
 // ==========================================
 // SECTIONS SERVICE
 // ==========================================
-const SECTIONS_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
-  ? path.join(process.cwd(), 'backend', 'data', 'sections.json')
-  : path.join(process.cwd(), 'data', 'sections.json');
+const SECTIONS_FILE = getDataFilePath('sections.json');
 
 function persistLocalSections(list: any[]) {
   try {
@@ -1816,9 +1815,7 @@ export const SectionService = {
 // TEACHER ASSIGNMENTS SERVICE
 // (Teacher → Department → Section → Course → HOD)
 // ==========================================
-const TEACHER_ASSIGNMENTS_FILE = fs.existsSync(path.join(process.cwd(), 'backend', 'data'))
-  ? path.join(process.cwd(), 'backend', 'data', 'teacher_assignments.json')
-  : path.join(process.cwd(), 'data', 'teacher_assignments.json');
+const TEACHER_ASSIGNMENTS_FILE = getDataFilePath('teacher_assignments.json');
 
 function persistLocalTeacherAssignments(list: any[]) {
   try {
@@ -1918,18 +1915,23 @@ export const TeacherAssignmentService = {
     const matched = assignments.find((a: any) => {
       // 1. Department match
       const deptMatch =
+        !cleanDept ||
         (a.departmentId && a.departmentId.toLowerCase() === cleanDept) ||
         (a.departmentName && a.departmentName.toLowerCase() === cleanDept);
       if (!deptMatch) return false;
 
-      // 2. Section match
+      // 2. Section / Batch match
       const secMatch =
+        !cleanSec ||
         (a.sectionId && a.sectionId.toLowerCase() === cleanSec) ||
-        (a.sectionName && a.sectionName.toLowerCase() === cleanSec);
+        (a.sectionName && a.sectionName.toLowerCase() === cleanSec) ||
+        (a.batch && a.batch.toLowerCase() === cleanSec);
       if (!secMatch) return false;
 
       // 3. Course match
       const crsMatch =
+        !cleanCrs ||
+        (a.id && a.id.toLowerCase() === cleanCrs) ||
         (a.courseId && a.courseId.toLowerCase() === cleanCrs) ||
         (a.courseCode && a.courseCode.toLowerCase() === cleanCrs) ||
         (a.courseName && a.courseName.toLowerCase() === cleanCrs);

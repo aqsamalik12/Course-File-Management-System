@@ -65,8 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
     VISITING_TEACHER: { label: 'Visiting Faculty', icon: Briefcase, color: 'text-amber-700', bg: 'bg-amber-100 border-amber-200' }
   };
 
-  const currentRoleConf = roleConfigs[activeRole];
-  const RoleIcon = currentRoleConf.icon;
+  const currentRoleConf = roleConfigs[activeRole] || roleConfigs['ADMIN'];
+  const RoleIcon = currentRoleConf?.icon || Shield;
 
   const unreadNotifs = notifications.filter((n) => !n.isRead);
 
@@ -319,19 +319,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="w-9 h-9 rounded-full bg-[#1E7B4E] text-white p-0.5 flex items-center justify-center ring-2 ring-[#E2EFE6] shrink-0">
                 <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
+                  src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                  alt={currentUser?.name || 'User'}
                   className="w-full h-full rounded-full object-cover"
                 />
               </div>
             <div className="hidden lg:flex flex-col text-left">
                 <span className="text-xs font-extrabold text-[#0F2D1F] leading-tight">
-                  {activeRole === 'HOD' ? currentUser.name : `Hello, ${currentUser.name?.split(' ')[0] || 'User'}`}
+                  {activeRole === 'HOD' ? (currentUser?.name || 'HOD') : `Hello, ${currentUser?.name?.split(' ')[0] || 'User'}`}
                 </span>
                 <span className="text-[11px] font-semibold text-slate-500 leading-tight">
                   {activeRole === 'HOD'
-                    ? `${currentUser.departmentName || 'Department'} • ${currentUser.campus || currentUser.campusName || 'Attock Campus'}`
-                    : currentRoleConf.label}
+                    ? `${currentUser?.departmentName || 'Department'} • ${currentUser?.campus || (currentUser as any)?.campusName || 'Attock Campus'}`
+                    : currentRoleConf?.label || 'Authorized User'}
                 </span>
               </div>
             </button>
@@ -343,10 +343,10 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setShowProfileMenu(false)}
               >
                 <div className="px-4 py-3 border-b border-[#E2EFE6]">
-                  <p className="text-xs font-bold text-[#0F2D1F]">{currentUser.name}</p>
-                  <p className="text-3xs text-[#567567] truncate">{currentUser.email}</p>
+                  <p className="text-xs font-bold text-[#0F2D1F]">{currentUser?.name || 'User'}</p>
+                  <p className="text-3xs text-[#567567] truncate">{currentUser?.email || ''}</p>
                   <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E6F4EC] text-[#15803D] text-3xs font-semibold">
-                    <span>Dept: {currentUser.departmentName.replace('Department of ', '')}</span>
+                    <span>Dept: {(currentUser?.departmentName || 'University of Education').replace('Department of ', '')}</span>
                   </div>
                 </div>
 

@@ -555,7 +555,7 @@ export const TeacherRegistrationsModule: React.FC<TeacherRegistrationsModuleProp
 
                       {/* 4. Department */}
                       <td className="py-3.5 px-3 text-2xs font-semibold text-slate-700">
-                        {t.department.replace('Department of ', '')}
+                        {(t.department || 'Computer Science').replace('Department of ', '')}
                       </td>
 
                       {/* 5. Assigned HOD */}
@@ -690,7 +690,7 @@ export const TeacherRegistrationsModule: React.FC<TeacherRegistrationsModuleProp
                         {req.campusName || 'Attock Campus'}
                       </td>
                       <td className="py-3 px-3 text-2xs font-semibold text-slate-700">
-                        {req.departmentName.replace('Department of ', '')}
+                        {(req.departmentName || 'Computer Science').replace('Department of ', '')}
                       </td>
                       <td className="py-3 px-3 text-2xs font-medium text-slate-800">
                         {req.hodName || 'Assigned HOD'}

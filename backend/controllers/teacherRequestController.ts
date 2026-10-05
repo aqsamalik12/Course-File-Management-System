@@ -258,15 +258,12 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       });
     }
 
-    if (!Array.isArray(selectedCourses) || selectedCourses.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please select at least one course for registration.'
-      });
-    }
+    const rawCourses = Array.isArray(selectedCourses) ? selectedCourses : [];
+    const sessionType = req.body.sessionType || profileData?.sessionType || (profileData?.academicSession ? profileData.academicSession.split(' ')[0] : 'Spring');
+    const academicYear = req.body.academicYear || profileData?.academicYear || '2024–25';
 
-    // 2. Strict Credit Hours Calculation & Validation
-    const normalizedCourses = selectedCourses.map((c: any, index: number) => {
+    // 2. Strict Credit Hours Calculation & Validation (if courses submitted)
+    const normalizedCourses = rawCourses.map((c: any, index: number) => {
       const cr = Number(c.credits ?? c.creditHours ?? 3);
       return {
         ...c,
@@ -285,13 +282,6 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
         message: `Credit hour limit exceeded! ${
           teacherType === 'REGULAR_TEACHER' ? 'Regular teachers' : 'Visiting teachers'
         } are allowed a maximum of ${creditLimit} credit hours. Your selected courses total ${totalCredits} credit hours.`
-      });
-    }
-
-    if (totalCredits <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Total credit hours must be greater than zero.'
       });
     }
 
@@ -409,6 +399,8 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
       selectedCourses: normalizedCourses,
       totalCredits,
       creditLimit,
+      sessionType,
+      academicYear,
       status: 'PendingHODApproval',
       rejectionReason: '',
       profileData: {
@@ -416,7 +408,9 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
         campus: finalCampusName,
         campusId: finalCampusId,
         hodId,
-        hodName
+        hodName,
+        sessionType,
+        academicYear
       },
       submittedAt: nowIso,
       updated_at: nowIso
@@ -442,10 +436,15 @@ export const createTeacherRequest = async (req: Request, res: Response) => {
         campus: finalCampusName,
         campusId: finalCampusId,
         hodId,
-        hodName
+        hodName,
+        sessionType,
+        academicYear
       },
+      sessionType,
+      academicYear,
+      academicSession: `${sessionType} ${academicYear}`,
       totalCredits,
-      selectedCourseIds: selectedCourses.map((c: any) => c.courseId)
+      selectedCourseIds: normalizedCourses.map((c: any) => c.courseId)
     });
 
     // 6. Automatic Notifications
@@ -565,6 +564,9 @@ export const approveTeacherRequest = async (req: Request, res: Response) => {
       hodId: request.hodId,
       hodName: request.hodName,
       role: request.teacherType,
+      sessionType: request.sessionType,
+      academicYear: request.academicYear,
+      academicSession: request.academicSession || `${request.sessionType || 'Spring'} ${request.academicYear || '2024–25'}`,
       totalCredits: request.totalCredits,
       courses: request.selectedCourses
     });

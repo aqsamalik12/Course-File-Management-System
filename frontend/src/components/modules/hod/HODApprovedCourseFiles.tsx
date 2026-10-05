@@ -61,6 +61,103 @@ export const HODApprovedCourseFiles: React.FC = () => {
   const [viewFile, setViewFile] = useState<CourseFileItem | null>(null);
   const [showCertificateFile, setShowCertificateFile] = useState<any | null>(null);
   const [showDossierFile, setShowDossierFile] = useState<any | null>(null);
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  const handleDownloadBatchZip = async (batch: string) => {
+    try {
+      setDownloadingZip(true);
+      const token = localStorage.getItem('cfms_token');
+      const res = await fetch(`/api/hod/downloads/batch/${batch}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Batch_${batch}_CourseFiles.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch {
+      //
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
+  const handleDownloadSemesterZip = async (semester: string, batch?: string) => {
+    try {
+      setDownloadingZip(true);
+      const token = localStorage.getItem('cfms_token');
+      const params = new URLSearchParams();
+      params.append('semester', semester);
+      if (batch && batch !== 'All') params.append('batch', batch);
+      const res = await fetch(`/api/hod/downloads/semester?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${semester.replace(/\s+/g, '_')}_CourseFiles.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch {
+      //
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
+  const handleDownloadCertificatesZip = async (batch?: string, semester?: string) => {
+    try {
+      setDownloadingZip(true);
+      const token = localStorage.getItem('cfms_token');
+      const params = new URLSearchParams();
+      if (batch && batch !== 'All') params.append('batch', batch);
+      if (semester && semester !== 'All') params.append('semester', semester);
+      const res = await fetch(`/api/hod/downloads/certificates?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': 'HOD',
+          'x-department-id': currentUser?.departmentId || ''
+        }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Certificates_${batch || 'All'}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch {
+      //
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
 
   const fetchApprovedFiles = async () => {
     setLoading(true);
@@ -191,15 +288,52 @@ export const HODApprovedCourseFiles: React.FC = () => {
           </div>
 
           {filteredFiles.length > 0 && (
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs inline-flex items-center gap-1.5 shadow-2xs cursor-pointer ml-auto sm:ml-0"
-              title="Download / Print All Filtered Course Files Package"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Download All ({filteredFiles.length})</span>
-            </button>
+            <div className="flex items-center gap-1.5 flex-wrap ml-auto sm:ml-0">
+              <button
+                type="button"
+                onClick={() => handleDownloadBatchZip(batchFilter !== 'All' ? batchFilter : (availableBatches[0] || '2023'))}
+                disabled={downloadingZip}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Download Batch Course Files (ZIP)"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Batch ZIP</span>
+              </button>
+
+              {semesterFilter !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadSemesterZip(semesterFilter, batchFilter !== 'All' ? batchFilter : undefined)}
+                  disabled={downloadingZip}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  title={`Download ${semesterFilter} Package (ZIP)`}
+                >
+                  <Download className="w-3.5 h-3.5 text-white" />
+                  <span>{semesterFilter} ZIP</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleDownloadCertificatesZip(batchFilter !== 'All' ? batchFilter : undefined, semesterFilter !== 'All' ? semesterFilter : undefined)}
+                disabled={downloadingZip}
+                className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Download Approved Certificates (ZIP)"
+              >
+                <Award className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Certificates ZIP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Download / Print All Filtered Course Files Package"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-600" />
+                <span>Print All ({filteredFiles.length})</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

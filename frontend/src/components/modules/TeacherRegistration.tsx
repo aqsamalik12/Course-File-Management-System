@@ -29,8 +29,15 @@ import {
   ToggleLeft,
   ToggleRight,
   IdCard,
-  Briefcase
+  Briefcase,
+  ChevronRight,
+  ArrowLeft,
+  Folder,
+  FolderTree,
+  FileCheck,
+  MapPin
 } from 'lucide-react';
+import { CourseFileCertificateModal } from '../common/CourseFileCertificateModal';
 
 interface TeacherRegistrationProps {
   activeSubModule?: 'Registered Teachers' | 'Registration Records' | string;
@@ -59,9 +66,17 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
     campuses,
     departments,
     hodAssignments,
+    courseFiles,
+    teacherAssignments,
     toggleUserStatus,
     refreshTeacherRequests
   } = useCFMS();
+
+  // View Mode: HIERARCHY (Campus-wise directory) vs TABLE (All Registered Teachers / Records)
+  const [viewMode, setViewMode] = useState<'HIERARCHY' | 'TABLE'>('HIERARCHY');
+  const [selectedCampusName, setSelectedCampusName] = useState<string | null>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [certificateModalFile, setCertificateModalFile] = useState<any | null>(null);
 
   // Active Tab
   const currentTab = useMemo(() => {
@@ -127,6 +142,20 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
       .forEach((r) => {
         seenTeacherIds.add(r.teacherId);
         const userObj = (usersList || []).find((u) => u.id === r.teacherId || (u.email && u.email.toLowerCase() === r.teacherEmail.toLowerCase()));
+
+        // Resolve teacher's course files
+        const teacherFiles = (courseFiles || []).filter(
+          (f) =>
+            (f.teacherId && f.teacherId === r.teacherId) ||
+            (f.teacherEmail && r.teacherEmail && f.teacherEmail.toLowerCase() === r.teacherEmail.toLowerCase()) ||
+            (f.teacherName && r.teacherName && f.teacherName.toLowerCase() === r.teacherName.toLowerCase())
+        );
+        const approvedFile = teacherFiles.find((f) => f.status === 'Approved');
+        const hasApproved = Boolean(approvedFile);
+        const latestFileStatus = teacherFiles.length > 0
+          ? (hasApproved ? 'Approved' : (teacherFiles.some(f => f.status === 'Needs Improvement') ? 'Needs Improvement' : (teacherFiles.some(f => f.status === 'Submitted' || f.status === 'Under Review') ? 'Under Review' : 'Draft')))
+          : 'Not Submitted';
+
         list.push({
           id: r.id,
           teacherId: r.teacherId,
@@ -135,6 +164,7 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
           phone: r.profileData?.phone || userObj?.phone || '—',
           cnic: r.profileData?.cnic || (userObj as any)?.cnic || '—',
           dob: r.profileData?.dob || (userObj as any)?.dob || '—',
+          gender: r.profileData?.gender || (userObj as any)?.gender || '—',
           bloodGroup: r.profileData?.bloodGroup || (userObj as any)?.bloodGroup || '—',
           qualification: r.profileData?.highestQualification || (userObj as any)?.qualification || 'MS / M.Phil',
           specialization: r.profileData?.specialization || 'Computer Science',
@@ -152,8 +182,13 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
           approvedDate: r.reviewedAt || r.submittedAt,
           approvedBy: r.reviewedBy || r.hodName || 'Department HOD',
           accountStatus: userObj?.status || 'Active',
-          session: r.profileData?.academicSession || 'Spring 2026',
+          session: r.profileData?.academicSession || (r as any).session || 'Spring 2026',
+          academicYear: r.profileData?.academicYear || '2026–27',
           batch: r.profileData?.batch || '2023-2027',
+          courseFiles: teacherFiles,
+          approvedCourseFile: approvedFile,
+          courseFileStatus: latestFileStatus,
+          certificateStatus: hasApproved ? 'Certificate Available' : 'Pending Approval',
           rawRequest: r,
           rawUser: userObj
         });
@@ -166,6 +201,19 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
         if (!seenTeacherIds.has(u.id)) {
           seenTeacherIds.add(u.id);
           const dept = (departments || []).find((d) => d.id === u.departmentId);
+
+          const teacherFiles = (courseFiles || []).filter(
+            (f) =>
+              (f.teacherId && f.teacherId === u.id) ||
+              (f.teacherEmail && u.email && f.teacherEmail.toLowerCase() === u.email.toLowerCase()) ||
+              (f.teacherName && u.name && f.teacherName.toLowerCase() === u.name.toLowerCase())
+          );
+          const approvedFile = teacherFiles.find((f) => f.status === 'Approved');
+          const hasApproved = Boolean(approvedFile);
+          const latestFileStatus = teacherFiles.length > 0
+            ? (hasApproved ? 'Approved' : (teacherFiles.some(f => f.status === 'Needs Improvement') ? 'Needs Improvement' : (teacherFiles.some(f => f.status === 'Submitted' || f.status === 'Under Review') ? 'Under Review' : 'Draft')))
+            : 'Not Submitted';
+
           list.push({
             id: `reg-${u.id}`,
             teacherId: u.id,
@@ -174,6 +222,7 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
             phone: u.phone || u.profileFormData?.phone || '—',
             cnic: u.profileFormData?.cnic || (u as any)?.cnic || '—',
             dob: u.profileFormData?.dob || '—',
+            gender: u.profileFormData?.gender || '—',
             bloodGroup: u.profileFormData?.bloodGroup || '—',
             qualification: u.profileFormData?.highestQualification || (u as any)?.qualification || 'MS / M.Phil',
             specialization: u.profileFormData?.specialization || 'Computer Science',
@@ -192,14 +241,19 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
             approvedBy: u.approvedBy || dept?.hodName || 'Department HOD',
             accountStatus: u.status || 'Active',
             session: u.profileFormData?.academicSession || 'Spring 2026',
+            academicYear: (u.profileFormData as any)?.academicYear || '2026–27',
             batch: u.profileFormData?.batch || '2023-2027',
+            courseFiles: teacherFiles,
+            approvedCourseFile: approvedFile,
+            courseFileStatus: latestFileStatus,
+            certificateStatus: hasApproved ? 'Certificate Available' : 'Pending Approval',
             rawUser: u
           });
         }
       });
 
     return list;
-  }, [teacherRequests, usersList, departments]);
+  }, [teacherRequests, usersList, departments, courseFiles]);
 
   // Unique Sessions for Filter
   const availableSessions = useMemo(() => {
@@ -413,27 +467,42 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
         </div>
       </div>
 
-      {/* 2. Sub-Module Tabs (Matching Sidebar Items exactly) */}
+      {/* 2. Sub-Module Tabs (Hierarchical Campus Directory + Flat Registry Tables) */}
       <div className="flex border-b border-slate-200">
         <button
-          onClick={() => onNavigate && onNavigate('Registered Teachers')}
+          onClick={() => { setViewMode('HIERARCHY'); setSelectedRecord(null); }}
           className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
-            currentTab === 'Registered Teachers'
+            viewMode === 'HIERARCHY'
+              ? 'border-emerald-600 text-emerald-800 bg-emerald-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <FolderTree className="w-4 h-4 text-emerald-700" />
+          <span>Campus Hierarchy</span>
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+            {(campuses || []).length} Campuses
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setViewMode('TABLE'); onNavigate && onNavigate('Registered Teachers'); }}
+          className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
+            viewMode === 'TABLE' && currentTab === 'Registered Teachers'
               ? 'border-emerald-600 text-emerald-800 bg-emerald-50/50'
               : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
           }`}
         >
           <Users className="w-4 h-4 text-emerald-700" />
-          <span>Registered Teachers</span>
-          <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+          <span>All Registered Teachers</span>
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
             {totalRegisteredCount}
           </span>
         </button>
 
         <button
-          onClick={() => onNavigate && onNavigate('Registration Records')}
+          onClick={() => { setViewMode('TABLE'); onNavigate && onNavigate('Registration Records'); }}
           className={`flex items-center gap-2 py-3 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
-            currentTab === 'Registration Records'
+            viewMode === 'TABLE' && currentTab === 'Registration Records'
               ? 'border-emerald-600 text-emerald-800 bg-emerald-50/50'
               : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
           }`}
@@ -617,7 +686,389 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
       </div>
 
       {/* 6. MAIN CONTENT AREA */}
-      {filteredTeachers.length === 0 ? (
+      {viewMode === 'HIERARCHY' ? (
+        /* HIERARCHICAL CAMPUS-WISE DIRECTORY (Phase 31 & 32) */
+        <div className="space-y-4">
+          {/* Breadcrumb Navigation Bar */}
+          <div className="flex items-center justify-between bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-xs">
+            <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <button
+                onClick={() => { setSelectedCampusName(null); setSelectedDeptId(null); }}
+                className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  !selectedCampusName ? 'text-emerald-800 font-bold' : 'hover:text-emerald-700'
+                }`}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>All Campuses</span>
+              </button>
+
+              {selectedCampusName && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                  <button
+                    onClick={() => setSelectedDeptId(null)}
+                    className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      !selectedDeptId ? 'text-emerald-800 font-bold' : 'hover:text-emerald-700'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>{selectedCampusName}</span>
+                  </button>
+                </>
+              )}
+
+              {selectedDeptId && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                  <span className="text-emerald-800 font-bold flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {(departments || []).find((d) => d.id === selectedDeptId)?.name || 'Department'}
+                    </span>
+                  </span>
+                </>
+              )}
+            </nav>
+
+            {/* Back action if drilled down */}
+            {selectedDeptId ? (
+              <button
+                onClick={() => setSelectedDeptId(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Departments</span>
+              </button>
+            ) : selectedCampusName ? (
+              <button
+                onClick={() => setSelectedCampusName(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Campuses</span>
+              </button>
+            ) : null}
+          </div>
+
+          {/* LEVEL 1: CAMPUSES DIRECTORY */}
+          {!selectedCampusName ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">University Campuses</h3>
+                  <p className="text-2xs text-slate-500">Select a campus to inspect its academic departments and enrolled faculty members.</p>
+                </div>
+                <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                  {(campuses || []).length} Campuses Available
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {(campuses || []).map((campus) => {
+                  const campusDepts = (departments || []).filter(
+                    (d) => d.campusId === campus.id || d.campusName?.toLowerCase() === campus.name.toLowerCase()
+                  );
+                  const campusTeachers = registeredTeachers.filter(
+                    (t) => t.campusId === campus.id || t.campus?.toLowerCase() === campus.name.toLowerCase()
+                  );
+
+                  return (
+                    <div
+                      key={campus.id}
+                      onClick={() => { setSelectedCampusName(campus.name); setSelectedDeptId(null); }}
+                      className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-4"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold">
+                            <Landmark className="w-5 h-5" />
+                          </div>
+                          <span className="px-2.5 py-0.5 text-3xs font-extrabold bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200">
+                            {campus.code}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                            {campus.name}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            {campus.city || 'Punjab'}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-3xs text-slate-400 block font-semibold">Departments</span>
+                            <span className="font-extrabold text-slate-800">{campusDepts.length} Depts</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-3xs text-slate-400 block font-semibold">Faculty Enrolled</span>
+                            <span className="font-extrabold text-emerald-800">{campusTeachers.length} Teachers</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
+                        <span>Explore Departments</span>
+                        <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : !selectedDeptId ? (
+            /* LEVEL 2: DEPARTMENTS UNDER SELECTED CAMPUS */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Academic Departments — {selectedCampusName}
+                  </h3>
+                  <p className="text-2xs text-slate-500">
+                    Choose a department to inspect enrolled teachers, course allotments, and course file statuses.
+                  </p>
+                </div>
+              </div>
+
+              {(() => {
+                const activeCampusObj = (campuses || []).find(
+                  (c) => c.name.toLowerCase() === selectedCampusName.toLowerCase()
+                );
+                const campusDepts = (departments || []).filter(
+                  (d) =>
+                    d.campusId === activeCampusObj?.id ||
+                    d.campusName?.toLowerCase() === selectedCampusName.toLowerCase()
+                );
+
+                if (campusDepts.length === 0) {
+                  return (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+                      <p className="text-sm font-bold text-slate-800">No departments found under {selectedCampusName}</p>
+                      <p className="text-xs text-slate-500">Departments added by Admin for this campus will appear here.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {campusDepts.map((dept) => {
+                      const deptTeachers = registeredTeachers.filter(
+                        (t) =>
+                          (t.departmentId === dept.id || t.department?.toLowerCase() === dept.name.toLowerCase()) &&
+                          (t.campusId === activeCampusObj?.id || t.campus?.toLowerCase() === selectedCampusName.toLowerCase())
+                      );
+                      const assignedHOD = dept.hodName || (hodAssignments || []).find((h) => h.departmentId === dept.id)?.hodName || 'Not Assigned';
+                      const totalWorkload = deptTeachers.reduce((sum, t) => sum + (Number(t.totalCredits) || 0), 0);
+
+                      return (
+                        <div
+                          key={dept.id}
+                          onClick={() => setSelectedDeptId(dept.id)}
+                          className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-4"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 flex items-center justify-center font-bold">
+                                <Building2 className="w-5 h-5" />
+                              </div>
+                              <span className="px-2 py-0.5 text-3xs font-extrabold bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+                                {dept.code || 'DEPT'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-base font-extrabold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                                {dept.name}
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                <UserCheck className="w-3 h-3 text-emerald-600" />
+                                <span>HOD: <strong className="text-slate-800">{assignedHOD}</strong></span>
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <span className="text-3xs text-slate-400 block font-semibold">Enrolled Teachers</span>
+                                <span className="font-extrabold text-slate-800">{deptTeachers.length} Faculty</span>
+                              </div>
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <span className="text-3xs text-slate-400 block font-semibold">Total Credits</span>
+                                <span className="font-extrabold text-emerald-800">{totalWorkload} Cr</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 flex items-center justify-between text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
+                            <span>View Enrolled Faculty</span>
+                            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            /* LEVEL 3: ENROLLED TEACHERS UNDER SELECTED DEPARTMENT */
+            <div className="space-y-4">
+              {(() => {
+                const activeCampusObj = (campuses || []).find(
+                  (c) => c.name.toLowerCase() === selectedCampusName.toLowerCase()
+                );
+                const activeDeptObj = (departments || []).find((d) => d.id === selectedDeptId);
+                const deptTeachers = registeredTeachers.filter(
+                  (t) =>
+                    (t.departmentId === selectedDeptId || t.department?.toLowerCase() === activeDeptObj?.name?.toLowerCase()) &&
+                    (t.campusId === activeCampusObj?.id || t.campus?.toLowerCase() === selectedCampusName.toLowerCase())
+                );
+
+                return (
+                  <>
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-extrabold text-slate-900 font-heading">
+                            {activeDeptObj?.name || 'Department'}
+                          </h3>
+                          <span className="text-3xs font-extrabold px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200">
+                            {selectedCampusName}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Assigned HOD: <strong className="text-slate-800">{activeDeptObj?.hodName || 'Not Assigned'}</strong> • {deptTeachers.length} Enrolled Teacher{deptTeachers.length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                          {deptTeachers.reduce((sum, t) => sum + (Number(t.totalCredits) || 0), 0)} Total Allocated Credits
+                        </span>
+                      </div>
+                    </div>
+
+                    {deptTeachers.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-2">
+                        <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                        <h4 className="text-sm font-bold text-slate-800">No teachers enrolled in this department</h4>
+                        <p className="text-xs text-slate-500">When teachers complete their registration and receive HOD approval, they appear here automatically.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {deptTeachers.map((teacher) => (
+                          <div
+                            key={teacher.id}
+                            className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0">
+                                    {teacher.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-extrabold text-slate-900 text-sm">{teacher.name}</h4>
+                                    <p className="text-3xs text-slate-500 font-mono">{teacher.email}</p>
+                                    <p className="text-3xs text-slate-400 mt-0.5">{teacher.phone}</p>
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={`text-3xs font-extrabold px-2.5 py-0.5 rounded-full border ${
+                                    teacher.teacherType === 'REGULAR_TEACHER'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                      : 'bg-purple-50 text-purple-700 border-purple-200'
+                                  }`}
+                                >
+                                  {teacher.teacherType === 'REGULAR_TEACHER' ? 'Regular Faculty' : 'Visiting Faculty'}
+                                </span>
+                              </div>
+
+                              {/* Allocated Courses Summary */}
+                              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs">
+                                <div className="flex items-center justify-between text-3xs font-bold text-slate-500 uppercase tracking-wider">
+                                  <span>Assigned Courses ({(teacher.courses || []).length})</span>
+                                  <span className="text-emerald-800 font-bold">{teacher.totalCredits} / {teacher.creditLimit} Credits</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {(teacher.courses || []).length === 0 ? (
+                                    <span className="text-3xs text-slate-400 italic">No courses assigned yet</span>
+                                  ) : (
+                                    (teacher.courses || []).map((c: any, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="text-4xs bg-white text-emerald-800 font-mono font-bold px-2 py-0.5 rounded border border-emerald-200 shadow-2xs"
+                                        title={`${c.courseTitle || c.courseName} (${c.batch || 'Batch'} • ${c.semester || 'Semester'})`}
+                                      >
+                                        {c.courseCode} ({c.credits || c.creditHours || 3}Cr)
+                                      </span>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Status Indicators */}
+                              <div className="grid grid-cols-2 gap-2 text-2xs">
+                                <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                                  <span className="text-3xs text-slate-400 block font-medium">Course File Status</span>
+                                  <span
+                                    className={`inline-flex items-center gap-1 font-bold ${
+                                      teacher.courseFileStatus === 'Approved'
+                                        ? 'text-emerald-700'
+                                        : teacher.courseFileStatus === 'Needs Improvement'
+                                        ? 'text-rose-700'
+                                        : teacher.courseFileStatus === 'Under Review' || teacher.courseFileStatus === 'Submitted'
+                                        ? 'text-amber-700'
+                                        : 'text-slate-600'
+                                    }`}
+                                  >
+                                    <FileCheck className="w-3 h-3" />
+                                    {teacher.courseFileStatus}
+                                  </span>
+                                </div>
+
+                                <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                                  <span className="text-3xs text-slate-400 block font-medium">Certificate</span>
+                                  <span
+                                    className={`inline-flex items-center gap-1 font-bold ${
+                                      teacher.certificateStatus === 'Certificate Available'
+                                        ? 'text-emerald-700'
+                                        : 'text-slate-500'
+                                    }`}
+                                  >
+                                    <Award className="w-3 h-3" />
+                                    {teacher.certificateStatus}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                              <span className="text-3xs text-slate-400 font-medium">
+                                Enrolled: {fmtDate(teacher.approvedDate)}
+                              </span>
+                              <button
+                                onClick={() => setSelectedRecord(teacher)}
+                                className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                              >
+                                <IdCard className="w-3.5 h-3.5" />
+                                <span>Full Registration Dossier</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      ) : filteredTeachers.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
             <Users className="w-6 h-6" />
@@ -1004,7 +1455,15 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
                 </div>
                 <div>
                   <span className="text-3xs text-slate-400 block">Phone</span>
-                  <span className="text-slate-800">{selectedRecord.phone}</span>
+                  <span className="text-slate-800 font-medium">{selectedRecord.phone}</span>
+                </div>
+                <div>
+                  <span className="text-3xs text-slate-400 block">Date of Birth</span>
+                  <span className="text-slate-800">{selectedRecord.dob || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-3xs text-slate-400 block">Gender</span>
+                  <span className="text-slate-800">{selectedRecord.gender || '—'}</span>
                 </div>
                 <div>
                   <span className="text-3xs text-slate-400 block">Highest Qualification</span>
@@ -1015,8 +1474,16 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
                   <span className="text-slate-800">{selectedRecord.specialization || '—'}</span>
                 </div>
                 <div>
+                  <span className="text-3xs text-slate-400 block">Blood Group</span>
+                  <span className="text-slate-800">{selectedRecord.bloodGroup || '—'}</span>
+                </div>
+                <div>
                   <span className="text-3xs text-slate-400 block">Academic Session</span>
                   <span className="text-slate-800 font-bold">{selectedRecord.session}</span>
+                </div>
+                <div>
+                  <span className="text-3xs text-slate-400 block">Academic Year</span>
+                  <span className="text-slate-800 font-semibold">{selectedRecord.academicYear || '2026–27'}</span>
                 </div>
                 <div>
                   <span className="text-3xs text-slate-400 block">Batch</span>
@@ -1050,26 +1517,150 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
                     <tr className="bg-slate-50 border-b border-slate-200 text-3xs font-bold text-slate-500 uppercase tracking-wider">
                       <th className="py-2.5 px-3">Course Code</th>
                       <th className="py-2.5 px-3">Course Title</th>
-                      <th className="py-2.5 px-3">Section</th>
+                      <th className="py-2.5 px-3">Batch</th>
+                      <th className="py-2.5 px-3">Semester</th>
+                      <th className="py-2.5 px-3">Session</th>
                       <th className="py-2.5 px-3 text-right">Credits</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(selectedRecord.courses || []).map((c: SelectedCourseItem, idx: number) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">{c.courseCode}</td>
-                        <td className="py-2.5 px-3 font-medium text-slate-800">
-                          {c.courseTitle || c.courseName}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500">{c.section || 'Section A'}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                          {c.credits || c.creditHours || 3} Cr
+                    {(selectedRecord.courses || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-slate-400 text-xs italic">
+                          No courses currently allocated
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      (selectedRecord.courses || []).map((c: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-emerald-800">{c.courseCode}</td>
+                          <td className="py-2.5 px-3 font-medium text-slate-800">
+                            {c.courseTitle || c.courseName}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 font-mono text-3xs">
+                            {c.batch || selectedRecord.batch || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 text-3xs">
+                            {c.semester || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500 text-3xs">
+                            {c.academicSession || c.session || selectedRecord.session || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                            {c.credits || c.creditHours || 3} Cr
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Course Files Information */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Course File Submissions & Quality Review Status
+              </h4>
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-3xs font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-3">Course</th>
+                      <th className="py-2.5 px-3">Batch & Semester</th>
+                      <th className="py-2.5 px-3">Submitted On</th>
+                      <th className="py-2.5 px-3">Review Status</th>
+                      <th className="py-2.5 px-3">Review Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(selectedRecord.courseFiles || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-4 text-center text-slate-400 text-xs italic">
+                          No course files submitted yet by this faculty member
+                        </td>
+                      </tr>
+                    ) : (
+                      (selectedRecord.courseFiles || []).map((f: any) => (
+                        <tr key={f.id} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-slate-800 block">{f.courseTitle || f.title || 'Course'}</span>
+                            <span className="font-mono text-3xs text-emerald-700 font-bold">{f.courseCode}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-3xs text-slate-600">
+                            {f.batch || '—'} • {f.semester || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-3xs text-slate-500">
+                            {fmtDate(f.submittedAt || f.uploadDate)}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-3xs font-extrabold border ${
+                                f.status === 'Approved'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : f.status === 'Needs Improvement'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : f.status === 'Draft'
+                                  ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
+                            >
+                              {f.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-3xs text-slate-600">
+                            {f.reviewComment || '—'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Certificate Status Section */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Certificate Status
+              </h4>
+              {selectedRecord.approvedCourseFile ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-emerald-950">
+                        Official Certificate of Course File Completion Available
+                      </p>
+                      <p className="text-2xs text-emerald-800">
+                        Course: <strong>{selectedRecord.approvedCourseFile.courseTitle} ({selectedRecord.approvedCourseFile.courseCode})</strong> • Approved by HOD {selectedRecord.hod}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCertificateModalFile(selectedRecord.approvedCourseFile)}
+                    className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>View / Print Certificate</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 text-xs text-slate-600">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-700">Certificate Not Available</p>
+                    <p className="text-2xs text-slate-500">
+                      Official certificates are automatically generated following final approval of the Course File by the Department HOD.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -1083,6 +1674,14 @@ export const TeacherRegistration: React.FC<TeacherRegistrationProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 8. CERTIFICATE MODAL PREVIEW */}
+      {certificateModalFile && (
+        <CourseFileCertificateModal
+          courseFile={certificateModalFile}
+          onClose={() => setCertificateModalFile(null)}
+        />
       )}
     </div>
   );

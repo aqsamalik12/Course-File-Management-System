@@ -101,7 +101,7 @@ export const CourseFileManagement: React.FC<CourseFileManagementProps> = ({ acti
       render: (f) => (
         <div>
           <p className="font-bold text-slate-800 text-2xs">{f.teacherName}</p>
-          <span className="text-3xs text-slate-400">{f.departmentName.replace('Department of ', '')}</span>
+          <span className="text-3xs text-slate-400">{(f.departmentName || '').replace('Department of ', '')}</span>
         </div>
       )
     },

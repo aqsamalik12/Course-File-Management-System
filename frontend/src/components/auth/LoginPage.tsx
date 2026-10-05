@@ -103,8 +103,8 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* ── Top Branding ── */}
-      <div className="relative z-10 w-full max-w-[540px] mx-auto animate-fade-in pt-6 sm:pt-8 pb-2 flex flex-col items-center text-center space-y-2">
-        <div className="w-18 sm:w-20 h-18 sm:h-20 flex items-center justify-center filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.5)] transition-transform duration-300 hover:scale-105">
+      <div className="relative z-10 w-full max-w-[440px] mx-auto animate-fade-in pt-4 sm:pt-6 pb-2 flex flex-col items-center text-center space-y-1.5">
+        <div className="w-14 sm:w-16 h-14 sm:h-16 flex items-center justify-center filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-transform duration-300 hover:scale-105">
           <img
             src="/ue_logo_transparent.png"
             alt="University of Education Logo Crest"
@@ -112,20 +112,20 @@ export const LoginPage: React.FC = () => {
             onError={(e) => { (e.target as HTMLImageElement).src = '/ue_logo.png'; }}
           />
         </div>
-        <h1 className="text-xl sm:text-2xl font-extrabold font-heading text-white tracking-[0.08em] leading-snug drop-shadow-md">
+        <h1 className="text-lg sm:text-xl font-extrabold font-heading text-white tracking-[0.06em] leading-snug drop-shadow-md">
           UNIVERSITY OF EDUCATION
         </h1>
-        <div className="flex flex-col items-center gap-1.5 pt-0.5">
-          <p className="text-2xs sm:text-xs font-bold text-emerald-200 uppercase tracking-[0.2em] opacity-95">
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-3xs sm:text-2xs font-bold text-emerald-200 uppercase tracking-[0.18em] opacity-95">
             Course File Management System
           </p>
-          <div className="w-10 h-0.5 bg-[#F5C542] rounded-full mx-auto shadow-xs" />
+          <div className="w-8 h-0.5 bg-[#F5C542] rounded-full mx-auto shadow-xs" />
         </div>
       </div>
 
       {/* ── Login Card ── */}
-      <div className="relative z-10 w-full max-w-[540px] mx-auto my-auto py-3 animate-fade-in">
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 sm:p-8 space-y-5 border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.5)]">
+      <div className="relative z-10 w-full max-w-[440px] mx-auto my-auto py-2 animate-fade-in">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-5 sm:p-7 space-y-4 border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
 
           {/* Tab Switcher: Sign In vs Teacher Registration */}
           <div className="grid grid-cols-2 p-1 bg-black/30 rounded-xl border border-white/15">
@@ -434,7 +434,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* ── Footer ── */}
-      <div className="relative z-10 w-full max-w-[540px] mx-auto text-center py-2">
+      <div className="relative z-10 w-full max-w-[440px] mx-auto text-center py-2">
         <p className="text-[11px] text-white/60 font-medium">
           University of Education, Attock Campus • Quality Enhancement Cell (QEC)
         </p>
