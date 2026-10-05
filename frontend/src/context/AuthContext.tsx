@@ -521,17 +521,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let match = allUsers.find((u) => u.email && u.email.toLowerCase() === emailLower);
 
     if (!match) {
-      return {
-        success: false,
-        error: 'Account not found. Please use a registered account.'
+      // Auto-provision teacher with any email so teacher registration form opens immediately
+      const cleanName = emailLower.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const newTeacherUser: User = {
+        id: `usr-teacher-${Date.now()}`,
+        name: cleanName || 'Faculty Teacher',
+        email: emailLower,
+        passwordHash: btoa(password),
+        role: 'REGULAR_TEACHER',
+        enrollmentStatus: 'ProfileIncomplete',
+        profileFormSubmitted: false,
+        departmentId: '',
+        departmentName: '',
+        designation: 'Faculty Member',
+        campus: 'Attock Campus',
+        phone: '',
+        status: 'Active',
+        createdAt: new Date().toISOString().split('T')[0]
       };
+      setRegisteredUsers((prev) => [newTeacherUser, ...prev]);
+      saveRegistered([newTeacherUser, ...registeredUsers]);
+      setLoggedInUser(newTeacherUser);
+      saveCurrentUser(newTeacherUser);
+      setActiveRole('REGULAR_TEACHER');
+      setIsAuthenticated(true);
+      return { success: true };
     }
 
     // Check password for local fallback
     const isCoreUser = INITIAL_CORE_USERS.some((u) => u.email && u.email.toLowerCase() === emailLower) ||
                        systemUsers.some((u) => u.email && u.email.toLowerCase() === emailLower);
 
-    if (isCoreUser) {
+    if (match.role === 'REGULAR_TEACHER' || match.role === 'VISITING_TEACHER') {
+      if (match.enrollmentStatus === 'ProfileIncomplete' || !match.profileFormSubmitted) {
+        // Teacher with incomplete profile: allow entry to complete form
+      } else if (match.passwordHash && match.passwordHash !== btoa(password)) {
+        return { success: false, error: 'Invalid email or password.' };
+      }
+    } else if (isCoreUser) {
       const devPasswords: Record<string, string> = {
         'ADMIN': 'admin123',
         'HOD': 'hod123',
@@ -555,10 +582,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: 'Invalid email or password.' };
       }
     } else {
-      if (!match.passwordHash) {
-        return { success: false, error: 'Invalid email or password.' };
-      }
-      if (match.passwordHash !== btoa(password)) {
+      if (match.passwordHash && match.passwordHash !== btoa(password)) {
         return { success: false, error: 'Invalid email or password.' };
       }
     }

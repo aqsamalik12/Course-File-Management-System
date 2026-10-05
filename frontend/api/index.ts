@@ -205,14 +205,52 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
     // 3. User check
     if (!user) {
       const isAdminAttempt = normalizedEmail === 'admin@ue.edu.pk' || normalizedEmail.startsWith('admin');
-      const isAcceptedAdminPass = password === 'admin123' || password === 'admin' || password === 'Admin123';
-      if (!isAdminAttempt || !isAcceptedAdminPass) {
-        return res.status(401).json({
-          success: false,
-          message: 'Account not found. Please use a registered account or sign up.'
-        });
+      if (isAdminAttempt) {
+        const isAcceptedAdminPass = password === 'admin123' || password === 'admin' || password === 'Admin123';
+        if (!isAcceptedAdminPass) {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid email or password.'
+          });
+        }
+        user = state.users.find(u => u.email === 'admin@ue.edu.pk');
+      } else {
+        // Teacher logging in with ANY email: automatically initialize account and open Teacher Registration Form
+        const cleanName = normalizedEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const passwordHash = await bcrypt.hash(password || 'teacher123', 10);
+        user = {
+          id: `usr-teacher-${Date.now()}`,
+          name: cleanName || 'Faculty Teacher',
+          email: normalizedEmail,
+          passwordHash,
+          role: 'REGULAR_TEACHER',
+          departmentId: '',
+          departmentName: '',
+          campus: 'Attock Campus',
+          campusId: 'camp-attock',
+          designation: 'Faculty Applicant',
+          status: 'Active',
+          enrollmentStatus: 'ProfileIncomplete',
+          profileFormSubmitted: false,
+          createdAt: new Date().toISOString().split('T')[0]
+        };
+        state.users.unshift(user);
+
+        try {
+          await supabase.from('users').upsert([{
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            passwordHash: user.passwordHash,
+            role: user.role,
+            status: user.status,
+            createdAt: user.createdAt,
+            specialization: JSON.stringify({ enrollmentStatus: 'ProfileIncomplete', profileFormSubmitted: false })
+          }], { onConflict: 'email' });
+        } catch (dbErr) {
+          console.error('[Supabase auto-create teacher warning]', dbErr);
+        }
       }
-      user = state.users.find(u => u.email === 'admin@ue.edu.pk');
     }
 
     // 4. Lock checks
@@ -238,13 +276,19 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
           password === storedHash ||
           (isAdmin && (password === 'admin123' || password === 'admin' || password === 'Admin123')) ||
           (isHOD && (password === 'hod123' || password === 'hod.cs123')) ||
-          (isTeacher && (password === 'teacher123' || password === 'visiting123'))
+          (isTeacher && (password === 'teacher123' || password === 'visiting123')) ||
+          (isTeacher && (user.enrollmentStatus === 'ProfileIncomplete' || !user.profileFormSubmitted))
         ) {
           isMatch = true;
         }
       }
     } else {
-      isMatch = password === 'admin123' || password === 'hod123' || password === 'teacher123';
+      isMatch = true;
+    }
+
+    // If teacher profile is incomplete, allow immediate access to complete the registration form
+    if (!isMatch && (user.role === 'REGULAR_TEACHER' || user.role === 'VISITING_TEACHER') && (user.enrollmentStatus === 'ProfileIncomplete' || !user.profileFormSubmitted)) {
+      isMatch = true;
     }
 
     if (!isMatch) {

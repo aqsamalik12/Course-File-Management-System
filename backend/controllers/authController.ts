@@ -79,11 +79,37 @@ export const login = async (req: Request, res: Response) => {
       const isDefaultAdmin =
         (normalizedEmail === 'admin@ue.edu.pk' || normalizedEmail.startsWith('admin')) &&
         (password === 'admin123' || password === 'admin' || password === 'Admin123' || password === 'admin@123' || password === 'Admin@123' || password === 'ue@123');
-      if (!isDefaultAdmin) {
-        return res.status(401).json({
-          success: false,
-          message: 'Account not found. Please contact administrator or sign up.'
-        });
+      if (isDefaultAdmin) {
+        user = {
+          id: 'usr-admin',
+          email: 'admin@ue.edu.pk',
+          name: 'Administrator',
+          role: 'ADMIN',
+          status: 'Active',
+          enrollmentStatus: 'Approved',
+          profileFormSubmitted: true
+        };
+      } else {
+        // Teacher logging in with ANY email: auto-provision teacher account
+        const teacherName = normalizedEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        const passwordHash = await bcrypt.hash(password || 'teacher123', 10);
+        user = {
+          id: `usr-teacher-${Date.now()}`,
+          name: teacherName || 'Faculty Teacher',
+          email: normalizedEmail,
+          passwordHash,
+          role: 'REGULAR_TEACHER',
+          departmentId: '',
+          departmentName: '',
+          campus: 'Attock Campus',
+          status: 'Active',
+          enrollmentStatus: 'ProfileIncomplete',
+          profileFormSubmitted: false,
+          createdAt: new Date().toISOString().split('T')[0]
+        };
+        try {
+          await UserService.create(user);
+        } catch {}
       }
     }
 
